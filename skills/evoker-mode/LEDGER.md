@@ -11,3 +11,9 @@ are backfilled from git.
 - Outcome: reverted the next day (4d831f8) with the full neoskills schema-v2
   rollback; the rollback's own motivation was not captured at the time.
   Recorded here so the next persistence experiment starts from this attempt.
+
+## 2026-09-03 — delegation doctrine pointer moved to the extension README
+- Motivation: `guidance/workflows/delegation-standard.md` retired; its root-side
+  judgment now lives in `extensions/agent-delegate/README.md` ("When
+  delegation repays").
+- Change: the Delegation section cites the README instead of the charter.

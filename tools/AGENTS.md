@@ -27,13 +27,5 @@ the `slopfix` skill, which owns it; its PATH link still comes from
   Run the tool's own test script before committing. In `portaudit`, mind that
   the awk program is single-quoted. An apostrophe anywhere inside it, even in
   a comment, terminates the quote and produces a baffling parse error.
-
-## Workflow charters
-
-House process detail lives in the cross-project charters:
-`~/.agents/kit/guidance/workflows/freezable-workflow.md` (freezability
-invariant, asset types, build/review loop, budget tiers) and its
-machine-local companion `~/.agents/verification-toolbox.md` (optional, seeded
-from `guidance/verification-toolbox.md.example`; tool choices per
-verification capability, untracked). Read them before planning builds,
-gates, or reviews.
+- Tool choices per verification capability: `~/.agents/verification-toolbox.md`
+  (machine-local, untracked, seeded from `guidance/verification-toolbox.md.example`).

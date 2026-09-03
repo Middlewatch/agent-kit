@@ -57,7 +57,13 @@ checks; RSS regression tools.
 ## Performance budgets
 
 Wall-time, RSS, allocation, and compile-time budget tools, each with where
-its threshold lives.
+its threshold lives. Each budget states its tier when set. A budget is
+**enforced** (a red gate) only when the measurement is deterministic, such
+as an allocation count on a pinned path or a byte-size cap. Timing and
+memory budgets are **tracked**: set at first measurement, recorded across
+commits, and a regression past the bar is an investigation trigger the
+review must explain rather than an automatic failure. A tracked target is
+relaxed only when improvement is ruled no longer possible.
 
 - <tool: the budget it enforces>
 

@@ -114,9 +114,9 @@ earn its place" when true. A recommendation is a judgment, not a validation.
 
 The surface is the `agent-delegate` tool: depth-one, read-only children on the `explore`,
 `review`, and `research` profiles, three concurrent prose children and twelve research
-children, extension-owned model routes. The doctrine is
-`~/.agents/kit/guidance/workflows/delegation-standard.md`: children gather, the root
-judges. A complete bounded brief names the scope, the question, and what done means. You
+children, extension-owned model routes. The doctrine is in the extension's README
+(`~/.agents/kit/extensions/agent-delegate/README.md`, "When delegation repays"): children
+gather, the root judges. A complete bounded brief names the scope, the question, and what done means. You
 own every child's work: verify material claims against the source before repeating them,
 and record dispositions with `assess_delegation`. A second opinion is the same brief on
 the `review` profile.

@@ -47,6 +47,8 @@ behavior, say so in chat; that is a design finding rather than a reason to test 
 as useful.
 4. **Gate once.** When the slice is done, run the project's gate script one time. Green:
 commit. Red: fix and run once more. A third red run is a stop-and-think rather than a loop.
+When the slice adds a gate invariant, break the thing once and watch the gate go red
+before trusting its green.
 5. **Docs in the same commit.** If the slice changed behavior a living doc describes
 (README, a contract, a CLI reference), edit that doc now. Do not leave it for a later
 pass.

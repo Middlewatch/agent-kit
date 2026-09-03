@@ -9,13 +9,5 @@ adding its entry there.
   deletes and consequential pushes, and keeps an audit trail) is
   security-sensitive. Changes there get tests proving both the allow and the
   hold paths, and a review pass.
-
-## Workflow charters
-
-House process detail lives in the cross-project charters:
-`~/.agents/kit/guidance/workflows/freezable-workflow.md` (freezability
-invariant, asset types, build/review loop, budget tiers) and its
-machine-local companion `~/.agents/verification-toolbox.md` (optional and
-untracked, seeded from `guidance/verification-toolbox.md.example`, listing
-tool choices per verification capability). Read them before planning builds,
-gates, or reviews.
+- Tool choices per verification capability: `~/.agents/verification-toolbox.md`
+  (machine-local, untracked, seeded from `guidance/verification-toolbox.md.example`).

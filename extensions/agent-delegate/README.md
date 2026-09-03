@@ -50,7 +50,33 @@ child termination does not prove descendant process-tree cleanup there.
 The accountable root decides whether delegation repays its cost, provides a
 complete bounded brief, owns shared writes and product decisions, verifies
 material claims, and synthesizes the final response. Calls in one assistant
-message run concurrently within the pool bounds above.
+message run concurrently within the pool bounds above. A delegation issued
+and then waited on individually is a sequential call wearing a parallel
+costume.
+
+## When delegation repays
+
+Delegation is a context-economics instrument first and an independence
+instrument second, never a throughput instrument. What it buys is that the
+child's transcript is discarded and only its conclusion survives, so it pays
+exactly when a task's output is bulky and its conclusion is compact:
+
+- **Wide reads**: a repo-wide sweep, a corpus of docs, a long git history, a
+  broad grep. The corpus enters the child and never the root.
+- **Independent review**: the fresh context is the point. The reviewer must
+  not have watched the code being written.
+- **Second derivation against an oracle**: re-deriving pinned behavior from
+  its spec in a fresh context, then diffing.
+
+Do the work in the root when the read is a handful of known files (briefing
+costs more turns than reading), when the task depends on context the root has
+accumulated and cannot hand over cheaply (a brief that reconstructs the
+session is not a brief), or when the work is a small edit inside a settled
+contract.
+
+A child's claim of success is not proof of success. Children have returned
+confident, wrong reports; the root re-runs the gate rather than trusting the
+summary, and records the disposition with `assess_delegation`.
 
 ## Typed returns
 

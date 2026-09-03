@@ -107,6 +107,24 @@ under conditions it was not written for, and the bug surfaces as a consequence.
    one side and unenforced on the other is a finding, and it is invisible to
    any single-file read.
 
+Alongside the axes, five criteria earned from incidents in this estate. Each
+is a finding when it fails:
+
+- **Every new file lands with direct tests on its own layer.** A 1,400-line
+  row-assembly file with zero direct tests hid behind green integration gates.
+- **Dropped or ported-away tests get written deferral notes.** Thirty-eight
+  test blocks vanished silently in a port, and the review had to reconstruct
+  what coverage was lost.
+- **Gate the real path, not a miniature.** A latency gate measured a toy
+  reimplementation while the app path went unmeasured.
+- **Test through the construction path, not just the leaf type.** A by-field
+  struct clone on an enforcement path dropped three security fields; unit
+  tests built the struct directly and stayed green over the hole.
+- **Notice other writers.** A second session widened a shared type, updated
+  one of three call sites, and broke a sibling package invisibly to its own
+  gate. When another session is active, commits stay surgical and affected
+  gates are rerun before green is trusted.
+
 Language packs are an important resource. If `~/.agents/reference/coding-languages/<lang>/` exists,
 read its `CONVENTIONS.md`. Every rule in it is a bug class that the estate has
 already reviewed and resolved.
@@ -175,8 +193,9 @@ delegate one `agent: "refuter"` child over the agent-delegate surface with
 the finding's claim, the reviewed region as scope, and a small verdict
 schema. A fresh judge-tier context that had no hand in producing the finding
 attempts the disproof. Its verdict is evidence for this pass rather than a
-replacement for it; the root stays accountable per
-`~/.agents/kit/guidance/workflows/delegation-standard.md`. The same surface
+replacement for it; the root stays accountable (the extension's README,
+`~/.agents/kit/extensions/agent-delegate/README.md`, states the root's
+obligations). The same surface
 serves the read side: a `critic` child can independently review a region you
 have already reviewed, and disagreement between the two reads is itself a
 signal worth chasing.
@@ -274,11 +293,16 @@ The report carries:
 - Dismissed candidates: N raised, N accounted for
 ```
 
-Severity uses the house register defined in
-`~/.agents/kit/guidance/workflows/freezable-workflow.md`
-(CRITICAL / MAJOR / MINOR / NOTE). A NOTE (a missing direct test, a
-maintainability concern) is held to the same refutation standard as any
-finding but carries no fix obligation. Assign the severity the definition
+Severity uses the house register:
+
+- **CRITICAL**: wrong behavior, data loss, or a security hole reachable in
+  normal use, or a gate that passes over a defect it claims to cover.
+- **MAJOR**: wrong behavior reachable under a realistic but uncommon
+  condition, or a contract violated across a boundary.
+- **MINOR**: a defect with a bounded, recoverable effect, or a correct path
+  that depends on an assumption nothing enforces.
+- **NOTE**: a missing direct test or a maintainability concern. Held to the
+  same refutation standard as any finding but carries no fix obligation. Assign the severity the definition
 supports rather than the one that justifies the run. An honestly labeled MINOR
 is worth more than an inflated MAJOR. Code smells and style are not findings.
 If the region needs a maintainability pass, record that as a single NOTE

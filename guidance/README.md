@@ -78,10 +78,3 @@ template in use; `/sysprompt switch` writes it and the next message renders
 from the new template with no restart. Only Pi reads these; Claude Code and
 Codex keep their own system prompts.
 
-## workflows/: standing charters
-
-Documents loaded by reference rather than into every session: the delegation
-standard and the freezable workflow. Project `AGENTS.md` files and skills
-import them by absolute `~/.agents/kit/guidance/workflows/...` path, so before
-renaming or moving one, find and update every importer.
-

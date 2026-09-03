@@ -23,6 +23,12 @@ directory: the folder root and the repo root are the same place.
 └── package.json / go.mod / build.zig / pyproject.toml / ...
 ```
 
+`tests/`, `fixtures/`, and `scripts/verify.sh` are the durable asset; the code is a
+projection of them. The standing question for any project is: if this tree vanished
+tonight, would the external artifacts (conformance harness, golden fixtures, replay
+corpus, fuzz seeds, written invariants) suffice to rebuild its behavior? In-language
+unit tests die with the tree and do not count toward that answer.
+
 The scaffold creates only this root. The inside of `src/` belongs to the language: follow
 the standard language conventions as you know them or the language pack's `CONVENTIONS.md`
 under `~/.agents/reference/coding-languages/` when one exists, and let the tree grow as

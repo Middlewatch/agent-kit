@@ -120,8 +120,8 @@ bin/hooks/           git hooks for a development checkout (pre-push runs the gat
 bin/lint-exempt.txt  history dirs the lint skips
 docs/                adr/ (decision records) and specs/ (completed build specs)
 guidance/            AGENTS.md (global guide), CLAUDE.md, LOCATIONS.md,
-                     seed templates (*.example), workflows/ (charters),
-                     workspaces/ (overlays), sysprompt/ (system prompt templates)
+                     seed templates (*.example), workspaces/ (overlays),
+                     sysprompt/ (system prompt templates)
 skills/              one directory per skill, plus AUTHORING.md and the index
 prompts/             prompt templates (/prompt picker library)
 extensions/          pi extensions: pi-interlock, pi-scratchpad, agent-delegate,
