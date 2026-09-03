@@ -16,6 +16,19 @@
     "url": "git+https://github.com/Middlewatch/agent-kit.git"
   },
   "bugs": "https://github.com/Middlewatch/agent-kit/issues",
+  "files": [
+    "extensions",
+    "prompts",
+    "guidance/sysprompt",
+    "skills/deep-research/pi",
+    "CHANGELOG.md",
+    "!**/node_modules",
+    "!**/artifacts",
+    "!**/test-artifacts",
+    "!**/__pycache__",
+    "!guidance/sysprompt/.active",
+    "!**/*.log"
+  ],
   "pi": {
     "extensions": [
       "./extensions/pi-interlock/index.ts",
