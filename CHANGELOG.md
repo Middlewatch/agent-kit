@@ -4,6 +4,13 @@ All notable changes to this kit. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 semver.
 
+## [Unreleased]
+
+### Removed
+
+- `tools/lemonade-hub-sync`: tied to one inference server's internals and
+  one disk layout, so it moved to the owner's private tools repo.
+
 ## [0.1.0] - 2026-09-02
 
 First public release, published as `@middlewatch/pi-agent-kit`.
@@ -30,4 +37,5 @@ First public release, published as `@middlewatch/pi-agent-kit`.
 - Tools: `sess`, `prefixdiff`, `portaudit`, `lemonade-hub-sync`,
   `introspect-scan`, and the `trail` decision logger.
 
+[Unreleased]: https://github.com/Middlewatch/agent-kit/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/Middlewatch/agent-kit/releases/tag/v0.1.0

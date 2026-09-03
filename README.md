@@ -127,7 +127,7 @@ prompts/             prompt templates (/prompt picker library)
 extensions/          pi extensions: pi-interlock, pi-scratchpad, agent-delegate,
                      pageview, todo, pi-tui, prompt-picker, pi-config,
                      sysprompt-editor
-tools/               sess, prefixdiff, portaudit, lemonade-hub-sync, introspect-scan
+tools/               sess, prefixdiff, portaudit, introspect-scan
 tests/               test_check.py and the fixture kit it installs
 ```
 

@@ -35,7 +35,6 @@ Component suites run in their own directories:
 | `extensions/prompt-picker`, `extensions/pi-config` | `node --test lib.test.ts` |
 | `tools/sess`, `tools/prefixdiff` | `zig build test` |
 | `tools/portaudit`, `tools/introspect-scan` | `tests/run.sh` |
-| `tools/lemonade-hub-sync` | `python3 tests/test_sync.py` |
 | `skills/evoker-mode/tools/trail` | `test_trail.sh` |
 
 ## Conventions

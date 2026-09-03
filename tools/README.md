@@ -10,7 +10,6 @@ verifies the links.
 | `sess` | Read Pi and Claude Code session transcripts (`stat`/`tools`/`tail`/`grep`) | `zig build` |
 | `prefixdiff` | Find the byte where two request payloads diverge (the prompt-cache question) | `zig build` |
 | `portaudit` | Map listening sockets to their systemd unit; `--audit` for the bind-127.0.0.1 policy | script |
-| `lemonade-hub-sync` | Reconcile the Lemonade model catalog with the GGUF files on disk (adds via the register API, removes stale `user_models.json` entries) | script |
 | `introspect-scan` | Scan journals for skill invocations and wiki touches; the read side of the introspect sweep | script |
 
 ## Build output is not tracked

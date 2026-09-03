@@ -1,7 +1,7 @@
 # Diagnostic CLI toolbox
 
 One directory per owned diagnostic CLI; `README.md` is the index (`sess`,
-`prefixdiff`, `portaudit`, `lemonade-hub-sync`, `introspect-scan`). Each
+`prefixdiff`, `portaudit`, `introspect-scan`). Each
 installed binary lives on PATH with `-h` for full usage. `slopcheck` lives in
 the `slopfix` skill, which owns it; its PATH link still comes from
 `deployments.json`.
@@ -21,8 +21,8 @@ the `slopfix` skill, which owns it; its PATH link still comes from
   Sources follow the Zig pack under the `reference` binding
   (`~/.agents/reference/coding-languages/zig/`) when that binding exists, so
   read its `CONVENTIONS.md` before writing.
-- **Script tools** (`portaudit` bash/awk; `lemonade-hub-sync` and
-  `introspect-scan` python): no build step, so the symlink points at the
+- **Script tools** (`portaudit` bash/awk; `introspect-scan` python): no
+  build step, so the symlink points at the
   source and an edit is live immediately.
   Run the tool's own test script before committing. In `portaudit`, mind that
   the awk program is single-quoted. An apostrophe anywhere inside it, even in

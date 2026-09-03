@@ -69,10 +69,6 @@
       "bin": "tools/portaudit/portaudit"
     },
     {
-      "name": "lemonade-hub-sync",
-      "bin": "tools/lemonade-hub-sync/lemonade-hub-sync"
-    },
-    {
       "name": "introspect-scan",
       "bin": "tools/introspect-scan/introspect-scan"
     }
