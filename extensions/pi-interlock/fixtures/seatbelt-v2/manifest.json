@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 2,
+  "authoredRows": 73,
+  "files": [
+    {
+      "path": "credentials.jsonl",
+      "firstId": "credential.001",
+      "lastId": "credential.023",
+      "rows": 23,
+      "sha256": "af670368ea779b5cb544f13b1a4794fe75c34009e565bf2202de3e5c7ced293e"
+    },
+    {
+      "path": "deletions.jsonl",
+      "firstId": "delete.001",
+      "lastId": "delete.018",
+      "rows": 18,
+      "sha256": "ad78952663d24b0036864df387bae4430f70e41c2ad87b7223e08fdf356192ea"
+    },
+    {
+      "path": "catastrophes.jsonl",
+      "firstId": "catastrophic.001",
+      "lastId": "catastrophic.006",
+      "rows": 6,
+      "sha256": "136534da0e585fac69aebfdc2383dd5de5e4f88921b410126435a01803c14aad"
+    },
+    {
+      "path": "pushes.jsonl",
+      "firstId": "push.001",
+      "lastId": "push.016",
+      "rows": 16,
+      "sha256": "3e47f4ff0bd1af80b0112d1ffcf9f38cace3c573541e84f76d25605d1b228714"
+    },
+    {
+      "path": "audit.jsonl",
+      "firstId": "audit.001",
+      "lastId": "audit.010",
+      "rows": 10,
+      "sha256": "7ea5212bbdec9d301688f40af4d34f32e81537480c722398cb172497d4a94553"
+    }
+  ]
+}

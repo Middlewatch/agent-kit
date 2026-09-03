@@ -1,0 +1,4 @@
+# Scratch and throwaway work
+*.tmp
+scratch/
+/out/

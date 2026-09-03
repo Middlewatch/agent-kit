@@ -1,0 +1,10 @@
+{
+  "provider": "serper",
+  "apiKeys": {
+    "serper": "serper-key-fixture",
+    "brave": "brave-key-fixture",
+    "tavily": "tavily-key-fixture",
+    "exa": "exa-key-read-past-not-used",
+    "firecrawl": "firecrawl-key-read-past-not-used"
+  }
+}

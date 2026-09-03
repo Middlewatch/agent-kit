@@ -1,0 +1,5 @@
+$ prefixdiff -p short same
+exit=1
+--- stdout ---
+status=prefix prefix=5 a_bytes=5 b_bytes=11 a_pct=100.0 b_pct=45.5
+--- stderr ---

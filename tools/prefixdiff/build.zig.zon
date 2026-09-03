@@ -1,0 +1,13 @@
+.{
+    .name = .prefixdiff,
+    .version = "0.1.0",
+    .fingerprint = 0x3996bc96670c3e8d,
+    .minimum_zig_version = "0.16.0",
+    .dependencies = .{},
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+        "README.md",
+    },
+}

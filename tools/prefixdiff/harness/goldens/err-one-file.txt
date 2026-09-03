@@ -1,0 +1,21 @@
+$ prefixdiff same
+exit=2
+--- stdout ---
+--- stderr ---
+prefixdiff: expected exactly two files
+usage: prefixdiff [options] <fileA> <fileB>
+
+Reports the length of the common byte prefix, the divergence offset
+(with line:col), and an escaped context window around the divergence.
+
+options:
+  -c, --context <n>   bytes of context on each side of the divergence (default 64)
+  -q, --quiet         no output; exit code only
+  -p, --porcelain     one machine-readable summary line instead of the report
+  -h, --help          show this help
+  --                  end of options; treat the rest as file names
+
+exit codes: 0 identical, 1 differ, 2 error. They answer only "identical or
+not"; a strict prefix and a mid-content divergence both exit 1, and the
+difference is in the report or in the summary line's status field.
+

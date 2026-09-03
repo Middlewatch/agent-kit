@@ -1,0 +1,22 @@
+# Copy to `forbidden.local.txt` (which git ignores) and fill in the strings
+# that must never appear in a publishable file: your name, handles, email
+# addresses, private paths, and any personal disclosure you do not want in a
+# shared repository.
+#
+# One pattern per line. Blank lines and `#` comments are ignored. Matching is
+# a case-insensitive literal substring test, so `Smith` also catches `smith`.
+#
+# A line starting with `!` is an exemption: a repo-relative path glob whose
+# hits are expected and should not fail the gate. Use it for files that must
+# record a real name to stay correct — machine inventory naming a Unix account,
+# for instance — rather than weakening the patterns themselves.
+#
+# `bin/check --scan` reads this file and fails on any hit across the tracked and
+# untracked-but-not-ignored files of every scanned repository. If the file is
+# absent the identity scan is skipped, which is the intended behavior for a
+# fresh clone by someone other than the original author.
+
+# Ada Lovelace
+# alovelace
+# ada@example.com
+# ~/library/ada

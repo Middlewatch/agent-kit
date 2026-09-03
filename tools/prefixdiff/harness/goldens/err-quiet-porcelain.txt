@@ -1,0 +1,5 @@
+$ prefixdiff -q -p same other
+exit=2
+--- stdout ---
+--- stderr ---
+prefixdiff: --quiet and --porcelain are different output modes; pick one

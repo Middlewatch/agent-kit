@@ -1,0 +1,7 @@
+$ prefixdiff same same
+exit=0
+--- stdout ---
+A: same (11 bytes)
+B: same (11 bytes)
+identical
+--- stderr ---

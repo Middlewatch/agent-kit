@@ -1,0 +1,11 @@
+tcp LISTEN 0      4096                                127.0.0.1:4330  0.0.0.0:* users:(("pmcd",pid=1001,fd=4)) uid:977 ino:1 sk:1 cgroup:/system.slice/pmcd.service <-> cgroup:/system.slice/pmcd.service
+tcp LISTEN 0      4096                                    [::1]:4330     [::]:* users:(("pmcd",pid=1001,fd=5)) uid:977 ino:2 sk:2 cgroup:/system.slice/pmcd.service <-> cgroup:/system.slice/pmcd.service
+tcp LISTEN 0      4096                           100.100.100.100:8080  0.0.0.0:* ino:3 sk:3 cgroup:/system.slice/tailscaled.service <-> cgroup:/system.slice/tailscaled.service
+tcp LISTEN 0      4096                [fd7a:115c:a1e0::6a3b:9f2e]:8080     [::]:* ino:4 sk:4 cgroup:/system.slice/tailscaled.service <-> cgroup:/system.slice/tailscaled.service
+tcp LISTEN 0      128                                    0.0.0.0:22    0.0.0.0:* ino:5 sk:5 cgroup:/system.slice/sshd.service <-> cgroup:/system.slice/sshd.service
+tcp LISTEN 0      511                                    0.0.0.0:5678  0.0.0.0:* users:(("node",pid=2002,fd=18)) uid:1000 ino:6 sk:6 cgroup:/user.slice/user-1000.slice/user@1000.service/app.slice/vite-dev.service <-> cgroup:/user.slice/user-1000.slice/user@1000.service/app.slice/vite-dev.service
+tcp LISTEN 0      4096                                         *:9090        *:* ino:7 sk:7 cgroup:/system.slice/cockpit.socket <-> cgroup:/system.slice/cockpit.socket
+udp UNCONN 0      0                                      0.0.0.0:34536 0.0.0.0:* users:(("lemond",pid=3003,fd=10)) uid:1000 ino:8 sk:8 cgroup:/user.slice/user-1000.slice/user@1000.service/app.slice/lemond.service <-> cgroup:/user.slice/user-1000.slice/user@1000.service/app.slice/lemond.service
+udp UNCONN 0      0                       [fe80::1]%eth0:546      [::]:* ino:9 sk:9 cgroup:/system.slice/NetworkManager.service <-> cgroup:/system.slice/NetworkManager.service
+udp UNCONN 0      0                                    192.168.1.50:1900  0.0.0.0:* users:(("rogue",pid=4004,fd=3)) uid:1000 ino:10 sk:10 cgroup:/user.slice/user-1000.slice
+tcp LISTEN 0      4096                                     0.0.0.0:9999  0.0.0.0:* ino:11 sk:11

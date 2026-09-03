@@ -1,0 +1,207 @@
+#!/usr/bin/env bash
+# portaudit — check listening sockets against the bind-127.0.0.1 policy.
+#
+# The service standard this checks: bind 127.0.0.1, expose over the tailnet with
+# `tailscale serve`. This reports every listening TCP/UDP socket with its
+# owning systemd unit, and `--audit` reduces that to the policy violations
+# and exits 1 — so the policy is a one-command check.
+#
+# The data comes from `ss -ltunpHe --cgroup`. The cgroup is a socket
+# attribute the kernel reports over SOCK_DIAG, so the unit resolves for
+# every socket including root-owned daemons, without sudo.
+set -uo pipefail
+
+usage() {
+  cat <<'EOF'
+portaudit [options] [port...]
+
+  -a, --audit          only policy-violating listeners; exit 1 if any exist
+      --allow <ports>  comma-separated port list (repeatable): waive these
+                       ports' non-loopback binds from audit findings and the
+                       exit code; plain output still shows them as `*`
+      --allow-unit <units>
+                       comma-separated systemd unit list (repeatable): waive
+                       non-loopback binds owned by these units, same marker
+                       and accounting as --allow
+      --from <file>    classify recorded `ss -ltunpHe --cgroup` output
+                       instead of reading live sockets
+  -h, --help           this message
+
+Positional port numbers filter the output (portaudit 8080 30147).
+
+Row markers: ` ` loopback, `~` tailnet address (tailscale serve fronting a
+local service), `*` non-loopback bind waived by --allow/--allow-unit,
+`!` wildcard or other non-loopback bind (audit finding).
+
+Exit codes: 0 clean, 1 audit findings, 2 usage/IO error.
+EOF
+}
+
+die() { printf 'portaudit: %s\n' "$1" >&2; exit 2; }
+
+audit=false
+allow_ports=""
+allow_units=""
+from=""
+filter_ports=""
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -a|--audit) audit=true ;;
+    --allow)
+      [ $# -ge 2 ] || die "--allow needs a comma-separated port list"
+      allow_ports="${allow_ports:+$allow_ports,}$2"; shift ;;
+    --allow-unit)
+      [ $# -ge 2 ] || die "--allow-unit needs a comma-separated unit list"
+      allow_units="${allow_units:+$allow_units,}$2"; shift ;;
+    --from)
+      [ $# -ge 2 ] || die "--from needs a file"
+      from="$2"; shift ;;
+    -h|--help) usage; exit 0 ;;
+    -*) die "unknown option $1" ;;
+    *)
+      case "$1" in
+        *[!0-9]*|'') die "not a port number: $1" ;;
+      esac
+      filter_ports="${filter_ports:+$filter_ports,}$1" ;;
+  esac
+  shift
+done
+
+# Fail closed: an unreadable socket table must not read as a clean audit.
+if [ -n "$from" ]; then
+  [ -r "$from" ] || die "cannot read $from"
+  raw="$(cat -- "$from")" || die "cannot read $from"
+else
+  command -v ss >/dev/null 2>&1 || die "ss not found (iproute2); cannot enumerate sockets"
+  if ! raw="$(ss -ltunpHe --cgroup 2>/dev/null)"; then
+    die "ss failed to enumerate listening sockets"
+  fi
+fi
+
+passwd_file="${PORTAUDIT_PASSWD:-/etc/passwd}"
+[ -r "$passwd_file" ] || passwd_file=/dev/null
+
+printf '%s\n' "$raw" | awk \
+  -v audit="$audit" \
+  -v allow_ports="$allow_ports" \
+  -v allow_units="$allow_units" \
+  -v filter_ports="$filter_ports" \
+  -v passwd_file="$passwd_file" '
+function listadd(spec, arr,   i, n, parts) {
+  if (spec == "") return
+  n = split(spec, parts, ",")
+  for (i = 1; i <= n; i++) if (parts[i] != "") arr[parts[i]] = 1
+}
+BEGIN {
+  listadd(allow_ports, ok_port)
+  listadd(allow_units, ok_unit)
+  listadd(filter_ports, want_port)
+  want_any = (filter_ports != "")
+  while ((getline line < passwd_file) > 0) {
+    if (split(line, f, ":") >= 3) uname[f[3]] = f[1]
+  }
+  close(passwd_file)
+  rows = 0
+}
+{
+  # Local address is field 5 in `ss -H` output; the optional users:/uid:/
+  # cgroup: trailers are matched by pattern so a spaced comm cannot shift them.
+  if (NF < 5) next
+  addr = $5
+  sub(/%[^:]*/, "", addr)
+  port = addr; sub(/.*:/, "", port)
+  host = addr; sub(/:[^:]*$/, "", host); gsub(/[][]/, "", host)
+
+  # A row whose local address does not end in a numeric port is not a socket
+  # row; without this an empty table would parse as one bogus finding.
+  if (port !~ /^[0-9]+$/) next
+  if (want_any && !(port in want_port)) next
+
+  # `*` is the family-agnostic wildcard from ss, so it gets no 4/6 suffix;
+  # otherwise a bracketed literal is v6 and ss omits brackets only for v4.
+  # (No apostrophes in this block — the awk program is single-quoted.)
+  proto = $1
+  if (host != "*") proto = proto ((index($5, "[") > 0 || host == "::") ? "6" : "4")
+
+  unit = "-"
+  if (match($0, /cgroup:[^ ]+/)) {
+    path = substr($0, RSTART + 7, RLENGTH - 7)
+    n = split(path, comp, "/")
+    for (i = n; i >= 1; i--) {
+      if (comp[i] ~ /\.(service|socket|scope|mount|timer|target)$/) { unit = comp[i]; break }
+    }
+  }
+
+  pid = "-"; comm = "-"
+  if (match($0, /pid=[0-9]+/)) pid = substr($0, RSTART + 4, RLENGTH - 4)
+  if (match($0, /users:\(\("[^"]+"/)) {
+    comm = substr($0, RSTART + 9, RLENGTH - 9)
+    gsub(/"/, "", comm)
+  }
+
+  uid = 0
+  if (match($0, /uid:[0-9]+/)) uid = substr($0, RSTART + 4, RLENGTH - 4) + 0
+  user = (uid in uname) ? uname[uid] : uid
+
+  # Classification. Loopback and tailnet binds satisfy the policy; everything
+  # else is a finding unless a waiver covers its port or its owning unit.
+  if (host ~ /^127\./ || host == "::1") cls = "loopback"
+  else if (host ~ /^100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\./) cls = "tailnet"
+  else if (host ~ /^fd7a:115c:a1e0/) cls = "tailnet"
+  else cls = "beyond"
+
+  mark = " "
+  if (cls == "tailnet") mark = "~"
+  else if (cls == "beyond") {
+    if ((port in ok_port) || (unit != "-" && unit in ok_unit)) { mark = "*"; suppressed++ }
+    else { mark = "!"; findings++ }
+  }
+
+  if (audit == "true" && mark != "!") next
+
+  rows++
+  m[rows] = mark; P[rows] = port; PR[rows] = proto; A[rows] = host
+  U[rows] = user; I[rows] = pid; N[rows] = unit; C[rows] = comm
+  if (length(port) > wp) wp = length(port)
+  if (length(proto) > wr) wr = length(proto)
+  if (length(host) > wa) wa = length(host)
+  if (length(user) > wu) wu = length(user)
+  if (length(pid) > wi) wi = length(pid)
+  if (length(unit) > wn) wn = length(unit)
+}
+END {
+  if (rows > 0) {
+    if (wp < 4) wp = 4; if (wr < 5) wr = 5; if (wa < 7) wa = 7
+    if (wu < 4) wu = 4; if (wi < 3) wi = 3; if (wn < 4) wn = 4
+    # Insertion sort by port then proto, so the listing reads in port order
+    # regardless of the order the kernel handed the sockets back.
+    for (i = 1; i <= rows; i++) ord[i] = i
+    for (i = 2; i <= rows; i++) {
+      k = ord[i]
+      for (j = i - 1; j >= 1; j--) {
+        a = ord[j]
+        if (P[a] + 0 < P[k] + 0) break
+        if (P[a] + 0 == P[k] + 0 && PR[a] <= PR[k]) break
+        ord[j + 1] = a
+      }
+      ord[j + 1] = k
+    }
+    printf "  %-*s  %-*s  %-*s  %-*s  %-*s  %-*s  %s\n", \
+      wp, "PORT", wr, "PROTO", wa, "ADDRESS", wu, "USER", wi, "PID", wn, "UNIT", "COMM"
+    for (i = 1; i <= rows; i++) {
+      r = ord[i]
+      printf "%s %-*s  %-*s  %-*s  %-*s  %-*s  %-*s  %s\n", \
+        m[r], wp, P[r], wr, PR[r], wa, A[r], wu, U[r], wi, I[r], wn, N[r], C[r]
+    }
+  }
+  if (audit == "true") {
+    sup = suppressed ? sprintf(" (%d finding(s) suppressed by allowlist)", suppressed) : ""
+    if (findings) {
+      printf "\n%d listener(s) bound beyond loopback%s — policy is bind 127.0.0.1 + tailscale serve\n", findings, sup
+      exit 1
+    }
+    printf "no non-loopback listeners%s\n", sup
+  }
+  exit 0
+}'

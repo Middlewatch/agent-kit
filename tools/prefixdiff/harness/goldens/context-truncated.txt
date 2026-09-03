@@ -1,0 +1,12 @@
+$ prefixdiff -c 6 long long2
+exit=1
+--- stdout ---
+A: long (128 bytes)
+B: long2 (128 bytes)
+
+common prefix: 64 bytes — 50.0% of A, 50.0% of B
+diverges at byte 64 (line 1, col 65)
+
+A: …jklmno┃012345…
+B: …jklmno┃!12345…
+--- stderr ---

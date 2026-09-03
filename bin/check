@@ -1,0 +1,342 @@
+#!/usr/bin/env python3
+"""Verify the agent kit install, lint the tracked tree, or scan other repos.
+
+usage: bin/check [--lint] [--scan REPO...]
+
+No flag: the bindings in ~/.agents resolve to directories, every link in the
+manifest points where it should, every non-skipped tool resolves on PATH into
+the kit, and pi's settings list the kit package.
+--lint: tracked files (minus bin/lint-exempt.txt globs) are free of /home/,
+machine hostnames, and old sibling-repo paths; always-loaded files stay at or
+under the line budget.
+--scan: owner-identifying strings from bin/forbidden.local.txt must not
+appear in the publishable files of the named repositories.
+"""
+
+from __future__ import annotations
+
+import argparse
+from fnmatch import fnmatch
+import json
+import os
+from pathlib import Path
+import re
+import shutil
+import subprocess
+import sys
+
+HOME = Path(os.environ.get("HOME", str(Path.home())))
+AGENTS = HOME / ".agents"
+PI_SETTINGS = HOME / ".pi/agent/settings.json"
+
+# --lint: the one portable rule is the absolute home path. Machine names,
+# sibling checkouts, and other local identifiers come from the untracked
+# forbidden.local.txt (shared with --scan) so the gate never publishes them.
+LINT_PATTERNS = (re.compile(r"/home/"),)
+LINT_EXEMPT_FILE = "bin/lint-exempt.txt"
+# These files spell the patterns out (the rule set, its tests, and the
+# manifest's pi_retire list of old package paths), so the lint skips them by
+# name rather than through the exempt list.
+LINT_SELF = frozenset({"bin/check", "tests/test_check.py", LINT_EXEMPT_FILE, "deployments.json"})
+LINE_BUDGET = 240
+BUDGETED_GLOBS = (
+    "AGENTS.md",
+    "guidance/AGENTS.md",
+    "guidance/CLAUDE.md",
+    "guidance/workspaces/*/AGENTS.md",
+)
+
+# Owner-identifying strings live outside version control. One pattern per
+# line, `#` comments ignored, matched case-insensitively; a `!` line is a
+# repo-relative glob whose hits are expected. Absent file: only the portable
+# lint rule runs and --scan is a no-op.
+LOCAL_PATTERNS = Path(__file__).resolve().parent / "forbidden.local.txt"
+ATTRIBUTION_FILENAMES = frozenset(
+    {"LICENSE", "LICENSE.md", "LICENSE.txt", "COPYING", "COPYING.md", "NOTICE"}
+)
+ATTRIBUTION_LINE = re.compile(
+    r"copyright\s*(\(c\)|©)|^\s*[\"']?authors?[\"']?\s*[:=]", re.IGNORECASE
+)
+
+
+def expand(spec: str, kit: Path) -> Path:
+    if spec == ".":
+        return kit
+    if spec == "~":
+        return HOME
+    if spec.startswith("~/"):
+        return HOME / spec[2:]
+    return Path(spec)
+
+
+def same(a: Path, b: Path) -> bool:
+    return os.path.realpath(a) == os.path.realpath(b)
+
+
+def kit_root() -> Path:
+    return AGENTS / "kit"
+
+
+def load_manifest(kit: Path) -> dict:
+    return json.loads((kit / "deployments.json").read_text())
+
+
+def check_bindings(manifest: dict, kit: Path) -> list[str]:
+    errors = []
+    for name in manifest.get("bindings", {}):
+        link = AGENTS / name
+        if not link.is_symlink():
+            errors.append(f"binding {name}: {link} is not a symlink")
+        elif not link.is_dir():
+            errors.append(f"binding {name}: {link} -> {os.readlink(link)} does not resolve to a directory")
+    return errors
+
+
+def check_links(manifest: dict, kit: Path) -> list[str]:
+    errors = []
+    for item in manifest.get("links", []):
+        target = expand(item["target"], kit)
+        text = str(expand(item["source"], kit))  # relative sources stay relative to the link's directory
+        if not target.is_symlink():
+            errors.append(f"link {target}: not a symlink")
+        elif os.readlink(target) != text:
+            errors.append(f"link {target} -> {os.readlink(target)}: expected {text}")
+        elif not target.exists():
+            errors.append(f"link {target} -> {text}: dangling")
+    return errors
+
+
+def check_legacy_pi_resources(manifest: dict, kit: Path) -> list[str]:
+    errors = []
+    for spec in manifest.get("pi_legacy_paths", []):
+        path = expand(spec, kit)
+        if path.exists() or path.is_symlink():
+            errors.append(f"legacy Pi resource {path}: run bin/install to retire it")
+    return errors
+
+
+def package_key(spec: str, kit: Path) -> str:
+    """Pi identifies git packages by URL without the pinned ref (docs/packages.md),
+    so strip a trailing @ref; an @ before the last / is a user part (git@host)."""
+    if spec.startswith(("~", "/", ".")):
+        return os.path.normpath(str(expand(spec, kit)))
+    slash, at = spec.rfind("/"), spec.rfind("@")
+    return spec[:at] if at > slash else spec
+
+
+def tool_skipped(tool: dict) -> bool:
+    build = tool.get("build")
+    return bool(build) and shutil.which(build.split()[0]) is None
+
+
+def check_tools(manifest: dict, kit: Path, warnings: list[str]) -> list[str]:
+    errors = []
+    for tool in manifest.get("tools", []):
+        name = tool["name"]
+        if tool_skipped(tool):
+            print(f"skipped {name}: {tool['build'].split()[0]} not on PATH")
+            continue
+        binpath = kit / tool["bin"]
+        link = HOME / ".local/bin" / name
+        if not link.is_symlink() or not same(link, binpath):
+            errors.append(f"tool {name}: {link} does not resolve to {binpath}")
+            continue
+        if not os.access(binpath, os.X_OK):
+            errors.append(f"tool {name}: {binpath} is not executable")
+            continue
+        found = shutil.which(name)
+        if found is None:
+            warnings.append(f"tool {name}: {link.parent} is not on PATH")
+        elif not same(Path(found), binpath):
+            errors.append(f"tool {name}: PATH resolves {name} to {found}, not {binpath}")
+    return errors
+
+
+def check_pi_package(manifest: dict, kit: Path) -> list[str]:
+    accepted = manifest.get("pi_package", ["~/.agents/kit"])
+    try:
+        data = json.loads(PI_SETTINGS.read_text())
+    except FileNotFoundError:
+        return [f"pi package: {PI_SETTINGS} missing"]
+    except json.JSONDecodeError as exc:
+        return [f"pi package: {PI_SETTINGS} unreadable: {exc}"]
+    pkgs = [p["source"] if isinstance(p, dict) else p for p in data.get("packages", [])]
+    forms = {package_key(p, kit) for p in accepted}
+    if any(package_key(p, kit) in forms for p in pkgs):
+        return []
+    return [f"pi package: none of {accepted} in {PI_SETTINGS} packages"]
+
+
+def check_inbox_age(warnings: list[str]) -> None:
+    """The capture inbox is a drop-box whose consumer is an owner-in-the-loop triage; rot is silent
+    without this advisory."""
+    inbox = AGENTS / "inbox"
+    if not inbox.is_dir():
+        return
+    import time
+
+    cutoff = time.time() - 30 * 86400
+    stale = [p for p in inbox.glob("*.md") if p.name != "README.md" and p.stat().st_mtime < cutoff]
+    if stale:
+        oldest = min(stale, key=lambda p: p.stat().st_mtime)
+        days = int((time.time() - oldest.stat().st_mtime) / 86400)
+        warnings.append(
+            f"inbox: {len(stale)} notes older than 30 days (oldest {days}d: {oldest.name}); triage due"
+        )
+
+
+def check_install() -> list[str]:
+    kit = kit_root()
+    if not kit.is_dir():
+        return [f"binding kit: {kit} does not resolve to a directory"]
+    manifest = load_manifest(kit)
+    warnings: list[str] = []
+    errors = check_bindings(manifest, kit)
+    errors += check_links(manifest, kit)
+    errors += check_legacy_pi_resources(manifest, kit)
+    errors += check_tools(manifest, kit, warnings)
+    errors += check_pi_package(manifest, kit)
+    check_inbox_age(warnings)
+    for warning in warnings:
+        print(f"WARN: {warning}")
+    return errors
+
+
+def tracked_files(repo: Path) -> list[str]:
+    out = subprocess.run(
+        ["git", "-C", str(repo), "ls-files", "-z"], capture_output=True, text=True, check=True
+    ).stdout
+    return [name for name in out.split("\0") if name]
+
+
+def load_exempt(repo: Path) -> list[str]:
+    path = repo / LINT_EXEMPT_FILE
+    if not path.is_file():
+        return []
+    return [
+        line.strip()
+        for line in path.read_text().splitlines()
+        if line.strip() and not line.strip().startswith("#")
+    ]
+
+
+def glob_match(rel: str, pattern: str) -> bool:
+    # `**/x/**` means "any path with a directory component x"; fnmatch's `*`
+    # already crosses `/`, so expand `**/` to also match at the root.
+    if fnmatch(rel, pattern):
+        return True
+    return pattern.startswith("**/") and fnmatch(rel, pattern[3:])
+
+
+def lint_tree(repo: Path) -> list[str]:
+    errors = []
+    exempt = load_exempt(repo)
+    local_patterns, local_exempt = _load_local()
+    patterns = LINT_PATTERNS + tuple(
+        re.compile(re.escape(p), re.IGNORECASE) for p in local_patterns
+    )
+    for rel in tracked_files(repo):
+        path = repo / rel
+        if not path.is_file():
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+        lines = text.splitlines()
+        if any(fnmatch(rel, g) for g in BUDGETED_GLOBS) and len(lines) > LINE_BUDGET:
+            errors.append(f"lint {rel}: {len(lines)} lines, budget {LINE_BUDGET}")
+        if rel in LINT_SELF or any(glob_match(rel, g) for g in exempt):
+            continue
+        if any(fnmatch(rel, g) for g in local_exempt):
+            continue
+        for lineno, line in enumerate(lines, 1):
+            for pattern in patterns:
+                m = pattern.search(line)
+                if m and not ATTRIBUTION_LINE.search(line):
+                    errors.append(f"lint {rel}:{lineno}: {m.group(0)}")
+                    break
+    return errors
+
+
+def _load_local() -> tuple[tuple[str, ...], tuple[str, ...]]:
+    if not LOCAL_PATTERNS.is_file():
+        return (), ()
+    patterns: list[str] = []
+    exempt: list[str] = []
+    for line in LOCAL_PATTERNS.read_text().splitlines():
+        entry = line.strip()
+        if not entry or entry.startswith("#"):
+            continue
+        if entry.startswith("!"):
+            exempt.append(entry[1:].strip())
+        else:
+            patterns.append(entry)
+    return tuple(patterns), tuple(exempt)
+
+
+def publishable_files(repo: Path) -> list[Path]:
+    """Tracked plus untracked-not-ignored: everything a commit could contain."""
+    listed = subprocess.run(
+        ["git", "-C", str(repo), "ls-files", "-z", "-c", "-o", "--exclude-standard"],
+        capture_output=True, text=True, check=True,
+    ).stdout.split("\0")
+    return [repo / name for name in listed if name and (repo / name).is_file()]
+
+
+def scan_identifiers(repos: list[Path]) -> list[str]:
+    patterns, exempt = _load_local()
+    if not patterns:
+        return []
+    matchers = [(p, re.compile(re.escape(p), re.IGNORECASE)) for p in patterns]
+    errors: list[str] = []
+    for repo in repos:
+        for path in publishable_files(repo):
+            if path.name in ATTRIBUTION_FILENAMES:
+                continue
+            rel = path.relative_to(repo).as_posix()
+            if any(fnmatch(rel, glob) for glob in exempt):
+                continue
+            try:
+                text = path.read_text(encoding="utf-8")
+            except (UnicodeDecodeError, OSError):
+                continue
+            for raw, matcher in matchers:
+                for lineno, line in enumerate(text.splitlines(), 1):
+                    if matcher.search(line) and not ATTRIBUTION_LINE.search(line):
+                        errors.append(f"owner-identifying string in {path}:{lineno}: {raw}")
+                        break
+    return errors
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--lint", action="store_true", help="lint the kit's tracked tree")
+    parser.add_argument("--scan", type=Path, nargs="*", default=None, metavar="REPO",
+                        help="public-bound repositories to scan for owner-identifying strings")
+    args = parser.parse_args()
+
+    errors: list[str] = []
+    label = "install"
+    if args.lint:
+        label = "lint"
+        errors += lint_tree(Path(__file__).resolve().parents[1])
+    elif args.scan is not None:
+        label = "scan"
+        errors += scan_identifiers([p.resolve() for p in args.scan])
+        if not errors and not _load_local()[0]:
+            print(f"NOTE: no {LOCAL_PATTERNS.name}; identity scan skipped")
+    else:
+        errors += check_install()
+
+    for error in errors:
+        print(f"FAIL: {error}")
+    if errors:
+        print(f"FAIL: {label}: {len(errors)} problem(s)")
+        return 1
+    print(f"PASS: {label}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

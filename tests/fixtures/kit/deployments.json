@@ -1,0 +1,28 @@
+{
+  "bindings": {
+    "kit": ".",
+    "wiki": "~/wiki",
+    "reference": "~/reference",
+    "projects": "~/projects"
+  },
+  "links": [
+    {"source": "kit/guidance/AGENTS.md", "target": "~/.agents/AGENTS.md"},
+    {"source": "kit/guidance/CLAUDE.md", "target": "~/.agents/CLAUDE.md"},
+    {"source": "kit/skills", "target": "~/.agents/skills"},
+    {"source": "~/.agents/AGENTS.md", "target": "~/.pi/agent/AGENTS.md"},
+    {"source": "~/.agents/CLAUDE.md", "target": "~/.claude/CLAUDE.md"},
+    {"source": "~/.agents/skills", "target": "~/.claude/skills"},
+    {"source": "~/.agents/AGENTS.md", "target": "~/.codex/AGENTS.md"},
+    {"source": "~/.agents/skills", "target": "~/.codex/skills"}
+  ],
+  "tools": [
+    {"name": "demo-script", "bin": "tools/demo-script/demo-script"},
+    {"name": "demo-built", "bin": "tools/demo-built/out/demo-built", "build": "zig build"}
+  ],
+  "pi_package": ["~/.agents/kit", "git:example.com/fixture-kit"],
+  "pi_retire": ["~/old-kit"],
+  "pi_legacy_paths": [
+    "~/.pi/agent/extensions/old-kit",
+    "~/.pi/agent/skills/old-plan"
+  ]
+}

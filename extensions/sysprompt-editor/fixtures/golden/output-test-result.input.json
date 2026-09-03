@@ -1,0 +1,10 @@
+{
+  "header": {
+    "timestamp": "2026-08-17-150000",
+    "provider": "anthropic",
+    "modelId": "claude-sonnet-4-5",
+    "activeTemplate": "default.md",
+    "templateSha256": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+  },
+  "responseText": "The article argues for slowing down.\n\n## Key points\n\n- One\n- Two\n\n```\ncode block in the reply\n```"
+}

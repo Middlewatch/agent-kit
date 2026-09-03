@@ -1,0 +1,4 @@
+# Path-lint exemptions for bin/check --lint: one glob per line, matched against
+# the repo-relative path. History directories only (dated issue records);
+# living docs and code stay in scope.
+**/issues/**

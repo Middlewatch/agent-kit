@@ -1,0 +1,43 @@
+# Caches and bytecode.
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.DS_Store
+*~
+*.swp
+
+# Owner-identifying patterns consumed by bin/check --scan. Never tracked: the
+# gate is publishable, the strings it guards are not. See
+# bin/forbidden.local.txt.example.
+bin/forbidden.local.txt
+
+# Tool build output.
+zig-out/
+.zig-cache/
+dist/
+build/
+!skills/build/
+target/
+
+# Extension dependencies and captured runs.
+node_modules/
+.venv/
+artifacts/
+**/test-artifacts/
+
+# Active system prompt template pointer is machine-local.
+guidance/sysprompt/.active
+
+# Scratch and throwaway work.
+notes/
+scratch/
+*.log
+*.tmp
+
+
+# Secrets and local overrides.
+.env
+*.local
+*.key
+*.pem
+*.secret

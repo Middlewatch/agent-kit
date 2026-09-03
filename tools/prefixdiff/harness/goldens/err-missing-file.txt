@@ -1,0 +1,5 @@
+$ prefixdiff same nope
+exit=2
+--- stdout ---
+--- stderr ---
+prefixdiff: cannot read 'nope': FileNotFound

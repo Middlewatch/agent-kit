@@ -1,0 +1,4 @@
+$ prefixdiff -q same other
+exit=1
+--- stdout ---
+--- stderr ---

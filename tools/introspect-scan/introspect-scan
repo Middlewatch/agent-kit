@@ -1,0 +1,171 @@
+#!/usr/bin/env python3
+"""Scan journals for steering-artifact usage: skill invocations and wiki touches.
+
+The read side of the introspect sweep (the kit's docs/specs/2026-09-01-introspect.md).
+Scans journal episodes for path-shaped skill references (`skills/<name>`,
+`<name>/SKILL.md`) and wiki note slugs, and inventories friction notes in the
+inbox. `--episodes <artifact>` lists the episodes behind a count so the sweep
+can sample them; `--write` appends the dated snapshot under the wiki's
+`metrics/introspect/` so months compare.
+
+Measurement bias, by construction: a journal path-mention undercounts influence
+(a skill absorbed into habit leaves no path reference; prose mentions are
+deliberately not counted) and overcounts curation (sessions that edit a skill
+mention its path without following it). Read the numbers as trend signal for
+the periodic introspect sweep, never as a per-artifact verdict.
+"""
+import argparse
+import collections
+import datetime
+import pathlib
+import re
+import sys
+
+LANES = ["core", "platform", "infra", "personal", "knowledge", "reference", "work"]
+GENERIC = {"index.md", "log.md", "README.md", "AGENTS.md", "CLAUDE.md"}
+RECENT_DAYS = 30
+AGENTS = pathlib.Path.home() / ".agents"
+
+
+def parse_args():
+    p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    p.add_argument("--journals", type=pathlib.Path, default=AGENTS / "journals")
+    p.add_argument("--skills", type=pathlib.Path, default=AGENTS / "skills")
+    p.add_argument("--wiki", type=pathlib.Path, default=AGENTS / "wiki")
+    p.add_argument("--today", type=datetime.date.fromisoformat,
+                   default=datetime.date.today())
+    p.add_argument("--episodes", metavar="ARTIFACT",
+                   help="list episodes referencing this skill name or note filename")
+    p.add_argument("--write", action="store_true",
+                   help="also write the snapshot under <wiki>/metrics/introspect/")
+    return p.parse_args()
+
+
+def skill_names(root):
+    return sorted(d.name for d in root.iterdir()
+                  if d.is_dir() and (d / "SKILL.md").is_file())
+
+
+def note_names(root):
+    names = set()
+    for lane in LANES:
+        d = root / lane
+        if not d.is_dir():
+            continue
+        for p in d.rglob("*.md"):
+            if p.name in GENERIC or "link-maps" in p.parts:
+                continue
+            names.add(p.name)
+    return names
+
+
+def episode_date(path):
+    m = re.search(r"/(\d{4})/(\d{2})/(\d{2})/", str(path))
+    return datetime.date(int(m.group(1)), int(m.group(2)), int(m.group(3))) if m else None
+
+
+NEVER = re.compile(r"(?!x)x()()")  # matches nothing, keeps two groups
+
+
+def scan(journals, skills, notes):
+    """Per episode: which skills (path-shaped refs only) and notes it touches."""
+    skill_pat = re.compile(
+        r"(?<![\w-])skills/(%(n)s)(?![\w-])|(?<![\w-])(%(n)s)/SKILL\.md"
+        % {"n": "|".join(re.escape(s) for s in skills)}) if skills else NEVER
+    note_pat = re.compile(
+        r"wiki/[A-Za-z0-9_/.-]*?([A-Za-z0-9_-]+\.md)|(?:^|[\s`'\"(/])((?:%s))(?![\w-])"
+        % "|".join(re.escape(n) for n in sorted(notes))) if notes else NEVER
+    rows = []  # (path, date, skill_hits, note_hits)
+    for ep in sorted(journals.resolve().rglob("*.md")):
+        try:
+            text = ep.read_text(errors="replace")
+        except OSError:
+            continue
+        s_hits = {m.group(1) or m.group(2) for m in skill_pat.finditer(text)}
+        n_hits = {m.group(1) or m.group(2) for m in note_pat.finditer(text)} & notes
+        rows.append((ep, episode_date(ep), s_hits, n_hits))
+    return rows
+
+
+def snapshot(rows, skills, notes, wiki, today):
+    lines = [f"# introspect scan — {today}", ""]
+
+    by_month = collections.Counter()
+    skill_month = collections.Counter()
+    wiki_month = collections.Counter()
+    skill_hits = collections.Counter()
+    skill_recent = collections.Counter()
+    note_hits = collections.Counter()
+    cutoff = today - datetime.timedelta(days=RECENT_DAYS)
+    for _, date, s_hits, n_hits in rows:
+        month = f"{date:%Y-%m}" if date else "unknown"
+        by_month[month] += 1
+        skill_month[month] += bool(s_hits)
+        wiki_month[month] += bool(n_hits)
+        for s in s_hits:
+            skill_hits[s] += 1
+            if date and cutoff < date <= today:
+                skill_recent[s] += 1
+        for n in n_hits:
+            note_hits[n] += 1
+
+    lines.append("## episodes by month (skill-invoking/wiki-touching/total)")
+    for month in sorted(by_month):
+        lines.append(f"- {month}: {skill_month[month]}/{wiki_month[month]}/{by_month[month]}")
+    lines.append("")
+
+    lines.append(f"## skill invocations (episodes ever / last {RECENT_DAYS} days)")
+    for name, c in sorted(skill_hits.items(), key=lambda kv: (-kv[1], kv[0])):
+        lines.append(f"- {c:3d} / {skill_recent[name]}  {name}")
+    never = [s for s in skills if s not in skill_hits]
+    lines.append("- never invoked: " + (", ".join(never) if never else "none"))
+    lines.append("")
+
+    lines.append("## most-touched wiki notes (episodes)")
+    for name, c in sorted(note_hits.items(), key=lambda kv: (-kv[1], kv[0]))[:10]:
+        lines.append(f"- {c:3d}  {name}")
+    lines.append(f"- distinct notes touched ever: {len(note_hits)} of {len(notes)}")
+    lines.append("")
+
+    inbox = [p for p in (wiki / "inbox").glob("*.md") if p.name != "README.md"]
+    friction = sorted(p.name for p in inbox if p.name.startswith("friction-"))
+    lines.append("## friction notes (inbox)")
+    lines.extend(f"- {name}" for name in friction)
+    lines.append(f"- friction total: {len(friction)}")
+    lines.append("")
+    lines.append(f"## inbox: {len(inbox) - len(friction)} untriaged + {len(friction)} friction")
+    return "\n".join(lines) + "\n"
+
+
+def main():
+    args = parse_args()
+    if args.episodes and args.write:
+        sys.exit("--episodes and --write are mutually exclusive")
+    skills = skill_names(args.skills)
+    notes = note_names(args.wiki)
+    rows = scan(args.journals, skills, notes)
+
+    if args.episodes:
+        target = args.episodes
+        if target not in skills and target not in notes:
+            sys.exit(f"unknown artifact: {target} (not a skill name or wiki note filename)")
+        matches = [(date, ep) for ep, date, s, n in rows if target in s or target in n]
+        for date, ep in sorted(matches, key=lambda r: (r[0] or datetime.date.min, r[1]),
+                               reverse=True)[:20]:
+            print(ep)
+        return
+
+    report = snapshot(rows, skills, notes, args.wiki, args.today)
+    print(report, end="")
+    if args.write:
+        dest = args.wiki / "metrics" / "introspect" / f"{args.today}.txt"
+        if dest.exists():
+            sys.exit(f"refusing to overwrite {dest} (it may hold sweep rulings); "
+                     "remove it first to regenerate")
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text(report)
+        print(f"wrote {dest}", file=sys.stderr)
+
+
+if __name__ == "__main__":
+    main()

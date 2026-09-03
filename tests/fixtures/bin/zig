@@ -1,0 +1,5 @@
+#!/bin/sh
+# Fake toolchain for the test suite: `zig build` in a tool dir writes out/<dirname>.
+[ "$1" = "build" ] || { echo "fake zig: unsupported: $*" >&2; exit 2; }
+name=$(basename "$PWD")
+mkdir -p out && printf '#!/bin/sh\necho %s\n' "$name" > "out/$name" && chmod +x "out/$name"

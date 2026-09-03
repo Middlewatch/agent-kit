@@ -1,0 +1,306 @@
+#!/usr/bin/env bash
+# Install the agent kit on this machine: create the ~/.agents bindings and
+# links, build and link the tools, register the pi package, then run bin/check.
+# Idempotent; re-running is a no-op. Needs bash 4+, GNU coreutils (realpath -m),
+# and python3 (manifest and settings.json). Put ~/.local/bin on PATH yourself.
+#
+# usage: bin/install [--kit DIR] [--bind NAME=PATH]... [--rebind] [--dry-run]
+#
+# A real file or directory in a target's place is moved under
+# ~/.agents/backup/<stamp>/<path relative to HOME> before the link is made; a
+# "FAIL backup+link" line means the original is at that backup path. Tool
+# `build` strings in the manifest run as shell in the tool's directory, so
+# `--kit DIR` executes whatever DIR/deployments.json says.
+set -u
+
+KIT=""
+REBIND=0
+DRY=0
+declare -A BIND_OVERRIDE=()
+
+usage() { sed -n '2,7p' "$0" | sed 's/^# \{0,1\}//'; }
+
+abspath() {
+  # Resolve against the invocation cwd; the path need not exist yet.
+  realpath -m -- "$1"
+}
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --kit) KIT=$(abspath "$2"); shift 2 ;;
+    --bind)
+      name=${2%%=*}; path=${2#*=}
+      [ -n "$name" ] && [ "$name" != "$2" ] || { echo "bad --bind: $2" >&2; exit 2; }
+      BIND_OVERRIDE[$name]=$(abspath "$path"); shift 2 ;;
+    --rebind) REBIND=1; shift ;;
+    --dry-run) DRY=1; shift ;;
+    -h|--help) usage; exit 0 ;;
+    *) echo "unknown argument: $1" >&2; usage >&2; exit 2 ;;
+  esac
+done
+
+[ -n "$KIT" ] || KIT=$(realpath -- "$(dirname -- "$0")/..")
+MANIFEST="$KIT/deployments.json"
+[ -f "$MANIFEST" ] || { echo "no manifest at $MANIFEST" >&2; exit 2; }
+AGENTS="$HOME/.agents"
+FAILED=0
+MISSING=0
+BACKUP_DIR=""
+LOG_DIR=""
+
+say() { printf '%s\n' "$*"; }
+fail() { say "FAIL $*"; FAILED=1; }
+
+expand() {
+  # "." -> kit root, "~/x" -> $HOME/x, else unchanged.
+  case "$1" in
+    .) printf '%s' "$KIT" ;;
+    "~") printf '%s' "$HOME" ;;
+    "~/"*) printf '%s/%s' "$HOME" "${1#\~/}" ;;
+    *) printf '%s' "$1" ;;
+  esac
+}
+
+# Emit the manifest as TSV rows: binding<TAB>name<TAB>path, link<TAB>source<TAB>target,
+# tool<TAB>name<TAB>bin<TAB>build, legacy<TAB>path.
+manifest_rows() {
+  python3 - "$MANIFEST" <<'PY'
+import json, sys
+m = json.load(open(sys.argv[1]))
+for name, path in m.get("bindings", {}).items():
+    print(f"binding\t{name}\t{path}")
+for link in m.get("links", []):
+    print(f"link\t{link['source']}\t{link['target']}")
+for tool in m.get("tools", []):
+    print(f"tool\t{tool['name']}\t{tool['bin']}\t{tool.get('build', '')}")
+for path in m.get("pi_legacy_paths", []):
+    print(f"legacy\t{path}")
+PY
+}
+
+# One backup directory per run, minted on first use (sets BACKUP_DIR; never
+# call inside $(...), which would lose the assignment to a subshell).
+ensure_backup_dir() {
+  [ -n "$BACKUP_DIR" ] && return 0
+  local stamp base n
+  stamp=$(date +%Y%m%dT%H%M%S)
+  base="$AGENTS/backup/$stamp"
+  BACKUP_DIR="$base"; n=1
+  while [ -e "$BACKUP_DIR" ]; do BACKUP_DIR="$base-$n"; n=$((n + 1)); done
+  mkdir -p "$BACKUP_DIR"
+}
+
+# backup_path TARGET: where TARGET goes inside the run's backup dir, mirroring
+# its path under HOME so same-named targets never collide.
+backup_path() {
+  local rel
+  case "$1" in
+    "$HOME"/*) rel=${1#"$HOME"/} ;;
+    *) rel="abs/${1#/}" ;;
+  esac
+  printf '%s/%s' "$BACKUP_DIR" "$rel"
+}
+
+# ensure_link TARGET SOURCE_TEXT MODE KEEP_FOREIGN
+# Per-target state table: absent -> create; symlink to intended -> no-op;
+# symlink elsewhere or dangling -> replace; real file/dir -> backup, then link.
+# MODE "text": the link text must equal SOURCE_TEXT exactly (manifest links,
+# so they keep going through ~/.agents and follow a later rebinding).
+# MODE "real": any spelling that resolves to SOURCE_TEXT is fine (bindings,
+# tool links). KEEP_FOREIGN=1 leaves a symlink that points elsewhere alone
+# (bindings without --rebind).
+ensure_link() {
+  local target=$1 text=$2 mode=$3 keep=$4 ok
+  if [ -L "$target" ]; then
+    local current
+    current=$(readlink -- "$target")
+    if [ "$mode" = text ]; then
+      [ "$current" = "$text" ] && ok=1 || ok=0
+    else
+      [ "$(realpath -m -- "$target")" = "$(realpath -m -- "$text")" ] && ok=1 || ok=0
+    fi
+    if [ "$ok" = 1 ]; then
+      say "ok      $target -> $text"; return 0
+    fi
+    if [ -e "$target" ] && [ "$keep" = 1 ]; then
+      say "kept    $target -> $current (use --rebind to replace)"; return 0
+    fi
+    say "replace $target -> $text (was $current)"
+    [ "$DRY" = 1 ] && return 0
+    rm -f -- "$target" && ln -s -- "$text" "$target" || { fail "link $target"; return 1; }
+    return 0
+  fi
+  if [ -e "$target" ]; then
+    local dest
+    if [ "$DRY" = 1 ]; then
+      say "backup  $target -> $AGENTS/backup/<stamp>/...; link -> $text"; return 0
+    fi
+    ensure_backup_dir
+    dest=$(backup_path "$target")
+    say "backup  $target -> $dest; link -> $text"
+    mkdir -p -- "$(dirname -- "$dest")" && mv -- "$target" "$dest" && ln -s -- "$text" "$target" || { fail "backup+link $target (original at $dest)"; return 1; }
+    return 0
+  fi
+  say "link    $target -> $text"
+  [ "$DRY" = 1 ] && return 0
+  mkdir -p -- "$(dirname -- "$target")" && ln -s -- "$text" "$target" || { fail "link $target"; return 1; }
+}
+
+ensure_bindings() {
+  [ "$DRY" = 1 ] || mkdir -p -- "$AGENTS"
+  while IFS=$'\t' read -r kind name path; do
+    [ "$kind" = binding ] || continue
+    local src
+    if [ -n "${BIND_OVERRIDE[$name]+x}" ]; then src=${BIND_OVERRIDE[$name]}; else src=$(expand "$path"); fi
+    if [ ! -d "$src" ]; then
+      say "missing $name: $src"; MISSING=1; continue
+    fi
+    ensure_link "$AGENTS/$name" "$src" real "$((1 - REBIND))"
+  done < <(manifest_rows)
+}
+
+ensure_links() {
+  while IFS=$'\t' read -r kind source target; do
+    [ "$kind" = link ] || continue
+    local tgt text
+    tgt=$(expand "$target")
+    text=$(expand "$source")   # relative sources stay relative to the link's directory
+    ensure_link "$tgt" "$text" text 0
+  done < <(manifest_rows)
+}
+
+retire_legacy_pi_resources() {
+  while IFS=$'\t' read -r kind path; do
+    [ "$kind" = legacy ] || continue
+    local target dest
+    target=$(expand "$path")
+    [ -e "$target" ] || [ -L "$target" ] || continue
+    if [ "$DRY" = 1 ]; then
+      say "retire  $target -> $AGENTS/backup/<stamp>/..."
+      continue
+    fi
+    ensure_backup_dir
+    dest=$(backup_path "$target")
+    say "retire  $target -> $dest"
+    mkdir -p -- "$(dirname -- "$dest")" && mv -- "$target" "$dest" || fail "retire $target (original at $target)"
+  done < <(manifest_rows)
+}
+
+tool_skipped() {
+  # F29: skipped when the first word of `build` is not on PATH.
+  local build=$1
+  [ -n "$build" ] || return 1
+  command -v -- "${build%% *}" >/dev/null 2>&1 && return 1
+  return 0
+}
+
+build_and_link_tools() {
+  while IFS=$'\t' read -r kind name bin build; do
+    [ "$kind" = tool ] || continue
+    if tool_skipped "$build"; then
+      say "skipped $name: ${build%% *} not found"; continue
+    fi
+    local dir="$KIT/tools/$name" binpath="$KIT/$bin"
+    if [ -n "$build" ]; then
+      say "build   $name: ($dir) $build"
+      if [ "$DRY" = 0 ]; then
+        if [ ! -d "$dir" ]; then fail "build $name: no directory $dir"; continue; fi
+        [ -n "$LOG_DIR" ] || LOG_DIR=$(mktemp -d "${TMPDIR:-/tmp}/agent-kit-install.XXXXXX")
+        if ! (cd "$dir" && eval "$build") >"$LOG_DIR/build-$name.log" 2>&1; then
+          fail "build $name: see $LOG_DIR/build-$name.log"; continue
+        fi
+      fi
+    fi
+    if [ "$DRY" = 0 ] && [ ! -x "$binpath" ]; then
+      fail "tool $name: no executable at $binpath"; continue
+    fi
+    ensure_link "$HOME/.local/bin/$name" "$binpath" real 0
+  done < <(manifest_rows)
+}
+
+# Add the kit to pi's packages (first entry of manifest "pi_package"; any
+# listed form already present, such as the git: form on a satellite, counts)
+# and drop the entries the kit replaces (manifest "pi_retire", compared after
+# ~ expansion). Writes are atomic and the previous settings.json is copied
+# into the run's backup dir first.
+register_pi_package() {
+  local settings="$HOME/.pi/agent/settings.json" entry
+  entry=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("pi_package", ["~/.agents/kit"])[0])' "$MANIFEST")
+  # A dotfiles-managed settings.json may be a symlink; write through it.
+  [ -L "$settings" ] && settings=$(realpath -m -- "$settings")
+  local plan
+  plan=$(python3 - "$settings" "$entry" "$MANIFEST" "$HOME" "$DRY" <<'PY'
+import json, os, sys
+path, entry, manifest, home, dry = sys.argv[1:6]
+def key(p):
+    # Entries are strings or {"source": ..., ...} objects (pi docs/packages.md).
+    return p["source"] if isinstance(p, dict) else p
+def expand(p):
+    p = key(p)
+    if p.startswith("~/"):
+        p = os.path.join(home, p[2:])
+    if p.startswith("/"):
+        return os.path.normpath(p)
+    # Pi identifies git packages by URL without the pinned ref (docs/packages.md),
+    # so strip a trailing @ref; an @ before the last / is a user part (git@host).
+    slash, at = p.rfind("/"), p.rfind("@")
+    return p[:at] if at > slash else p
+try:
+    data = json.load(open(path))
+except FileNotFoundError:
+    data = {}
+pkgs = data.setdefault("packages", [])
+m = json.load(open(manifest))
+retire = {expand(p) for p in m.get("pi_retire", [])}
+forms = {expand(p) for p in m.get("pi_package", [entry])}
+dropped = [p for p in pkgs if expand(p) in retire]
+kept = [p for p in pkgs if expand(p) not in retire]
+added = not any(expand(p) in forms for p in kept)
+if added:
+    kept.append(entry)
+if not dropped and not added:
+    print("NOOP")
+    sys.exit(0)
+data["packages"] = kept
+if dry == "0":
+    with open(path + ".tmp", "w") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+        f.write("\n")
+print("CHANGED")
+for p in dropped:
+    print(f"retire {json.dumps(key(p))}")
+if added:
+    print(f"add {entry}")
+PY
+) || { fail "pi package registration"; return 1; }
+  if [ "$plan" = NOOP ]; then say "ok      pi package $entry"; return 0; fi
+  if [ "$DRY" = 1 ]; then
+    printf '%s\n' "$plan" | sed -n '2,$p' | sed "s|^|pi      |; s|\$| in $settings|"; return 0
+  fi
+  mkdir -p -- "$(dirname -- "$settings")"
+  if [ -f "$settings" ]; then
+    ensure_backup_dir
+    local dest; dest=$(backup_path "$settings")
+    mkdir -p -- "$(dirname -- "$dest")" && cp -p -- "$settings" "$dest" || { fail "backup $settings"; rm -f -- "$settings.tmp"; return 1; }
+    say "backup  $settings -> $dest"
+  fi
+  mv -f -- "$settings.tmp" "$settings" || { fail "write $settings"; return 1; }
+  printf '%s\n' "$plan" | sed -n '2,$p' | sed "s|^|pi      |; s|\$| in $settings|"
+}
+
+ensure_bindings
+retire_legacy_pi_resources
+ensure_links
+build_and_link_tools
+register_pi_package
+
+if [ "$DRY" = 1 ]; then
+  say "dry-run: nothing changed"
+  exit 0
+fi
+rc=0
+[ "$MISSING" = 0 ] && [ "$FAILED" = 0 ] || rc=1
+if [ -x "$KIT/bin/check" ]; then
+  "$KIT/bin/check" || rc=1
+fi
+exit $rc

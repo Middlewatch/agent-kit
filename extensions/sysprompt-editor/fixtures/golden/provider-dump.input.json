@@ -1,0 +1,13 @@
+{
+  "header": {
+    "timestamp": "2026-08-17-143000",
+    "provider": "anthropic",
+    "modelId": "claude-sonnet-4-5"
+  },
+  "payload": {
+    "model": "claude-sonnet-4-5",
+    "system": "You are an expert coding assistant operating inside pi, a coding agent harness.\n\nAvailable tools:\n- read: Read file contents\n\nUse ```bash``` fences in answers.\n\n<project_context>\nstub\n</project_context>\n",
+    "messages": [{ "role": "user", "content": "hello" }],
+    "max_tokens": 1024
+  }
+}

@@ -1,0 +1,85 @@
+# Verification toolbox
+
+<!-- Copy to ~/.agents/verification-toolbox.md and fill in. This file is
+untracked on purpose: it names the tools installed on your machines and the
+project precedents that earned each one a place. Skills and project guides
+read the filled copy when planning gates and test harnesses. -->
+
+The reusable tools and packages for verification tasks, one section per
+capability. For each entry record the tool, the language or surface it
+covers, and the precedent: which project used it and what it caught. Mark
+anything unconfirmed *(verify)* and version-check it at adoption time.
+
+## External conformance harness
+
+How real binaries are driven from outside: the default harness language and
+runner, pty tooling for TUIs, and how daemons are driven (prefer the real
+socket over an in-process shortcut).
+
+- <harness default, e.g. Python stdlib with unittest>
+- <pty tooling for TUI binaries>
+
+## Property-based testing
+
+One entry per language lane: the PBT library, and where properties live when
+a lane has no mature one.
+
+- <language: library, state-machine support, precedent>
+
+## Fuzzing
+
+Native fuzzers per lane, corpus and seed conventions, and which CI runs a
+fuzz smoke.
+
+- <language: fuzzer, corpus location, named regression seeds>
+
+## Golden / snapshot testing
+
+The fixture pattern (framework-free byte-compare travels best across
+languages) and any in-language snapshot libraries accepted.
+
+- <pattern, fixture location, promotion rule>
+
+## Differential and oracle testing
+
+Dual implementations kept as oracles, pinned reference implementations, and
+replay corpora.
+
+- <oracle, the surface it guards>
+
+## Sanitizers and memory discipline
+
+Thread, address, and UB sanitizers per lane; allocator-failure and leak
+checks; RSS regression tools.
+
+- <sanitizer or check: build flag and where it runs>
+
+## Performance budgets
+
+Wall-time, RSS, allocation, and compile-time budget tools, each with where
+its threshold lives.
+
+- <tool: the budget it enforces>
+
+## Lint and structure gates
+
+Format checks, static analysis, vulnerability scans, and repo-local
+structural lints, all in the gate script from day one.
+
+- <check: the gate it runs in>
+
+## CI
+
+Where the gate battery runs on push. Keep the gate script the single source
+of truth so local verification and CI can never disagree.
+
+## Diagnostic CLIs
+
+Installed diagnostic tools worth reaching for before writing a one-off
+script, with their domains.
+
+- <tool: domain>
+
+Note: this is a living inventory, neither all-inclusive nor restrictive. When
+research or a new lane surfaces a better tool for a capability, propose it,
+and ask the owner before installing anything system-wide.

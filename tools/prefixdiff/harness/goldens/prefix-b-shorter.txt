@@ -1,0 +1,12 @@
+$ prefixdiff same short
+exit=1
+--- stdout ---
+A: same (11 bytes)
+B: short (5 bytes)
+
+common prefix: 5 bytes — 45.5% of A, 100.0% of B
+B is a strict prefix of A; A continues for 6 more bytes
+
+A: hello┃ world
+B: hello┃⟨EOF⟩
+--- stderr ---

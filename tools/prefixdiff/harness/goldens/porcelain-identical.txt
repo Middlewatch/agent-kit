@@ -1,0 +1,5 @@
+$ prefixdiff -p same same
+exit=0
+--- stdout ---
+status=identical prefix=11 a_bytes=11 b_bytes=11 a_pct=100.0 b_pct=100.0
+--- stderr ---

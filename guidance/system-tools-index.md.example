@@ -1,0 +1,56 @@
+# System tools index
+
+<!-- Copy to ~/.agents/system-tools-index.md and fill in. This file is
+untracked on purpose: it names the tools installed on this machine, how each
+got here, and when to reach for it. Agents both use and maintain it; a new
+install or a trial-verified caveat earns an entry the day it lands. -->
+
+The curated system-wide tool layer: what each tool is for and how it got
+here. Scope is tools you invoke; libraries that link into builds live in each
+project's manifest. Record the deployment convention (package manager,
+versioned dir plus symlink, built from source) so "what's deployed from
+where" has one answer.
+
+## Owned diagnostic CLIs
+
+Tools built in-house, with source location and the question each answers.
+
+- <tool: what it answers, source path>
+
+## Toolchains
+
+Compilers, runtimes, and language servers, with versions, pins, and pairing
+constraints (a language server that must match its compiler's version, for
+example).
+
+- <tool: version, deploy method, pairing notes>
+
+## Search, files, structural
+
+The everyday text, file, and AST tools, each with a reach-for-it-when note
+and any trial-verified caveats or known bugs.
+
+- <tool: reach for it when, caveats>
+
+## Git
+
+- <tool: reach for it when, caveats>
+
+## Agent harnesses and agent-facing
+
+Coding harnesses, MCP servers, browser automation, memory plumbing, and web
+tool packages, with configuration locations and verified working state.
+
+- <tool: what, config location, state>
+
+## Deliberately not installed (with the reason)
+
+The negative space keeps future sessions from re-litigating: name the tool,
+the reason it was skipped, and the condition that would change the verdict.
+
+- <tool: reason, revisit when>
+
+Provenance: record where each verdict came from (trial ledger, research
+record) so a caveat can be re-checked instead of re-trusted. New third-party
+installs go through the vet-dependency checklist at the commit that
+introduces them.

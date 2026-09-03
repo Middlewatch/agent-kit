@@ -1,0 +1,7 @@
+$ prefixdiff empty empty
+exit=0
+--- stdout ---
+A: empty (0 bytes)
+B: empty (0 bytes)
+identical
+--- stderr ---

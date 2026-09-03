@@ -1,0 +1,12 @@
+$ prefixdiff -c 0 same other
+exit=1
+--- stdout ---
+A: same (11 bytes)
+B: other (11 bytes)
+
+common prefix: 6 bytes — 54.5% of A, 54.5% of B
+diverges at byte 6 (line 1, col 7)
+
+A: …┃…
+B: …┃…
+--- stderr ---

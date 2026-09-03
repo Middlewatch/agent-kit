@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["findings"],
+  "properties": {
+    "findings": {
+      "type": "array",
+      "description": "Specific, checkable claims extracted from sources actually read.",
+      "items": {
+        "type": "object",
+        "required": ["claim", "sourceUrl"],
+        "properties": {
+          "claim": {
+            "type": "string",
+            "description": "One specific, checkable claim — not a topic, a claim that could be true or false."
+          },
+          "sourceUrl": {
+            "type": "string",
+            "description": "URL of the source the claim was actually read from."
+          },
+          "sourceDate": {
+            "type": "string",
+            "description": "Publication or last-updated date of the source if known (ISO-8601 or as printed)."
+          },
+          "quote": {
+            "type": "string",
+            "description": "Short supporting quote from the source, verbatim."
+          },
+          "confidence": {
+            "type": "string",
+            "enum": ["high", "medium", "low"],
+            "description": "How well the source supports the claim."
+          }
+        }
+      }
+    },
+    "gaps": {
+      "type": "array",
+      "description": "What this sub-question could not settle — unanswered angles or missing evidence.",
+      "items": { "type": "string" }
+    }
+  }
+}

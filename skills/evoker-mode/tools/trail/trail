@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# Append one row to a decision trail (TSV). Creates the file with a header
+# on first use. Adapted from pstack's show-me-your-work log.sh (MIT,
+# github.com/cursor/plugins).
+#
+# usage: trail <logfile> <step> <decision> <why> <evidence> <result>
+set -euo pipefail
+
+if [ "$#" -ne 6 ]; then
+	printf 'usage: trail <logfile> <step> <decision> <why> <evidence> <result>\n' >&2
+	exit 1
+fi
+
+logfile="$1"
+shift
+
+logdir="$(dirname -- "$logfile")"
+if [ -n "$logdir" ] && [ "$logdir" != "." ] && [ ! -d "$logdir" ]; then
+	mkdir -p "$logdir"
+fi
+
+# noclobber create: two concurrent first writers cannot truncate each
+# other, and a path swapped to a symlink between check and open fails
+# instead of following it.
+if [ ! -e "$logfile" ]; then
+	(set -C; printf 'ts\tstep\tdecision\twhy\tevidence\tresult\n' > "$logfile") 2>/dev/null || true
+fi
+
+ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+# Keep every cell on one line and inert in a spreadsheet and a terminal.
+# Tabs, newlines, and carriage returns become spaces; remaining control
+# characters (ESC, BEL, backspace, DEL...) are dropped so a cell cannot
+# smuggle ANSI sequences to a later reader. A cell whose first character a
+# spreadsheet would parse as a formula (=, +, -, @) gets a leading single
+# quote, because trails are reviewed in spreadsheets and cell content is
+# often derived from untrusted text (PR titles, filenames, generated
+# output).
+clean() {
+	local v
+	v=$(printf '%s' "$1" | tr '\t\n\r' '   ' | tr -d '\000-\010\013\014\016-\037\177')
+	case "$v" in
+		=* | +* | -* | @*) printf "'%s" "$v" ;;
+		*) printf '%s' "$v" ;;
+	esac
+}
+
+printf '%s\t%s\t%s\t%s\t%s\t%s\n' \
+	"$ts" "$(clean "$1")" "$(clean "$2")" "$(clean "$3")" "$(clean "$4")" "$(clean "$5")" \
+	>> "$logfile"

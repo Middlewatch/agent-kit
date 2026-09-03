@@ -1,0 +1,5 @@
+$ prefixdiff -c eight same other
+exit=2
+--- stdout ---
+--- stderr ---
+prefixdiff: context must be a non-negative integer, got 'eight'

@@ -1,0 +1,38 @@
+# Machine: <hostname>
+
+<!-- Copy to ~/.agents/MACHINE.md and fill in. This file is untracked on
+purpose: it carries the facts that differ per machine and the identifiers the
+kit keeps out of its tracked tree. Agents read it when present. -->
+
+## Identity and role
+
+- Hostname: <name>
+- Role: <e.g. headless build server, desktop, laptop>
+- Other machines this one reaches and how: <name: mount or ssh alias, ...>
+
+## Bindings
+
+Beyond the required bindings (`kit`, `wiki`, `inbox`, `journals`, `reference`, `projects`), this
+machine binds:
+
+- `~/.agents/<name>` -> <path>: <what it holds>
+
+## Local roots
+
+Directories agents may be pointed at that are not bindings:
+
+- `<path>`: <purpose, write contract, backed up or not>
+
+## Mounts and remotes
+
+- `<mount point>`: <what it is, when it is offline, what degrades>
+
+## Hardware and toolchains
+
+- CPU / RAM / GPU: <...>
+- Installed toolchains worth knowing (versions): <zig, go, node, python ...>
+- Local inference: <models, endpoints, ports>
+
+## Notes
+
+Anything else an agent on this machine needs: services, ports, quirks.

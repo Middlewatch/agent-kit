@@ -1,0 +1,27 @@
+{
+  "name": "pi-sysprompt-editor",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "Owner-authored core system prompt for Pi, rebuilt from a template with live harness data spliced in",
+  "keywords": [
+    "pi-package"
+  ],
+  "scripts": {
+    "format:check": "prettier --check \"**/*.{ts,json,md}\"",
+    "typecheck": "tsc --noEmit",
+    "test:unit": "node --experimental-strip-types --test tests/*.test.ts"
+  },
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "0.84.1",
+    "@types/node": "22.20.1",
+    "prettier": "3.9.6",
+    "typescript": "7.0.2"
+  }
+}

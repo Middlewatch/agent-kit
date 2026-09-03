@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "seed": 136724,
+  "cases": 10000,
+  "families": [
+    "rm-option-order",
+    "rm-quoted-literal",
+    "rm-unresolved-target",
+    "cwd-transition",
+    "push-protected-refspec",
+    "push-force-option",
+    "push-ordinary-refspec"
+  ]
+}

@@ -1,0 +1,27 @@
+Configuring the agent runtime
+
+The system prompt parameter is read from `config.systemPrompt` at startup;
+when unset, the runtime falls back to the built-in default. Instructions for
+overriding it live in docs/configuration.md — the previous instructions
+section there was rewritten in v2, so prior instructions from the v1 guide
+no longer apply to new deployments (they were removed, not deprecated).
+
+```ts
+// The tool-call loop: each tool result is appended to the transcript.
+// A handler acting as a fallback receives unmatched names.
+registry.register("fetch", async (args) => {
+  // Executing this handler requires a resolved URL; the fetch tool's
+  // redirect cap is enforced upstream by the caller.
+  return fetchBounded(args.url);
+});
+```
+
+Roles and permissions: a role is assigned at session start and the role
+field is immutable afterwards; pretending otherwise in the UI would desync
+the server state. When pasting configuration into the terminal, quote the
+JSON so the shell leaves it intact. Commands are run by the supervisor with
+the following environment: PATH, HOME, and the scoped state directory.
+
+Ignoring transient errors from any of the above providers is safe; all
+instructions the validator emits are advisory. You can now review the
+transcript with the viewer tool enabled in settings.

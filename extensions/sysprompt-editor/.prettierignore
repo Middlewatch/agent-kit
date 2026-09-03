@@ -1,0 +1,2 @@
+# Fixtures must stay byte-stable for golden and output-test comparability.
+fixtures/

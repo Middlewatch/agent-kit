@@ -1,0 +1,12 @@
+$ prefixdiff -c 12 ctrl ctrl2
+exit=1
+--- stdout ---
+A: ctrl (16 bytes)
+B: ctrl2 (16 bytes)
+
+common prefix: 8 bytes — 50.0% of A, 50.0% of B
+diverges at byte 8 (line 1, col 9)
+
+A: safe\x1b]0;┃A\x07\x00\x7f\xffend
+B: safe\x1b]0;┃B\x07\x00\x7f\xffend
+--- stderr ---

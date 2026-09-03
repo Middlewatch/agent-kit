@@ -1,0 +1,1 @@
+focal word cache

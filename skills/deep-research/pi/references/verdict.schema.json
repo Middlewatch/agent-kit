@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["refuted", "reason"],
+  "properties": {
+    "refuted": {
+      "type": "boolean",
+      "description": "true if a credible independent contradiction was found, OR the claim has no support outside its original source and looks doubtful; false if it stands up."
+    },
+    "reason": {
+      "type": "string",
+      "description": "One or two sentences: what the independent search found and why it does or does not refute the claim."
+    },
+    "counterSourceUrl": {
+      "type": "string",
+      "description": "URL of an independent source that contradicts the claim, if one was found."
+    },
+    "independentConfirmationUrl": {
+      "type": "string",
+      "description": "URL of an independent source (different site/author/org from the original) that confirms the claim, if one was found."
+    }
+  }
+}
