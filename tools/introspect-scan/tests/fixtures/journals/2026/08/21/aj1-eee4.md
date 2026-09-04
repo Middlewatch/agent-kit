@@ -1,7 +1,7 @@
 # Debugging session, Claude Code harness
 ## User
 
-Base directory for this skill: /home/someone/.claude/skills/diagnose
+Base directory for this skill: /srv/estate/.claude/skills/diagnose
 
 # diagnose (fixture body)
 

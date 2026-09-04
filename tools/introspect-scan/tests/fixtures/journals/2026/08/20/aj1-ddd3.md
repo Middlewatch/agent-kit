@@ -1,8 +1,8 @@
 # Prose pass, pi harness
 ## User
 
-<skill name="slopfix" location="/home/someone/.agents/skills/slopfix/SKILL.md">
-References are relative to /home/someone/.agents/skills/slopfix.
+<skill name="slopfix" location="/srv/estate/.agents/skills/slopfix/SKILL.md">
+References are relative to /srv/estate/.agents/skills/slopfix.
 
 # Slopfix (fixture body)
 
