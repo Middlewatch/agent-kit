@@ -1,37 +1,32 @@
 # sysprompt-editor
 
-A Pi extension that rebuilds the core of Pi's system prompt (identity, tool
-list, guidelines, documentation routing) from an owner-authored markdown
-template. The template owns the prose, and the harness owns the live data,
-spliced in through five optional placeholders (`{{AVAILABLE_TOOLS}}`,
-`{{GUIDELINES}}`, `{{PI_DOCS}}`, `{{PI_SCRATCHPAD}}`, `{{SKILLS}}`).
-`{{PI_SCRATCHPAD}}` renders from `$PI_SCRATCHPAD` and is empty when the
-pi-scratchpad extension is not running. `{{SKILLS}}` lifts Pi's skills
-block out of the tail and places it where the template says. The block
-keeps Pi's exact text, so a skill-registry extension that splices on its
-sentinels keeps working wherever the template put it. Everything else Pi appends after the core (project
-context, working directory) is left untouched.
+A Pi extension for editable system-prompt cores and scoped instruction placement.
+The harness supplies live data; templates supply prose and layout. See the scoped
+slot contract below.
 
-The extension fails open: an active `SYSTEM.md` custom prompt, an
-unrecognized stock prompt shape, or no resolvable template all leave the
-prompt exactly as Pi built it.
+## Templates and session selection
 
-## Templates
+Templates live at `~/.agents/kit/guidance/sysprompt/*.md`. Each session saves a
+filename in a `sysprompt-editor:selection` custom entry, separate from model-facing
+messages. Restoration follows the active branch. Resume keeps that selection;
+fork inherits the selection at its branch point. Model changes leave it alone.
+Each turn rereads the file, so edits affect all sessions pinned to that name.
 
-Templates live in the kit's guidance tree, `guidance/sysprompt/*.md`.
-`default.md` is the shipped one and `owner.md` is the owner's. A gitignored
-one-line pointer, `guidance/sysprompt/.active`, names the selected
-template, and the splice reads it on every turn, so a switch applies to the
-next message with no restart. If the pointer is missing, invalid, or names a
-missing file, `default.md` is used, and if that is missing too, the stock
-prompt stands.
+For a branch without a saved selection, the gitignored `.active` pointer supplies
+the initial default, falling back to `default.md`. The extension saves the resolved
+name before rendering. Switching writes only session state. A missing pinned file
+preserves Pi's incoming prompt and keeps the name; restoring the file recovers on
+the next turn. Malformed state and failed writes also fail open. Normal turns
+report fallback when it first occurs or its reason changes, through UI notification
+or stderr in headless mode. A custom `SYSTEM.md` or programmatic core bypasses the
+template without an error.
 
 ## The `/sysprompt` command
 
 `/sysprompt` opens a menu of four actions; `/sysprompt <action>` jumps
 straight to one. Cancelling any picker ends the command with no write.
 
-- `switch`: pick the active template from the list.
+- `switch`: pick the session template, or use `/sysprompt switch name.md` headlessly.
 - `new`: name a template (`[a-z0-9-]+`) and create it as a byte copy of the
   currently active one; existing files are never overwritten.
 - `inspect`: writes a best-effort dump of the prompt inputs immediately,
@@ -58,7 +53,8 @@ turn ends without the event, the capture is cancelled with a warning.
 
 - `index.ts`: hook and command registration; logic lives in `lib/`.
 - `lib/splice.ts`: tail split, anchor extraction, template render.
-- `lib/templates.ts`: template store (list, active pointer, scaffold).
+- `lib/templates.ts`: template files, initial-default pointer, and scaffold.
+- `lib/selection.ts`: versioned selection parsing and branch restoration.
 - `lib/inspect.ts`: immediate dump, payload extraction, armed capture,
   artifact naming.
 - `lib/output-test.ts`: output-test prompt, result naming and format.

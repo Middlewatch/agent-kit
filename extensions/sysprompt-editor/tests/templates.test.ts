@@ -8,12 +8,12 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import test from "node:test";
+import { sessionStub } from "./stubs.ts";
 import systemPromptExtension from "../index.ts";
 import {
   listTemplates,
   readActiveTemplate,
   scaffoldTemplate,
-  setActiveTemplate,
 } from "../lib/templates.ts";
 
 const STOCK_CORE =
@@ -37,9 +37,12 @@ function capturedHandler(
   templatesDir: string,
 ): (event: unknown) => Promise<{ systemPrompt: string } | undefined> {
   let handler: unknown;
+  const state = sessionStub();
   const stub = {
+    appendEntry: state.appendEntry,
     on(name: string, fn: unknown) {
-      if (name === "before_agent_start") handler = fn;
+      if (name === "before_agent_start")
+        handler = (event: unknown) => (fn as any)(event, state.context());
     },
     registerCommand() {},
   };
@@ -78,7 +81,7 @@ test("pointer resolution: invalid pointer line falls back to default.md", () => 
 test("pointer resolution: pointer naming a missing file falls back to default.md", () => {
   const dir = tempDir();
   seed(dir, { "default.md": "DEFAULT" });
-  setActiveTemplate(dir, "gone.md");
+  seedDefault(dir, "gone.md");
   assert.deepEqual(readActiveTemplate(dir), {
     name: "default.md",
     content: "DEFAULT",
@@ -89,14 +92,14 @@ test("pointer resolution: default.md missing returns null", async () => {
   const dir = tempDir();
   assert.equal(readActiveTemplate(dir), null);
   // A pointer to a missing file with no default.md is also null.
-  setActiveTemplate(dir, "gone.md");
+  seedDefault(dir, "gone.md");
   assert.equal(readActiveTemplate(dir), null);
   // The splice built on that dir leaves the stock prompt standing.
   const result = await capturedHandler(dir)({ systemPrompt: STOCK_CORE });
   assert.equal(result, undefined);
 });
 
-test("pointer resolution: switch changes rendered template", async () => {
+test("pointer resolution: changing the initial default leaves an existing session pinned", async () => {
   const dir = tempDir();
   seed(dir, {
     "default.md": "DEFAULT VOICE\n{{AVAILABLE_TOOLS}}",
@@ -105,9 +108,11 @@ test("pointer resolution: switch changes rendered template", async () => {
   const handler = capturedHandler(dir);
   const before = await handler({ systemPrompt: STOCK_CORE });
   assert.equal(before?.systemPrompt, "DEFAULT VOICE\n- read: Read");
-  setActiveTemplate(dir, "terse.md");
+  seedDefault(dir, "terse.md");
   const after = await handler({ systemPrompt: STOCK_CORE });
-  assert.equal(after?.systemPrompt, "TERSE VOICE\n- read: Read");
+  assert.equal(after?.systemPrompt, "DEFAULT VOICE\n- read: Read");
+  const fresh = await capturedHandler(dir)({ systemPrompt: STOCK_CORE });
+  assert.equal(fresh?.systemPrompt, "TERSE VOICE\n- read: Read");
 });
 
 test("list: active template sorts first", () => {
@@ -121,10 +126,10 @@ test("list: active template sorts first", () => {
   });
   fs.mkdirSync(path.join(dir, "subdir.md"));
   assert.deepEqual(listTemplates(dir), ["default.md", "alpha.md", "zeta.md"]);
-  setActiveTemplate(dir, "zeta.md");
+  seedDefault(dir, "zeta.md");
   assert.deepEqual(listTemplates(dir), ["zeta.md", "alpha.md", "default.md"]);
   // A pointer to a missing file leaves the plain order with default first.
-  setActiveTemplate(dir, "gone.md");
+  seedDefault(dir, "gone.md");
   assert.deepEqual(listTemplates(dir), ["default.md", "alpha.md", "zeta.md"]);
   assert.deepEqual(listTemplates(path.join(dir, "missing")), []);
 });
@@ -133,7 +138,7 @@ test("scaffold: new template is a byte copy of the active template", () => {
   const dir = tempDir();
   const bytes = "ACTIVE\r\n\u00e9 {{AVAILABLE_TOOLS}}\n\n\n";
   seed(dir, { "default.md": "DEFAULT", "voice.md": bytes });
-  setActiveTemplate(dir, "voice.md");
+  seedDefault(dir, "voice.md");
   const active = readActiveTemplate(dir);
   assert.ok(active);
   const created = scaffoldTemplate(dir, "copy-1", active.content);
@@ -173,3 +178,7 @@ test("scaffold: existing file not overwritten", () => {
     "ORIGINAL",
   );
 });
+
+function seedDefault(dir: string, name: string): void {
+  fs.writeFileSync(path.join(dir, ".active"), name + "\n");
+}

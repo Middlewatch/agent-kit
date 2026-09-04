@@ -158,7 +158,7 @@ separate owner-approved activity, not a mandatory paid unit-test dependency.
 - [x] S2 Place scoped instruction blocks through templates while preserving
   each file once, unrelated extension additions, and fail-open behavior. Show
   early global placement and an old template that omits the new slots. (after S1)
-- [ ] S3 Make manual template selection session-local and persistent. Demonstrate
+- [x] S3 Make manual template selection session-local and persistent. Demonstrate
   two sessions, resume, fork, model switching, live edits, and missing files.
 - [ ] S4 Ship the authoring guide and starter/examples, consolidate owner policy,
   and extend inspection and output-test evidence for the new contract. Run the

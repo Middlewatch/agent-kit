@@ -10,6 +10,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import test from "node:test";
+import { sessionStub } from "./stubs.ts";
 import systemPromptExtension from "../index.ts";
 import { renderTemplate, scratchpadSection } from "../lib/splice.ts";
 
@@ -51,9 +52,12 @@ function capturedHandler(): (
   event: unknown,
 ) => Promise<{ systemPrompt: string } | undefined> {
   let handler: unknown;
+  const state = sessionStub();
   const stub = {
+    appendEntry: state.appendEntry,
     on(name: string, fn: unknown) {
-      if (name === "before_agent_start") handler = fn;
+      if (name === "before_agent_start")
+        handler = (event: unknown) => (fn as any)(event, state.context());
     },
     registerCommand() {},
   };
@@ -187,10 +191,13 @@ test("{{SKILLS}} relocates pi's stock skills block into the template", async () 
     "Intro.\n\n## Tools\n\n{{AVAILABLE_TOOLS}}\n\n## Skills\n\n{{SKILLS}}\n\n## Rules\n\n{{GUIDELINES}}\n\n{{PI_DOCS}}\n",
   );
   let handler: any;
+  const state = sessionStub();
   systemPromptExtension(
     {
+      appendEntry: state.appendEntry,
       on(name: string, fn: unknown) {
-        if (name === "before_agent_start") handler = fn;
+        if (name === "before_agent_start")
+          handler = (event: unknown) => (fn as any)(event, state.context());
       },
       registerCommand() {},
     } as never,
@@ -228,10 +235,13 @@ test("{{SKILLS}} lifts the block when no project context precedes it", async () 
     "Intro.\n\n{{AVAILABLE_TOOLS}}\n\n{{SKILLS}}\n\n{{GUIDELINES}}\n\n{{PI_DOCS}}\n",
   );
   let handler: any;
+  const state = sessionStub();
   systemPromptExtension(
     {
+      appendEntry: state.appendEntry,
       on(name: string, fn: unknown) {
-        if (name === "before_agent_start") handler = fn;
+        if (name === "before_agent_start")
+          handler = (event: unknown) => (fn as any)(event, state.context());
       },
       registerCommand() {},
     } as never,

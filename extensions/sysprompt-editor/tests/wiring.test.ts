@@ -9,6 +9,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import test from "node:test";
+import { sessionStub } from "./stubs.ts";
 import systemPromptExtension, { type ExtensionPaths } from "../index.ts";
 import { createHash } from "node:crypto";
 import { armCapture, takeArmedCapture } from "../lib/inspect.ts";
@@ -40,13 +41,15 @@ function harness(paths: Partial<ExtensionPaths> = {}): Harness {
   const handlers = new Map<string, Handler>();
   const sent: string[] = [];
   let command: Harness["command"] | undefined;
+  const state = sessionStub();
   const stub = {
+    appendEntry: state.appendEntry,
     on(name: string, fn: Handler) {
-      handlers.set(name, fn);
+      handlers.set(name, (event, ctx) => fn(event, state.context(ctx)));
     },
     registerCommand(name: string, options: { handler: Harness["command"] }) {
       assert.equal(name, "sysprompt");
-      command = options.handler;
+      command = (args, ctx) => options.handler(args, state.context(ctx));
     },
     sendUserMessage(content: string) {
       sent.push(content);
@@ -104,7 +107,7 @@ function stubUi(script: {
   return { ctx, notices, selects, inputs };
 }
 
-test("wiring: switch action writes the pointer through the registered command", async () => {
+test("wiring: switch action writes session state without changing the default pointer", async () => {
   const h = harness();
   seed(h.templatesDir, { "default.md": "D", "terse.md": "T" });
   const ui = stubUi({ select: (_title, options) => options[1] });
@@ -112,13 +115,10 @@ test("wiring: switch action writes the pointer through the registered command", 
   assert.deepEqual(ui.selects, [
     { title: "Active template:", options: ["default.md", "terse.md"] },
   ]);
-  assert.equal(
-    fs.readFileSync(path.join(h.templatesDir, ".active"), "utf8"),
-    "terse.md\n",
-  );
+  assert.equal(fs.existsSync(path.join(h.templatesDir, ".active")), false);
   assert.deepEqual(ui.notices, [
     {
-      message: "active template: terse.md (applies next message)",
+      message: "session template: terse.md (applies next message)",
       type: undefined,
     },
   ]);
@@ -138,10 +138,7 @@ test("wiring: switch action writes the pointer through the registered command", 
     "inspect",
     "test",
   ]);
-  assert.equal(
-    fs.readFileSync(path.join(h.templatesDir, ".active"), "utf8"),
-    "terse.md\n",
-  );
+  assert.equal(fs.existsSync(path.join(h.templatesDir, ".active")), false);
 });
 
 test("wiring: cancelled picker writes nothing", async () => {

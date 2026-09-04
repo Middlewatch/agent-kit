@@ -1,32 +1,4 @@
-/**
- * sysprompt-editor: owner-authored core system prompt.
- *
- * Rebuilds the core of Pi's system prompt (identity, tool list, guidelines,
- * Pi documentation) from the active template in the kit's
- * guidance/sysprompt/. The template
- * owns the prose; the harness owns the live data, spliced in through five
- * optional placeholders:
- *
- *   {{AVAILABLE_TOOLS}}  the "- tool: snippet" lines for the active tool set
- *   {{GUIDELINES}}       the per-tool guideline bullets for the active tool set
- *   {{PI_DOCS}}          the Pi documentation section (paths + routing rules)
- *   {{PI_SCRATCHPAD}}    one bullet naming the session scratch directory, read
- *                        from process.env.PI_SCRATCHPAD (published by the
- *                        pi-scratchpad extension); empty when unset
- *   {{SKILLS}}           pi's skills block, lifted out of the tail so the
- *                        template chooses its position (after the tools,
- *                        in the owner's template); neoskills then splices
- *                        its registry into that block wherever it sits
- *
- * Everything else after the core (project_context/AGENTS.md, cwd) is left
- * untouched, so context files keep layering normally and the claude-go
- * bridge forwards the rewritten prompt as-is.
- *
- * Fail-open posture: if a SYSTEM.md/--system-prompt custom prompt is active,
- * if the stock template shape is unrecognized (a pi update changed it), or if
- * no template resolves (pointer and default.md both unusable), the prompt is
- * left exactly as Pi built it.
- */
+/** Session-local template selection and prompt/inspection event wiring. */
 import { createHash } from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -34,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import type {
   ExtensionAPI,
   ExtensionCommandContext,
+  ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import {
   armCapture,
@@ -57,10 +30,16 @@ import {
 import { splicePrompt } from "./lib/splice.ts";
 import {
   listTemplates,
-  readActiveTemplate,
+  readTemplate,
   scaffoldTemplate,
-  setActiveTemplate,
 } from "./lib/templates.ts";
+
+import {
+  initializeSelection,
+  restoreSelection,
+  saveSelection,
+  type Selection,
+} from "./lib/selection.ts";
 
 const STOCK_FIRST_LINE =
   "You are an expert coding assistant operating inside pi, a coding agent harness.";
@@ -113,15 +92,54 @@ export default function systemPromptExtension(
     modelId: string;
   } | null = null;
 
+  let lastWarning: string | null = null;
+  function warn(ctx: ExtensionContext, reason: string): void {
+    const key = `${ctx.sessionManager.getSessionId()}:${reason}`;
+    if (lastWarning === key) return;
+    lastWarning = key;
+    const message = `sysprompt: ${reason}; incoming prompt preserved`;
+    if (ctx.hasUI) ctx.ui.notify(message, "warning");
+    else process.stderr.write(`${message}\n`);
+  }
+  function selection(ctx: ExtensionContext): Selection {
+    return restoreSelection(ctx.sessionManager.getBranch());
+  }
+  function activeTemplate(
+    ctx: ExtensionContext,
+  ): { name: string; content: string } | { reason: string } {
+    if (templatesDir === null)
+      return { reason: "templates directory could not be resolved" };
+    const pin = initializeSelection(
+      selection(ctx),
+      templatesDir,
+      (type, data) => pi.appendEntry(type, data),
+    );
+    if (pin.kind === "invalid") return { reason: pin.reason };
+    try {
+      return readTemplate(templatesDir, pin.name);
+    } catch (error) {
+      return {
+        reason: `selected template ${pin.name} unavailable: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    }
+  }
+
   pi.on("before_agent_start", async (event: any, ctx) => {
     lastRender = null;
     const prompt: string = event.systemPrompt ?? "";
-    if (event.systemPromptOptions?.customPrompt) return; // SYSTEM.md wins
-    if (!prompt.startsWith(STOCK_FIRST_LINE)) return; // already rewritten or non-stock
-    if (templatesDir === null) return; // URL resolution failed: stock stands
-
-    const active = readActiveTemplate(templatesDir);
-    if (active === null) return; // no template resolves: stock prompt stands
+    if (event.systemPromptOptions?.customPrompt) {
+      lastWarning = null;
+      return;
+    }
+    if (!prompt.startsWith(STOCK_FIRST_LINE)) {
+      warn(ctx, "stock core boundary not recognized");
+      return;
+    }
+    const active = activeTemplate(ctx);
+    if ("reason" in active) {
+      warn(ctx, active.reason);
+      return;
+    }
 
     const result = splicePrompt(
       active.content,
@@ -130,12 +148,10 @@ export default function systemPromptExtension(
       process.env.PI_SCRATCHPAD,
     );
     if ("reason" in result) {
-      ctx?.ui?.notify(
-        `sysprompt: ${result.reason}; incoming prompt preserved`,
-        "warning",
-      );
+      warn(ctx, result.reason);
       return;
     }
+    lastWarning = null;
     lastRender = {
       name: active.name,
       sha256: createHash("sha256").update(active.content, "utf8").digest("hex"),
@@ -143,25 +159,47 @@ export default function systemPromptExtension(
     return { systemPrompt: result.prompt };
   });
 
-  async function actionSwitch(ctx: ExtensionCommandContext): Promise<void> {
+  async function actionSwitch(
+    ctx: ExtensionCommandContext,
+    requested?: string,
+  ): Promise<void> {
     if (templatesDir === null) {
       ctx.ui.notify("templates directory could not be resolved", "error");
       return;
     }
-    const names = listTemplates(templatesDir);
+    const pin = selection(ctx);
+    const names = listTemplates(
+      templatesDir,
+      pin.kind === "selected" ? pin.name : undefined,
+    );
     if (names.length === 0) {
       ctx.ui.notify("no templates found", "warning");
       return;
     }
-    const chosen = await ctx.ui.select("Active template:", names);
-    if (chosen === undefined) return; // cancelled: no write
+    const sessionId = ctx.sessionManager.getSessionId();
+    const leaf = ctx.sessionManager.getLeafId();
+    const chosen =
+      requested ?? (await ctx.ui.select("Active template:", names));
+    if (chosen === undefined) return;
     try {
-      setActiveTemplate(templatesDir, chosen);
-    } catch (err) {
-      ctx.ui.notify(String((err as Error).message ?? err), "error");
+      if (
+        ctx.sessionManager.getSessionId() !== sessionId ||
+        ctx.sessionManager.getLeafId() !== leaf
+      )
+        throw new Error(
+          "session branch changed while choosing a template; try again",
+        );
+      readTemplate(templatesDir, chosen);
+      saveSelection(chosen, (type, data) => pi.appendEntry(type, data));
+    } catch (error) {
+      const message = `template selection not changed: ${error instanceof Error ? error.message : String(error)}`;
+      if (ctx.hasUI) ctx.ui.notify(message, "error");
+      else process.stderr.write(`${message}\n`);
       return;
     }
-    ctx.ui.notify(`active template: ${chosen} (applies next message)`);
+    const message = `session template: ${chosen} (applies next message)`;
+    if (ctx.hasUI) ctx.ui.notify(message);
+    else process.stderr.write(`${message}\n`);
   }
 
   async function actionNew(ctx: ExtensionCommandContext): Promise<void> {
@@ -171,8 +209,8 @@ export default function systemPromptExtension(
     }
     const name = await ctx.ui.input("Template name:");
     if (name === undefined) return; // cancelled: no write
-    const active = readActiveTemplate(templatesDir);
-    if (active === null) {
+    const active = activeTemplate(ctx);
+    if ("reason" in active) {
       ctx.ui.notify("no active template to copy", "warning");
       return;
     }
@@ -421,6 +459,8 @@ export default function systemPromptExtension(
     description: "Manage system prompt templates",
     handler: async (args, ctx) => {
       const arg = args.trim();
+      if (arg.startsWith("switch "))
+        return actionSwitch(ctx, arg.slice(7).trim());
       let action: Action;
       if (arg === "") {
         const chosen = await ctx.ui.select("System prompt:", [...ACTIONS]);

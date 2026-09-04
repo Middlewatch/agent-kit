@@ -17,7 +17,7 @@ const VALID_POINTER = /^[a-z0-9-]+\.md$/;
  * whose names the pointer grammar accepts are listed, so every listed name
  * can become active.
  */
-export function listTemplates(dir: string): string[] {
+export function listTemplates(dir: string, selected?: string): string[] {
   let entries: fs.Dirent[];
   try {
     entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -28,7 +28,7 @@ export function listTemplates(dir: string): string[] {
     .filter((e) => e.isFile() && VALID_POINTER.test(e.name))
     .map((e) => e.name)
     .sort();
-  const active = readActiveTemplate(dir)?.name;
+  const active = selected ?? readActiveTemplate(dir)?.name;
   if (active !== undefined) {
     const i = names.indexOf(active);
     if (i > 0) {
@@ -71,29 +71,17 @@ export function readActiveTemplate(
   return null;
 }
 
-/**
- * Write the pointer file naming `name`. The write goes to a temp file in the
- * same directory and is renamed over `.active`, so a concurrent reader sees
- * either the old pointer or the new one, never a truncated file. Concurrent
- * switches are last-writer-wins.
- */
-export function setActiveTemplate(dir: string, name: string): void {
-  const target = path.join(dir, POINTER_FILE);
-  const tmp = path.join(
-    dir,
-    `${POINTER_FILE}.${process.pid}.${Date.now()}.tmp`,
-  );
-  fs.writeFileSync(tmp, name + "\n", "utf8");
-  try {
-    fs.renameSync(tmp, target);
-  } catch (err) {
-    try {
-      fs.unlinkSync(tmp);
-    } catch {
-      // nothing to clean
-    }
-    throw err;
-  }
+export function validTemplateName(name: string): boolean {
+  return VALID_POINTER.test(name);
+}
+
+/** Read a pinned name exactly. A missing file never silently changes the pin. */
+export function readTemplate(
+  dir: string,
+  name: string,
+): { name: string; content: string } {
+  if (!validTemplateName(name)) throw new Error("invalid template filename");
+  return { name, content: fs.readFileSync(path.join(dir, name), "utf8") };
 }
 
 const VALID_NAME = /^[a-z0-9-]+$/;
