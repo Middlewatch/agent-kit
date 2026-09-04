@@ -6,6 +6,15 @@ semver.
 
 ## [Unreleased]
 
+### Changed
+
+- `extensions/agent-delegate`: compact result `reads` targets are joined to
+  the child's first scope root, so a journal or other consumer sees the
+  file rather than the child's scope-relative name.
+- `tools/introspect-scan`: a bash glob target in an episode's Files section
+  (`skills/*/SKILL.md`) counts for no skill; the README's bias section says
+  why.
+
 ### Removed
 
 - `tools/lemonade-hub-sync`: tied to one inference server's internals and

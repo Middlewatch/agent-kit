@@ -64,7 +64,8 @@ has ggg6-fallback '^- +0 / 0  wizard  mentions 1  bash-only 0$'
 has skill-diagnose '^- +2 / 2  diagnose  mentions 2  bash-only 0$'
 has skill-slopfix '^- +1 / 1  slopfix  mentions 1  bash-only 0$'
 # fff5's read! of harvest is a failed read, not consultation; its prose
-# mention of skills/harvest/SKILL.md is a mention
+# mention of skills/harvest/SKILL.md is a mention; its bash glob over
+# skills/*/SKILL.md is a sweep and counts for no skill
 has never-invoked '^- never invoked: wizard$'
 # ...and the golden episode's harvest LEDGER via bash alone is counted as an
 # invocation but flagged bash-only (a cat and a grep -l render identically)

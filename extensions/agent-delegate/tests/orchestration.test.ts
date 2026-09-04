@@ -9,7 +9,7 @@
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -776,16 +776,20 @@ test("matched citation is supported by child provenance", async () => {
 
 // Compact details keep the child's reads (targets and outcomes, deduped,
 // inspect_read only) so the root's journal can record child consultation;
-// the full ledger still lives only in the local record.
-test("compact details carry inspect_read targets as reads", async () => {
+// the full ledger still lives only in the local record. The child names
+// files relative to its scope, so the compact entry joins the scope root:
+// a consumer outside the child sees the file, not a name only the child
+// could resolve.
+test("compact details carry inspect_read targets as reads under the scope root", async () => {
   const env = stubEnv("grounded-mixed");
+  const scopeRoot = realpathSync(process.cwd());
   try {
     const result = await callDelegate({ profile: "review", label: "mixed", scope: "." });
     assert.equal(result.details.provenance, undefined);
     assert.equal(result.details.provenanceCount, 4);
     assert.deepEqual(result.details.reads, [
-      { target: "src/app.ts", status: "ok" },
-      { target: "src/missing.ts", status: "error" },
+      { target: `${scopeRoot}/src/app.ts`, status: "ok" },
+      { target: `${scopeRoot}/src/missing.ts`, status: "error" },
     ]);
   } finally {
     env.restore();

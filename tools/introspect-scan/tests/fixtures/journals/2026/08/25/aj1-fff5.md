@@ -22,6 +22,7 @@ is curation-grade, not consultation).
 
 - read ~/.agents/skills/diagnose/SKILL.md
 - read! ~/.agents/skills/harvest/SKILL.md
+- bash ~/.agents/skills/*/SKILL.md
 - bash ~/.agents/wiki/knowledge/zig-notes.md:1-40
 - child:read ~/.agents/wiki/reference/unused-note.md
 - memory_get aj1-000000000000000000000000000000aa

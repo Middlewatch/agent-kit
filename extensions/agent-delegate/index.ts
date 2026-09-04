@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { StringEnum, type Message } from "@earendil-works/pi-ai";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
@@ -142,17 +142,22 @@ interface ChildRead {
 const MAX_COMPACT_READS = 64;
 
 // childReads projects the provenance ledger to what a consultation record
-// needs: which files the child opened and whether the read succeeded.
-function childReads(provenance: ProvenanceEntry[] | undefined): ChildRead[] | undefined {
+// needs: which files the child opened and whether the read succeeded. The
+// child names files relative to its first scope root; the record joins them
+// to that root so a consumer outside the child can tell which file it was.
+function childReads(provenance: ProvenanceEntry[] | undefined, scopeRoot: string | undefined): ChildRead[] | undefined {
   if (provenance === undefined) return undefined;
   const reads: ChildRead[] = [];
   const seen = new Set<string>();
   for (const entry of provenance) {
     if (entry.tool !== "inspect_read" || reads.length >= MAX_COMPACT_READS) continue;
-    const key = `${entry.status} ${entry.target}`;
+    const target = scopeRoot !== undefined && !isAbsolute(entry.target) && !entry.target.startsWith("~")
+      ? join(scopeRoot, entry.target)
+      : entry.target;
+    const key = `${entry.status} ${target}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    reads.push({ target: entry.target, status: entry.status });
+    reads.push({ target, status: entry.status });
   }
   return reads;
 }
@@ -223,7 +228,7 @@ function provenanceFromMarkers(markers: ChildMarker[]): ProvenanceEntry[] {
   return entries;
 }
 
-function compactDetails(details: DelegateDetails): DelegateDetails {
+function compactDetails(details: DelegateDetails, scopeRoot: string | undefined): DelegateDetails {
   return {
     ...details,
     taskPreview: details.taskPreview.slice(0, 500),
@@ -231,7 +236,7 @@ function compactDetails(details: DelegateDetails): DelegateDetails {
     diagnostic: details.diagnostic?.slice(0, 1000),
     provenance: undefined,
     provenanceCount: details.provenance?.length,
-    reads: childReads(details.provenance),
+    reads: childReads(details.provenance, scopeRoot),
     currentActivity: undefined,
   };
 }
@@ -678,7 +683,7 @@ export default function agentDelegate(pi: ExtensionAPI): void {
         lastUpdate = Date.now();
         onUpdate?.({
           content: [{ type: "text", text: `${details.label}: ${details.currentActivity ?? details.status}` }],
-          details: compactDetails(details),
+          details: compactDetails(details, scopePaths[0]),
         });
         updateUi(ctx);
       };
@@ -838,7 +843,7 @@ export default function agentDelegate(pi: ExtensionAPI): void {
         details.endedAt = new Date().toISOString();
         details.durationMs = Date.now() - started;
         recordTerminal();
-        const published = compactDetails(details);
+        const published = compactDetails(details, scopePaths[0]);
         recent.push(published);
         if (recent.length > RECENT_LIMIT) recent.splice(0, recent.length - RECENT_LIMIT);
         updateUi(ctx);
@@ -1010,7 +1015,7 @@ export default function agentDelegate(pi: ExtensionAPI): void {
         if (trimmed.truncated) details.truncated = true;
       }
       recordTerminal();
-      const published = compactDetails(details);
+      const published = compactDetails(details, scopePaths[0]);
       active.delete(id);
       recent.push(published);
       if (recent.length > RECENT_LIMIT) recent.splice(0, recent.length - RECENT_LIMIT);

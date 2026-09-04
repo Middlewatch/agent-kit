@@ -54,7 +54,9 @@ tool, `.md` path tokens in bash commands, and delegated children's
 `inspect_read`; they still miss a skill absorbed into habit (no read at
 all) and paths read by other means. A bash path token overcounts: a `cat`
 of a skill file and a `grep -l`, `ls`, or test fixture naming it render as
-the same `- bash <path>` line. The 2026-09-04 check found the share of
+the same `- bash <path>` line. A bash glob (`cat skills/*/SKILL.md`) is
+recorded as its literal pattern and counts for no skill: such sweeps are
+curation or introspection, not use. The 2026-09-04 check found the share of
 invocations seen through bash alone ran from a seventh (build 9 of 62) to
 half (project-scaffold 10 of 20, structural-review 8 of 15, diagnose 7 of
 12), and the bash-only adr episodes were the sessions building this
