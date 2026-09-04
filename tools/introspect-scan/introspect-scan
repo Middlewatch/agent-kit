@@ -48,11 +48,15 @@ INJECTED = re.compile(
 # `web_fetch` are not corpus files.
 FILES_SECTION = re.compile(r"\n\n## Files\n\n((?:- \S+ [^\n]*\n)+)\Z")
 CONSULT_OPS = {"read", "bash", "child:read"}
+# Only episodes captured under a policy that renders the section are read
+# this way; in older episodes a Files-shaped tail is owner text. The scanner
+# cannot verify the digest, so the policy line is its authority signal.
+FILES_POLICY = re.compile(r"^capture_policy: pi-visible-v(?:[3-9]|\d{2,})$", re.M)
 
 
 def consulted(text):
     """Returns (targets, body_without_files_section) or (None, text)."""
-    m = FILES_SECTION.search(text)
+    m = FILES_SECTION.search(text) if FILES_POLICY.search(text) else None
     if m is None:
         return None, text
     targets = []

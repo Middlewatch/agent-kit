@@ -48,7 +48,16 @@ hasnt() {
 ok snapshot-runs 0 "$tool" "${base[@]}"
 has header '^# introspect scan — 2026-09-01$'
 has month-jul '^- 2026-07: 0/0/1$'
-has month-aug '^- 2026-08: 3/3/5$'
+has month-aug '^- 2026-08: 3/3/6$'
+# the golden autojournal episode (S1 fixture bytes, policy v3, dated after
+# --today so outside the 30-day column): adr read,
+# harvest LEDGER via bash, code-maps note read with a line range
+has month-sep '^- 2026-09: 1/1/1$'
+has skill-adr '^- +1 / 0  adr  mentions 0$'
+has note-range '^- +1  structural-code-maps-for-agents\.md$'
+# ggg6 is policy v2 with a Files-shaped tail in prose: fallback, so its
+# wizard path is a mention, not an invocation
+has ggg6-fallback '^- +0 / 0  wizard  mentions 1$'
 # invocations are the harness markers (pi tag in ddd3, Claude Code line in
 # eee4) or, when the episode carries a Files section (fff5), its successful
 # reads; path-shaped references in aaa1/bbb2 and fff5's prose are mentions
@@ -56,8 +65,8 @@ has skill-diagnose '^- +2 / 2  diagnose  mentions 2$'
 has skill-slopfix '^- +1 / 1  slopfix  mentions 1$'
 # fff5's read! of harvest is a failed read, not consultation; its prose
 # mention of skills/harvest/SKILL.md is a mention
-has never-invoked '^- never invoked: harvest$'
-has harvest-mention-only '^- +0 / 0  harvest  mentions 1$'
+has never-invoked '^- never invoked: wizard$'
+has harvest-bash-read '^- +1 / 0  harvest  mentions 1$'
 # ddd3's injected slopfix body cites skills/harvest and zig-notes.md; neither
 # counts as the session's own use
 hasnt body-echo-skill 'harvest  mentions 2'
@@ -65,7 +74,7 @@ hasnt authoring-not-a-skill 'AUTHORING'
 # fff5 touches zig-notes (bash, with a line range) and unused-note (child)
 has note-hits '^- +3  zig-notes\.md$'
 has note-child '^- +1  unused-note\.md$'
-has distinct-notes '^- distinct notes touched ever: 2 of 2$'
+has distinct-notes '^- distinct notes touched ever: 3 of 3$'
 hasnt index-excluded 'index\.md'
 has friction-listed '^- friction-double-fire\.md$'
 has friction-total '^- friction total: 1$'
@@ -96,7 +105,7 @@ tmp="$(mktemp -d)"
 mkdir "$tmp/noskills"
 ok empty-skills-runs 0 "$tool" --journals "$fx/journals" --skills "$tmp/noskills" \
   --wiki "$fx/wiki" --today 2026-09-01
-has empty-skills-months '^- 2026-08: 0/3/5$'
+has empty-skills-months '^- 2026-08: 0/3/6$'
 has empty-skills-never '^- never invoked: none$'
 rm -rf "$tmp"
 
