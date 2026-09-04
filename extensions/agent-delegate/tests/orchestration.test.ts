@@ -84,6 +84,13 @@ switch (mode) {
     marker("provenance", JSON.stringify({ tool: "inspect_read", target: "src/app.ts", status: "ok", truncated: false, sha256: "a".repeat(64), references: [{ kind: "file", target: "src/app.ts", startLine: 10, endLine: 20 }] }));
     assistant("The defect is visible at src/app.ts:12.");
     break;
+  case "grounded-mixed":
+    marker("provenance", JSON.stringify({ tool: "inspect_read", target: "src/app.ts", status: "ok", truncated: false, sha256: "a".repeat(64), references: [] }));
+    marker("provenance", JSON.stringify({ tool: "inspect_grep", target: "src", status: "ok", truncated: false, sha256: "b".repeat(64), references: [] }));
+    marker("provenance", JSON.stringify({ tool: "inspect_read", target: "src/missing.ts", status: "error", truncated: false, sha256: "c".repeat(64), references: [] }));
+    marker("provenance", JSON.stringify({ tool: "inspect_read", target: "src/app.ts", status: "ok", truncated: false, sha256: "a".repeat(64), references: [] }));
+    assistant("Read src/app.ts; src/missing.ts does not exist.");
+    break;
   case "ungrounded-prose":
     assistant("The defect is visible at src/invented.ts:99 and https://invented.example/fact");
     break;
@@ -762,6 +769,24 @@ test("matched citation is supported by child provenance", async () => {
     assert.equal(result.details.provenanceCount, 1);
     const record = readRecords(env.recordsDir).at(-1);
     assert.equal(record.provenance[0].target, "src/app.ts");
+  } finally {
+    env.restore();
+  }
+});
+
+// Compact details keep the child's reads (targets and outcomes, deduped,
+// inspect_read only) so the root's journal can record child consultation;
+// the full ledger still lives only in the local record.
+test("compact details carry inspect_read targets as reads", async () => {
+  const env = stubEnv("grounded-mixed");
+  try {
+    const result = await callDelegate({ profile: "review", label: "mixed", scope: "." });
+    assert.equal(result.details.provenance, undefined);
+    assert.equal(result.details.provenanceCount, 4);
+    assert.deepEqual(result.details.reads, [
+      { target: "src/app.ts", status: "ok" },
+      { target: "src/missing.ts", status: "error" },
+    ]);
   } finally {
     env.restore();
   }

@@ -262,7 +262,10 @@ compact widget shows active children per pool, and `/delegations` shows
 active/recent records. Escape and normal Pi shutdown await TERM-to-KILL child
 process-group cleanup.
 
-Only compact tool-result details are kept in the normal Pi session. Raw child
+Only compact tool-result details are kept in the normal Pi session: the
+provenance ledger collapses to a count plus `reads`, the child's
+`inspect_read` targets and outcomes (at most 64), which autojournal records
+as the turn's child consultation. Raw child
 streaming events are parsed in memory and discarded rather than creating the
 hundreds of megabytes of duplicate partial-event traces observed in the
 experiment.

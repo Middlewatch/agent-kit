@@ -124,7 +124,37 @@ interface DelegateDetails {
   partialOutput?: string;
   provenance?: ProvenanceEntry[];
   provenanceCount?: number;
+  /**
+   * The child's file reads (inspect_read targets and outcomes), kept in the
+   * compact details so the root's journal can record child consultation
+   * (autojournal spec 2026-09-03-consultation-footprint). Bounded; hashes
+   * and citations stay in the full record.
+   */
+  reads?: ChildRead[];
   unmatchedCitations?: EvidenceReference[];
+}
+
+interface ChildRead {
+  target: string;
+  status: "ok" | "error";
+}
+
+const MAX_COMPACT_READS = 64;
+
+// childReads projects the provenance ledger to what a consultation record
+// needs: which files the child opened and whether the read succeeded.
+function childReads(provenance: ProvenanceEntry[] | undefined): ChildRead[] | undefined {
+  if (provenance === undefined) return undefined;
+  const reads: ChildRead[] = [];
+  const seen = new Set<string>();
+  for (const entry of provenance) {
+    if (entry.tool !== "inspect_read" || reads.length >= MAX_COMPACT_READS) continue;
+    const key = `${entry.status} ${entry.target}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    reads.push({ target: entry.target, status: entry.status });
+  }
+  return reads;
 }
 
 interface ActiveDelegate extends ManagedChild {
@@ -201,6 +231,7 @@ function compactDetails(details: DelegateDetails): DelegateDetails {
     diagnostic: details.diagnostic?.slice(0, 1000),
     provenance: undefined,
     provenanceCount: details.provenance?.length,
+    reads: childReads(details.provenance),
     currentActivity: undefined,
   };
 }
