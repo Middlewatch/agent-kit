@@ -2,7 +2,8 @@
 
 A Pi extension for editable system-prompt cores and scoped instruction placement.
 The harness supplies live data; templates supply prose and layout. See the scoped
-slot contract below.
+slot contract below. The authoring guide and model-family examples are at
+`~/.agents/kit/guidance/sysprompt/AUTHORING.md`.
 
 ## Templates and session selection
 
@@ -29,21 +30,18 @@ straight to one. Cancelling any picker ends the command with no write.
 - `switch`: pick the session template, or use `/sysprompt switch name.md` headlessly.
 - `new`: name a template (`[a-z0-9-]+`) and create it as a byte copy of the
   currently active one; existing files are never overwritten.
-- `inspect`: writes a best-effort dump of the prompt inputs immediately,
-  then on your next message writes the ground truth taken from the provider
-  request: a readable `.md` and a raw `.txt` whose bytes are exactly the
-  system prompt sent, with the `.txt` sha256 prefix in the notification.
-  Files land in this directory's gitignored `artifacts/inspect/`. On `claude-go`
-  with `CLAUDE_GO_CAPTURE_DIR` set in pi's environment, a third pair
-  (`-wire.md`/`-wire.txt`) follows once the request has left, holding the
-  system prompt as the `claude` child sent it to the API, picked out of the
-  capture dir as the record whose system prompt contains pi's.
-- `test`: sends "Summarize this article for me." with the fixture at
-  `fixtures/output-test-document.md` through the normal pipeline and writes
-  the reply to `artifacts/output-tests/<stamp>-<provider>-<model>.md`,
-  headed with the template that actually rendered and its content sha256
-  (or `(stock)` when the splice stood down). Refused while the agent is
-  busy.
+- `inspect`: writes a command-time inventory, then captures the next provider
+  system text as readable `.md` and extracted `.txt` in `artifacts/inspect/`.
+  Multiple provider text blocks are joined with blank lines. The metadata records
+  selected and rendered names, template and provider-text hashes, fallback/bypass
+  reason, and each loaded instruction file's scope and content hash. On `claude-go`
+  with `CLAUDE_GO_CAPTURE_DIR` set, a separate wire capture can reveal downstream
+  system-text changes.
+- `test`: sends "Summarize this article for me." with
+  `fixtures/output-test-document.md` through the normal pipeline, captures its
+  provider prompt, and writes the reply to
+  `artifacts/output-tests/<stamp>-<provider>-<model>.md` with render provenance.
+  Refused while the agent is busy or another output test is pending.
 
 Provider capture rides Pi's `before_provider_request` event, which a custom
 provider only emits if its `streamSimple` calls `options.onPayload`. If a
@@ -56,26 +54,34 @@ turn ends without the event, the capture is cancelled with a warning.
 - `lib/templates.ts`: template files, initial-default pointer, and scaffold.
 - `lib/selection.ts`: versioned selection parsing and branch restoration.
 - `lib/inspect.ts`: immediate dump, payload extraction, armed capture,
-  artifact naming.
+  artifact naming. Capture arms belong to one extension instance.
+- `lib/evidence.ts`: scoped input inventories and content hashes.
 - `lib/output-test.ts`: output-test prompt, result naming and format.
 - `fixtures/golden/`: input/expected pairs that pin the artifact formats
   byte for byte.
 
 `DESIGN.md` is the design basis. `scripts/verify.sh` is the definition of
-green (node 22, `npm ci`, prettier, tsc, unit tests).
+green (Node 22.6+, `npm ci`, prettier, tsc, unit tests, source conformance).
+It requires `PI_SOURCE_DIR` below. Captures remain local; no per-turn archive or
+model-compliance score is produced.
 
 ## Source conformance
 
 Scoped instruction placement targets Pi v0.85.0 with the companion source
-change based on upstream `107d79f11072bbc8a3a757ed7fd69596bee7d68c`.
+patch in `patches/pi-0.85.0.patch`, based on upstream `107d79f11072bbc8a3a757ed7fd69596bee7d68c`.
 The loader records global or workspace scope, including the workspace directory,
 in `contextFiles[].scope`. Pi renders a neutral `instruction_context` container
 with `global_instructions` and `workspace_instructions` blocks for both stock
 and custom cores. Legacy SDK context without scope uses an `instructions` block.
 
+Apply the patch to a clean checkout of that revision with `git apply <patch-path>`.
+It includes both loader provenance and immediate, transactional custom-entry
+persistence. Pi source commits `47c7b18` and `11355ee` correspond to these slices.
+
 Run `PI_SOURCE_DIR=<patched-checkout> node scripts/conformance.mjs` from this
 extension directory. The fixture uses the real loader and AgentSession, then
-records a provider payload without network access. Install the source checkout's
+records a provider payload without network access. The command also typechecks
+the extension and conformance tests against the patched source. Install the source checkout's
 locked dependencies and build its chord, telemetry, and ai packages first;
 Pi's development guide covers generated model data. This command does not
 modify or deploy the installed runtime.

@@ -51,7 +51,10 @@ warns. The optional bridge wire capture records downstream system bytes separate
 
 The output test sends its fixture through a normal session turn and records the
 final reply. Tool-use turns leave it pending. The command refuses a busy session
-or a second pending test. Results identify the template bytes that rendered.
+or a second pending test. Results identify the template bytes that rendered. The command also arms provider
+capture. Both artifacts include selection, fallback/bypass reason, scoped input
+hashes, and the provider-text hash. Capture state is instance-local and clears on
+session replacement or tree navigation.
 
 ## Verification
 

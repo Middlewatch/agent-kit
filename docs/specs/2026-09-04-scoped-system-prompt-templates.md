@@ -160,7 +160,7 @@ separate owner-approved activity, not a mandatory paid unit-test dependency.
   early global placement and an old template that omits the new slots. (after S1)
 - [x] S3 Make manual template selection session-local and persistent. Demonstrate
   two sessions, resume, fork, model switching, live edits, and missing files.
-- [ ] S4 Ship the authoring guide and starter/examples, consolidate owner policy,
+- [x] S4 Ship the authoring guide and starter/examples, consolidate owner policy,
   and extend inspection and output-test evidence for the new contract. Run the
   applicable extension and global-guidance gates. (after S2, S3)
 

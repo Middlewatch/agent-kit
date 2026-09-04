@@ -73,21 +73,25 @@ function capturedHandler(): (
     });
 }
 
-test("stock prompt is rebuilt from the template with the tail preserved", async () => {
+test("stock prompt is rebuilt with scoped instructions moved and other tail bytes preserved", async () => {
   const result = await capturedHandler()({ systemPrompt: STOCK_CORE + TAIL });
   assert.ok(result, "handler returned a rewritten prompt");
-  const expected =
-    DEFAULT_TEMPLATE.replaceAll("{{AVAILABLE_TOOLS}}", TOOLS)
-      .replaceAll("{{GUIDELINES}}", GUIDELINES)
-      .replaceAll("{{PI_DOCS}}", DOCS)
-      .replaceAll(
-        "{{PI_SCRATCHPAD}}",
-        scratchpadSection(process.env.PI_SCRATCHPAD),
-      )
-      .trimEnd() + TAIL;
-  assert.equal(result.systemPrompt, expected);
-  // The tail split also honours the skills-only and cwd-only shapes.
-  const rendered = expected.slice(0, -TAIL.length);
+  for (const value of [TOOLS, GUIDELINES, DOCS])
+    assert.ok(result.systemPrompt.includes(value));
+  assert.equal(
+    result.systemPrompt.split('<global_instructions path="/g/AGENTS.md">')
+      .length,
+    2,
+  );
+  assert.ok(
+    result.systemPrompt.indexOf("stub") <
+      result.systemPrompt.indexOf("Available tools:"),
+  );
+  assert.ok(result.systemPrompt.endsWith("\nCurrent working directory: /tmp"));
+  assert.ok(!result.systemPrompt.includes("{{GLOBAL_INSTRUCTIONS}}"));
+  // With no instruction files, these other tail shapes stay byte-for-byte intact.
+  const rendered = (await capturedHandler()({ systemPrompt: STOCK_CORE }))!
+    .systemPrompt;
   for (const tail of [
     "\n<available_skills>\n  <skill>x</skill>\n</available_skills>\nCurrent working directory: /tmp",
     "\nCurrent working directory: /tmp",

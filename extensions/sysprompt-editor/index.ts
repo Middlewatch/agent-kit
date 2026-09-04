@@ -9,7 +9,7 @@ import type {
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import {
-  armCapture,
+  createCaptureState,
   awaitWireRecord,
   extractSystemPromptFromPayload,
   freeBase,
@@ -19,7 +19,6 @@ import {
   renderImmediateDump,
   renderProviderDump,
   renderWireDump,
-  takeArmedCapture,
 } from "./lib/inspect.ts";
 import {
   assistantText,
@@ -27,6 +26,12 @@ import {
   formatResult,
   resultBase,
 } from "./lib/output-test.ts";
+import {
+  evidenceLines,
+  instructionInventory,
+  sha256,
+  type PromptEvidence,
+} from "./lib/evidence.ts";
 import { splicePrompt } from "./lib/splice.ts";
 import {
   listTemplates,
@@ -80,10 +85,8 @@ export default function systemPromptExtension(
   const fixturePath =
     paths.fixturePath ?? resolvePath("./fixtures/output-test-document.md");
 
-  // What the last before_agent_start actually applied: the template's name
-  // and content sha256, or null when a stand-down or fail-open branch left
-  // the stock prompt. The output-test result header reads it at turn_end.
-  let lastRender: { name: string; sha256: string } | null = null;
+  let lastEvidence: PromptEvidence | null = null;
+  const { armCapture, takeArmedCapture } = createCaptureState();
 
   // Output test awaiting its turn_end.
   let pendingTest: {
@@ -94,6 +97,11 @@ export default function systemPromptExtension(
 
   let lastWarning: string | null = null;
   function warn(ctx: ExtensionContext, reason: string): void {
+    if (lastEvidence) {
+      const pin = selection(ctx);
+      lastEvidence.selectedName = pin.kind === "selected" ? pin.name : null;
+      lastEvidence.reason = reason;
+    }
     const key = `${ctx.sessionManager.getSessionId()}:${reason}`;
     if (lastWarning === key) return;
     lastWarning = key;
@@ -124,10 +132,20 @@ export default function systemPromptExtension(
     }
   }
 
-  pi.on("before_agent_start", async (event: any, ctx) => {
-    lastRender = null;
+  pi.on("before_agent_start", async (event, ctx) => {
+    const pin = selection(ctx);
+    lastEvidence = {
+      selectedName: pin.kind === "selected" ? pin.name : null,
+      renderedName: null,
+      templateSha256: null,
+      reason: null,
+      instructions: instructionInventory(
+        event.systemPromptOptions?.contextFiles,
+      ),
+    };
     const prompt: string = event.systemPrompt ?? "";
     if (event.systemPromptOptions?.customPrompt) {
+      lastEvidence.reason = "custom system prompt bypass";
       lastWarning = null;
       return;
     }
@@ -141,6 +159,8 @@ export default function systemPromptExtension(
       return;
     }
 
+    lastEvidence.selectedName = active.name;
+    lastEvidence.templateSha256 = sha256(active.content);
     const result = splicePrompt(
       active.content,
       prompt,
@@ -152,10 +172,7 @@ export default function systemPromptExtension(
       return;
     }
     lastWarning = null;
-    lastRender = {
-      name: active.name,
-      sha256: createHash("sha256").update(active.content, "utf8").digest("hex"),
-    };
+    lastEvidence.renderedName = active.name;
     return { systemPrompt: result.prompt };
   });
 
@@ -233,7 +250,10 @@ export default function systemPromptExtension(
     }
   }
 
-  pi.on("before_provider_request", async (event: any, ctx: any) => {
+  pi.on("before_provider_request", async (event, ctx) => {
+    const system = extractSystemPromptFromPayload(event.payload);
+    if (lastEvidence && system !== null)
+      lastEvidence.providerSystemSha256 = sha256(system);
     const stamp = takeArmedCapture();
     if (stamp === null) return;
     if (artifactsDir === null) {
@@ -284,6 +304,7 @@ export default function systemPromptExtension(
       dump = renderProviderDump(
         { timestamp: stamp, provider, modelId },
         event.payload,
+        lastEvidence,
       );
     } catch (err) {
       ctx.ui.notify(err instanceof Error ? err.message : String(err), "error");
@@ -348,8 +369,11 @@ export default function systemPromptExtension(
           timestamp: pending.stamp,
           provider: pending.provider,
           modelId: pending.modelId,
-          activeTemplate: lastRender?.name ?? "(stock)",
-          templateSha256: lastRender?.sha256 ?? null,
+          activeTemplate: lastEvidence?.renderedName ?? "(stock)",
+          templateSha256: lastEvidence?.renderedName
+            ? lastEvidence.templateSha256
+            : null,
+          evidence: lastEvidence,
         },
         assistantText(event?.message),
       );
@@ -404,6 +428,7 @@ export default function systemPromptExtension(
     const stamp = makeStamp(new Date());
     const { provider, modelId } = modelLabel(ctx.model);
     pendingTest = { stamp, provider, modelId };
+    armCapture(stamp);
     pi.sendUserMessage(buildTestMessage(fixture));
     ctx.ui.notify(`output test ${stamp} sent (${provider}/${modelId})`);
   }
@@ -417,7 +442,31 @@ export default function systemPromptExtension(
     const inspectDir = path.join(artifactsDir, "inspect");
     let dump: string;
     try {
-      dump = renderImmediateDump(ctx.getSystemPromptOptions());
+      const options = ctx.getSystemPromptOptions();
+      const pin = selection(ctx);
+      const selected = pin.kind === "selected" ? pin.name : null;
+      let templateSha256: string | null = null;
+      let reason: string | null =
+        pin.kind === "invalid"
+          ? pin.reason
+          : "command-time inventory; render not attempted";
+      if (selected && templatesDir) {
+        try {
+          templateSha256 = sha256(readTemplate(templatesDir, selected).content);
+        } catch {
+          reason = `selected template ${selected} unavailable`;
+        }
+      }
+      dump =
+        renderImmediateDump(options) +
+        "\n## Selection and scoped inputs\n\n" +
+        evidenceLines({
+          selectedName: selected,
+          renderedName: null,
+          templateSha256,
+          reason,
+          instructions: instructionInventory(options.contextFiles),
+        });
     } catch (err) {
       takeArmedCapture();
       ctx.ui.notify(err instanceof Error ? err.message : String(err), "error");
@@ -438,6 +487,15 @@ export default function systemPromptExtension(
       `wrote ${file}; send any message to capture the ground-truth dump`,
     );
   }
+
+  const resetSession = async () => {
+    lastEvidence = null;
+    lastWarning = null;
+    pendingTest = null;
+    takeArmedCapture();
+  };
+  pi.on("session_start", resetSession);
+  pi.on("session_tree", resetSession);
 
   async function runAction(
     action: Action,

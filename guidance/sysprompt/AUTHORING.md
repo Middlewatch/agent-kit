@@ -1,0 +1,117 @@
+# Authoring system-prompt templates
+
+A system-prompt template supplies role prose and arranges live instruction blocks.
+It is separate from Pi's slash-command prompt templates, which send user messages.
+The implementation and verification commands are in
+`~/.agents/kit/extensions/sysprompt-editor/README.md`.
+
+## Where instructions belong
+
+| Content | Source |
+| --- | --- |
+| Owner preferences, approval gates, communication, and prose policy | Global `~/.agents/kit/guidance/AGENTS.md`, loaded by Pi through the installed global guide. |
+| Workspace rules | That workspace's instruction files, discovered by Pi's loader. |
+| Model-specific phrasing and section order | The chosen template in this directory. |
+| Tools, skills, runtime guidelines, Pi documentation, scratchpad location | Generated slots below. |
+
+Keep owner policy in the global guide and place it with `{{GLOBAL_INSTRUCTIONS}}`.
+The template chooses placement; the loader decides authority. Generated global
+blocks are not project-specific instructions. Workspace blocks name the directory
+where they apply, in ancestor-to-descendant order. The tag labels express that
+scope within Pi's system text; they do not create new provider message roles.
+
+## Start and select
+
+Copy [starter.md](starter.md) to a filename matching `[a-z0-9-]+.md`. Edit it in your
+usual editor, then run `/sysprompt switch name.md` or use the interactive switch
+picker. `/sysprompt new` instead copies the session's selected template and leaves
+the selection unchanged.
+
+The session stores the filename, not a snapshot. Resume restores it and fork
+inherits the selection at the branch point. Model switching leaves it unchanged;
+select a different template explicitly when comparing models. Edits reach every
+session using that file on its next turn.
+
+`.active` is a gitignored initial-default pointer. A branch with no saved selection
+reads it, falls back to `default.md` if needed, and saves the resolved name before
+use. A switch never writes this pointer. If a pinned file goes missing, the session
+keeps its name and uses the incoming Pi prompt until the file returns or you switch.
+
+## Slots
+
+Expansion runs once over template source. Literal placeholder text inside an
+instruction file, generated section, or fenced example stays literal. The editor
+preserves instruction-file contents, including whitespace and Markdown fences.
+
+| Slot | Generated value | If omitted |
+| --- | --- | --- |
+| `{{GLOBAL_INSTRUCTIONS}}` | Loaded global files with path and scope tags. | Those files remain in the tail. |
+| `{{WORKSPACE_INSTRUCTIONS}}` | Workspace files with path and applicable directory tags. | Those files remain in the tail, in loader order. |
+| `{{AVAILABLE_TOOLS}}` | Current tool summary lines. | Summary omitted; registered tool definitions are unchanged. |
+| `{{GUIDELINES}}` | Current harness and extension guideline lines. | Guideline prose omitted. |
+| `{{SKILLS}}` | Pi's generated skills instructions and catalog. | Skills stay in the tail. |
+| `{{PI_DOCS}}` | Pi's installed documentation pointers. | Documentation pointers omitted. |
+| `{{PI_SCRATCHPAD}}` | Session scratchpad guidance; empty if unset. | Scratchpad prose omitted. |
+
+Place each instruction slot at most once. Repeating either is an error that
+preserves the incoming prompt and reports a warning. Use other generated slots
+once as well to keep the prompt readable. Unknown placeholder names remain literal.
+
+The editor preserves `APPEND_SYSTEM.md` and programmatic append text independently
+of `{{PI_DOCS}}`. A custom `SYSTEM.md`, `--system-prompt`, or SDK custom core bypasses
+template rewriting without an error. Missing provenance, malformed saved state,
+failed selection persistence, and unrecognized boundaries preserve the incoming
+prompt. Ordinary turns warn through UI or stderr when the reason first occurs or
+changes; successful rendering clears that warning state.
+
+## Examples and evidence
+
+These layouts are editable examples. Their order has not been measured against
+this repository's tasks. Provider advice is evidence for trying a structure,
+not proof that the example improves instruction following.
+
+- [default.md](default.md) and [starter.md](starter.md) use a neutral Markdown
+  layout. [owner.md](owner.md) keeps the owner's broad programming/research role
+  and places the shared policy early.
+- [claude-example.md](claude-example.md) uses descriptive XML sections. Anthropic's
+  [Prompting best practices](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices),
+  accessed 2026-09-04, recommends clear instructions and XML tags to separate mixed
+  content. Its general guidance covers current Claude models, including Opus 4.6,
+  Sonnet 4.6, and later models named on the page. This example borrows that structure;
+  it is not a version-specific tuning result. Anthropic's long-document ordering
+  advice concerns data and queries and does not establish where owner policy belongs.
+- [openai-example.md](openai-example.md) uses Markdown headings with generated scoped
+  tags. OpenAI's [Prompt engineering](https://developers.openai.com/api/docs/guides/prompt-engineering),
+  accessed 2026-09-04, recommends Markdown/XML boundaries and describes identity,
+  instructions, examples, and context as common sections. The page's current examples
+  include `gpt-6-astra`; the advice is general rather than a pinned-snapshot result.
+  No publication date is stated on either source page. Recheck the provider guide
+  and run local evaluations for the exact model version you use.
+
+## Inspect and compare
+
+Run `/sysprompt inspect`, then send a normal message. The immediate inventory names
+selected state and scoped input hashes at command time; it is not an assembled
+prompt. The provider `.md` records the selected and rendered names, template hash,
+fallback or bypass reason, and each loaded file's scope and content hash. The
+`.txt` contains extracted system text; multiple provider text blocks are joined
+with blank lines. The optional bridge wire capture can reveal downstream changes.
+
+`/sysprompt test` sends the bundled article through an ordinary turn and captures
+its provider prompt plus final response. The result names the provider and model
+and records the same provenance. Compare captures before judging the responses:
+check each instruction file appears once, global and workspace order, tools and
+skills, and the fallback field. Then compare task outcomes with the same model,
+fixture, and settings. A successful assembly test says nothing about compliance.
+
+Captures are explicit and can contain private instructions. Keep them local unless
+the owner approves sharing. Changing a live template destroys the ability to infer
+old prompt bytes from its name alone; retain the explicit capture when exact
+reproduction matters. The extension does not archive every turn.
+
+## Runtime requirement
+
+Scoped placement and durable initialization require the companion Pi source
+changes based on v0.85.0, documented in the extension README. Build and test that
+source checkout before deploying through the normal Pi installation process.
+Editing installed JavaScript is not an installation procedure.

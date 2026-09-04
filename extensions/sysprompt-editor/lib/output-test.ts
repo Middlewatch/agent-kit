@@ -1,3 +1,4 @@
+import { evidenceLines, type PromptEvidence } from "./evidence.ts";
 /**
  * Standardized output test: the pinned prompt plus the fixture document go
  * through the normal pipeline, and the assistant's reply is written to a
@@ -13,6 +14,7 @@ export interface ResultHeader {
   modelId: string;
   activeTemplate: string; // "(stock)" when fail-open left the stock prompt
   templateSha256: string | null; // null for "(stock)"
+  evidence?: PromptEvidence | null;
 }
 
 /** The user message: pinned prompt, a rule, then the fixture verbatim. */
@@ -45,11 +47,12 @@ export function formatResult(
     `- timestamp: ${header.timestamp}`,
     `- provider: ${header.provider}`,
     `- model: ${header.modelId}`,
-    `- template: ${header.activeTemplate}`,
   ];
-  if (header.templateSha256 !== null) {
+  if (!header.evidence) lines.push(`- template: ${header.activeTemplate}`);
+  if (!header.evidence && header.templateSha256 !== null) {
     lines.push(`- template-sha256: ${header.templateSha256}`);
   }
+  if (header.evidence) lines.push(evidenceLines(header.evidence).trimEnd());
   lines.push("", "---", "");
   return `${lines.join("\n")}\n${responseText}\n`;
 }

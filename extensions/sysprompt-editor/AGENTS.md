@@ -8,7 +8,8 @@ the living docs and describe the product as built.
 ## Project gates and rules
 
 - `scripts/verify.sh` is the definition of green: install, format check,
-  typecheck, and unit tests. Run it before any commit that touches this
+  typecheck, unit tests, and real-loader conformance against the patched Pi
+  source named by `PI_SOURCE_DIR`. Run it before any commit that touches this
   directory.
 - Fail open is doctrine. Any change to the splice keeps the property that an
   unrecognized condition returns the prompt exactly as Pi built it, and the

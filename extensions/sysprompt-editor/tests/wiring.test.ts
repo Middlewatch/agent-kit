@@ -12,7 +12,6 @@ import test from "node:test";
 import { sessionStub } from "./stubs.ts";
 import systemPromptExtension, { type ExtensionPaths } from "../index.ts";
 import { createHash } from "node:crypto";
-import { armCapture, takeArmedCapture } from "../lib/inspect.ts";
 
 type Handler = (event: any, ctx: any) => Promise<any>;
 
@@ -72,13 +71,15 @@ interface StubUi {
 }
 
 /** Stub command context whose pickers resolve to scripted answers. */
-function stubUi(script: {
-  select?: (title: string, options: string[]) => string | undefined;
-  input?: (title: string) => string | undefined;
-  model?: { provider: string; id: string };
-  systemPromptOptions?: unknown;
-  idle?: boolean;
-}): StubUi {
+function stubUi(
+  script: {
+    select?: (title: string, options: string[]) => string | undefined;
+    input?: (title: string) => string | undefined;
+    model?: { provider: string; id: string };
+    systemPromptOptions?: unknown;
+    idle?: boolean;
+  } = {},
+): StubUi {
   const notices: StubUi["notices"] = [];
   const selects: StubUi["selects"] = [];
   const inputs: string[] = [];
@@ -229,195 +230,118 @@ test("wiring: cancelled name input creates nothing", async () => {
   ]);
 });
 
-test("wiring: inspect action writes the immediate dump file and arms capture", async () => {
+async function arm(h: ReturnType<typeof harness>): Promise<string> {
+  await h.command("inspect", stubUi().ctx);
+  return fs
+    .readdirSync(path.join(h.artifactsDir, "inspect"))
+    .find((name) => name.endsWith("-immediate.md"))!
+    .slice(0, 17);
+}
+
+test("wiring: inspect inventories inputs and arms an instance-local capture", async () => {
   const h = harness();
-  takeArmedCapture(); // start disarmed regardless of earlier tests
-  const ui = stubUi({
-    systemPromptOptions: {
-      cwd: "/tmp",
-      selectedTools: ["read"],
-      toolSnippets: { read: "Read file contents" },
-    },
-  });
-  await h.command("inspect", ui.ctx);
-  const inspectDir = path.join(h.artifactsDir, "inspect");
-  const files = fs.readdirSync(inspectDir);
-  assert.equal(files.length, 1);
-  assert.match(files[0]!, /^\d{4}-\d{2}-\d{2}-\d{6}-immediate\.md$/);
-  const body = fs.readFileSync(path.join(inspectDir, files[0]!), "utf8");
-  assert.match(
-    body,
-    /^# System prompt \(best-effort rebuild at command time\)\n/,
+  const other = harness();
+  const stamp = await arm(h);
+  const file = path.join(h.artifactsDir, "inspect", `${stamp}-immediate.md`);
+  assert.match(fs.readFileSync(file, "utf8"), /Selection and scoped inputs/);
+  await other.handlers.get("before_provider_request")!(
+    { payload: { system: "OTHER" } },
+    stubUi().ctx,
   );
-  assert.match(body, /## Selected tools\n\n- read: Read file contents\n/);
-  assert.equal(ui.notices.length, 1);
-  assert.equal(ui.notices[0]!.type, undefined);
-  assert.ok(ui.notices[0]!.message.includes(path.join(inspectDir, files[0]!)));
-  assert.match(
-    ui.notices[0]!.message,
-    /send any message to capture the ground-truth dump/,
+  assert.equal(fs.existsSync(path.join(other.artifactsDir, "inspect")), false);
+  await h.handlers.get("before_provider_request")!(
+    { payload: { system: "EXACT\nBYTES" } },
+    stubUi().ctx,
   );
-  const stamp = files[0]!.replace(/-immediate\.md$/, "");
-  assert.equal(takeArmedCapture(), stamp, "armed with the file's stamp");
-  assert.equal(takeArmedCapture(), null);
-  // A second inspect within the same second resolves its own collision.
-  await h.command("inspect", ui.ctx);
-  assert.equal(fs.readdirSync(inspectDir).length, 2);
-  takeArmedCapture();
+  assert.equal(
+    fs.readFileSync(
+      path.join(h.artifactsDir, "inspect", `${stamp}-provider.txt`),
+      "utf8",
+    ),
+    "EXACT\nBYTES",
+  );
+  await h.handlers.get("before_provider_request")!(
+    { payload: { system: "LATER" } },
+    stubUi().ctx,
+  );
+  assert.equal(
+    fs
+      .readdirSync(path.join(h.artifactsDir, "inspect"))
+      .filter((name) => name.endsWith("-provider.txt")).length,
+    1,
+  );
 });
 
-test("wiring: immediate dump write failure notifies error and does not arm", async () => {
-  // A regular file where the artifacts directory should be makes mkdir fail.
-  const blocker = path.join(tempDir("blocker"), "artifacts");
-  fs.writeFileSync(blocker, "not a directory");
-  const h = harness({ artifactsDir: blocker });
-  armCapture("stale"); // an earlier arm is cleared by the failed inspect
-  const ui = stubUi({});
-  await h.command("inspect", ui.ctx);
-  assert.equal(ui.notices.length, 1);
-  assert.equal(ui.notices[0]!.type, "error");
-  assert.equal(takeArmedCapture(), null, "nothing armed, stale arm cleared");
-  assert.equal(fs.readFileSync(blocker, "utf8"), "not a directory");
-  // A throwing getSystemPromptOptions is contained the same way.
-  const ok = harness();
-  armCapture("stale");
-  const thrower = stubUi({});
-  thrower.ctx.getSystemPromptOptions = () => {
-    throw new Error("options unavailable");
-  };
-  await assert.doesNotReject(ok.command("inspect", thrower.ctx));
-  assert.deepEqual(thrower.notices, [
-    { message: "options unavailable", type: "error" },
-  ]);
-  assert.equal(takeArmedCapture(), null);
-  assert.equal(fs.existsSync(path.join(ok.artifactsDir, "inspect")), false);
+test("wiring: immediate dump failures clear the arm", async () => {
+  for (const writeFailure of [false, true]) {
+    const h = harness();
+    await arm(h);
+    const ui = stubUi();
+    if (writeFailure) {
+      fs.rmSync(h.artifactsDir, { recursive: true });
+      fs.writeFileSync(h.artifactsDir, "blocked");
+    } else
+      ui.ctx.getSystemPromptOptions = () => {
+        throw new Error("broken options");
+      };
+    await h.command("inspect", ui.ctx);
+    assert.equal(ui.notices.at(-1)?.type, "error");
+    ui.notices.length = 0;
+    await h.handlers.get("turn_end")!({}, ui.ctx);
+    assert.equal(ui.notices.length, 0);
+  }
 });
 
-test("wiring: armed capture writes provider md and raw txt with payload bytes", async () => {
+test("wiring: turn end cancels a provider that did not expose its payload", async () => {
   const h = harness();
-  const hook = h.handlers.get("before_provider_request");
-  assert.ok(hook, "before_provider_request registered");
-  const system = "GROUND TRUTH\n\n<injected>by another extension</injected>\n";
-  const payload = { system, messages: [{ role: "user", content: "go" }] };
-  const model = { provider: "anthropic", id: "claude-x" };
-  // Not armed: the hook does nothing and returns no replacement.
-  takeArmedCapture();
-  const idle = stubUi({ model });
-  assert.equal(await hook({ payload }, idle.ctx), undefined);
-  assert.equal(fs.existsSync(path.join(h.artifactsDir, "inspect")), false);
-  assert.equal(idle.notices.length, 0);
-  // Armed: one md + txt pair, txt bytes equal the payload's system string.
-  const ui = stubUi({ model });
-  armCapture("2026-01-02-030405");
-  assert.equal(await hook({ payload }, ui.ctx), undefined);
-  const inspectDir = path.join(h.artifactsDir, "inspect");
-  assert.deepEqual(fs.readdirSync(inspectDir).sort(), [
-    "2026-01-02-030405-provider.md",
-    "2026-01-02-030405-provider.txt",
-  ]);
-  const txt = fs.readFileSync(
-    path.join(inspectDir, "2026-01-02-030405-provider.txt"),
+  await arm(h);
+  const ui = stubUi();
+  await h.handlers.get("turn_end")!({}, ui.ctx);
+  assert.match(ui.notices[0]!.message, /provider did not expose its payload/);
+  assert.equal(ui.notices[0]!.type, "warning");
+  await h.handlers.get("before_provider_request")!(
+    { payload: { system: "late" } },
+    ui.ctx,
   );
-  assert.equal(txt.toString("utf8"), system);
-  const md = fs.readFileSync(
-    path.join(inspectDir, "2026-01-02-030405-provider.md"),
-    "utf8",
+  assert.equal(
+    fs
+      .readdirSync(path.join(h.artifactsDir, "inspect"))
+      .some((name) => name.endsWith("-provider.txt")),
+    false,
   );
-  assert.match(
-    md,
-    /^# Provider system prompt \(ground truth\)\n\n- timestamp: 2026-01-02-030405\n- provider: anthropic\n- model: claude-x\n/,
-  );
-  assert.ok(md.includes(system));
-  const sha = createHash("sha256").update(txt).digest("hex").slice(0, 12);
-  assert.equal(ui.notices.length, 1);
-  assert.equal(ui.notices[0]!.type, undefined);
-  assert.ok(
-    ui.notices[0]!.message.endsWith(`sha256:${sha}`),
-    ui.notices[0]!.message,
-  );
-  // The capture was one-shot.
-  assert.equal(await hook({ payload }, ui.ctx), undefined);
-  assert.equal(fs.readdirSync(inspectDir).length, 2);
-  // Unrecognized payload: md only, warning, no txt; the pair shares one suffix.
-  armCapture("2026-01-02-030405");
-  const warn = stubUi({});
-  await hook({ payload: { weird: true } }, warn.ctx);
-  assert.deepEqual(fs.readdirSync(inspectDir).sort(), [
-    "2026-01-02-030405-provider-2.md",
-    "2026-01-02-030405-provider.md",
-    "2026-01-02-030405-provider.txt",
-  ]);
-  assert.equal(warn.notices[0]!.type, "warning");
-  assert.equal(takeArmedCapture(), null);
-  // A turn that ends with the capture still armed (a provider that never
-  // emitted before_provider_request) disarms and warns; nothing is written.
-  const turnEnd = h.handlers.get("turn_end");
-  assert.ok(turnEnd, "turn_end registered");
-  armCapture("2026-01-02-030405");
-  const stale = stubUi({});
-  await turnEnd({ message: { role: "assistant", content: [] } }, stale.ctx);
-  assert.equal(takeArmedCapture(), null, "stale arm cleared at turn end");
-  assert.deepEqual(stale.notices, [
-    {
-      message:
-        "inspect 2026-01-02-030405: provider did not expose its payload (custom providers must call options.onPayload in streamSimple); capture cancelled",
-      type: "warning",
-    },
-  ]);
-  assert.equal(fs.readdirSync(inspectDir).length, 3);
-  // With nothing armed, turn_end is silent.
-  const quiet = stubUi({});
-  await turnEnd({ message: { role: "assistant", content: [] } }, quiet.ctx);
-  assert.deepEqual(quiet.notices, []);
 });
 
-test("wiring: artifact write failure notifies error and clears capture state", async () => {
-  const blocker = path.join(tempDir("blocker"), "artifacts");
-  fs.writeFileSync(blocker, "not a directory");
-  const h = harness({ artifactsDir: blocker });
-  const hook = h.handlers.get("before_provider_request")!;
-  armCapture("2026-01-02-030405");
-  const ui = stubUi({});
-  await assert.doesNotReject(hook({ payload: { system: "S" } }, ui.ctx));
-  assert.equal(ui.notices.length, 1);
-  assert.equal(ui.notices[0]!.type, "error");
-  assert.equal(takeArmedCapture(), null, "capture state cleared");
-  assert.equal(fs.readFileSync(blocker, "utf8"), "not a directory");
-  // Render throw (a payload whose `system` getter throws): contained.
-  const ok = harness();
-  const okHook = ok.handlers.get("before_provider_request")!;
-  const inspectDir = path.join(ok.artifactsDir, "inspect");
-  armCapture("2026-01-02-030405");
-  const thrower = stubUi({});
-  const evil = {
-    get system(): string {
-      throw new Error("payload exploded");
-    },
-  };
-  await assert.doesNotReject(okHook({ payload: evil }, thrower.ctx));
-  assert.deepEqual(thrower.notices, [
-    { message: "payload exploded", type: "error" },
-  ]);
-  assert.equal(takeArmedCapture(), null);
-  assert.equal(fs.existsSync(inspectDir), false);
-  // .md succeeds but the .txt write fails: a dangling symlink at the .txt
-  // path is invisible to freeBase (existsSync follows links) yet makes the
-  // write hit ENOENT. Error notify, state cleared, no throw.
-  fs.mkdirSync(inspectDir, { recursive: true });
-  fs.symlinkSync(
-    "/nonexistent-sysprompt-dir/target.txt",
-    path.join(inspectDir, "2026-01-02-030405-provider.txt"),
+test("wiring: unrecognized payload writes raw JSON and warns", async () => {
+  const h = harness();
+  const stamp = await arm(h);
+  const ui = stubUi();
+  await h.handlers.get("before_provider_request")!(
+    { payload: { input: "unknown" } },
+    ui.ctx,
   );
-  armCapture("2026-01-02-030405");
-  const txtFail = stubUi({});
-  await assert.doesNotReject(okHook({ payload: { system: "S" } }, txtFail.ctx));
-  assert.ok(
-    fs.existsSync(path.join(inspectDir, "2026-01-02-030405-provider.md")),
+  const dir = path.join(h.artifactsDir, "inspect");
+  assert.equal(fs.existsSync(path.join(dir, `${stamp}-provider.txt`)), false);
+  assert.match(
+    fs.readFileSync(path.join(dir, `${stamp}-provider.md`), "utf8"),
+    /Unrecognized payload shape/,
   );
-  assert.equal(txtFail.notices.length, 1);
-  assert.equal(txtFail.notices[0]!.type, "error");
-  assert.match(txtFail.notices[0]!.message, /ENOENT/);
-  assert.equal(takeArmedCapture(), null);
+  assert.equal(ui.notices.at(-1)?.type, "warning");
+});
+
+test("wiring: provider artifact write failure reports error and clears capture", async () => {
+  const h = harness();
+  await arm(h);
+  const ui = stubUi();
+  fs.rmSync(h.artifactsDir, { recursive: true });
+  fs.writeFileSync(h.artifactsDir, "blocked");
+  await h.handlers.get("before_provider_request")!(
+    { payload: { system: "SYS" } },
+    ui.ctx,
+  );
+  assert.equal(ui.notices.at(-1)?.type, "error");
+  ui.notices.length = 0;
+  await h.handlers.get("turn_end")!({}, ui.ctx);
+  assert.equal(ui.notices.length, 0);
 });
 
 const STOCK_CORE =
@@ -461,6 +385,10 @@ test("wiring: turn_end with pending capture writes the result file", async () =>
   );
   const before = h.handlers.get("before_agent_start")!;
   assert.equal(await before({ systemPrompt: STOCK_CORE }, ui.ctx), undefined);
+  await h.handlers.get("before_provider_request")!(
+    { payload: { system: STOCK_CORE } },
+    stubUi({ model }).ctx,
+  );
   const turnEnd = h.handlers.get("turn_end")!;
   const endUi = stubUi({ model });
   // A tool-calling turn ends without ending the loop: the capture holds.
@@ -476,11 +404,11 @@ test("wiring: turn_end with pending capture writes the result file", async () =>
   assert.equal(files.length, 1);
   assert.match(files[0]!, /^\d{4}-\d{2}-\d{2}-\d{6}-anthropic-claude-x\.md$/);
   const stamp = files[0]!.slice(0, 17);
-  assert.equal(
-    fs.readFileSync(path.join(dir, files[0]!), "utf8"),
-    `# Output test\n\n- timestamp: ${stamp}\n- provider: anthropic\n- model: claude-x\n` +
-      "- template: (stock)\n\n---\n\nSummary line one.\n\nSummary line two.\n",
-  );
+  const body = fs.readFileSync(path.join(dir, files[0]!), "utf8");
+  assert.match(body, /rendered-template: \(incoming prompt\)/);
+  assert.match(body, /fallback-or-bypass: no initial template available/);
+  assert.match(body, /provider-system-sha256: [a-f0-9]{64}/);
+  assert.ok(body.endsWith("Summary line one.\n\nSummary line two.\n"));
   assert.deepEqual(endUi.notices, [
     { message: `wrote ${path.join(dir, files[0]!)}`, type: undefined },
   ]);
@@ -512,7 +440,7 @@ test("wiring: result header records the rendered template name and sha256", asyn
   await turnEnd({ message: REPLY }, endUi.ctx);
   const [file] = fs.readdirSync(dir);
   const body = fs.readFileSync(path.join(dir, file!), "utf8");
-  assert.ok(body.includes("\n- template: voice.md\n"), body);
+  assert.ok(body.includes("\n- rendered-template: voice.md\n"), body);
   assert.ok(body.includes(`\n- template-sha256: ${sha}\n`), body);
   // A successful render followed by each stand-down branch on the test turn
   // yields (stock): lastRender is reset every before_agent_start.
@@ -530,8 +458,14 @@ test("wiring: result header records the rendered template name and sha256", asyn
     const fresh = fs.readdirSync(dir).filter((n) => !seen.has(n));
     assert.equal(fresh.length, 1);
     const stock = fs.readFileSync(path.join(dir, fresh[0]!), "utf8");
-    assert.ok(stock.includes("\n- template: (stock)\n"), stock);
-    assert.ok(!stock.includes("template-sha256"), stock);
+    assert.ok(
+      stock.includes("\n- rendered-template: (incoming prompt)\n"),
+      stock,
+    );
+    assert.match(
+      stock,
+      /fallback-or-bypass: (custom system prompt bypass|stock core boundary not recognized)/,
+    );
   }
   // Busy agent: the test is refused, nothing sent, nothing pending.
   const sentBefore = h.sent.length;
@@ -571,8 +505,7 @@ test("wiring: result write failure notifies error and clears pending state", asy
   const endUi = stubUi({});
   const turnEnd = h.handlers.get("turn_end")!;
   await assert.doesNotReject(turnEnd({ message: REPLY }, endUi.ctx));
-  assert.equal(endUi.notices.length, 1);
-  assert.equal(endUi.notices[0]!.type, "error");
+  assert.equal(endUi.notices.at(-1)!.type, "error");
   // Pending state cleared: the next turn_end is silent and writes nothing.
   const again = stubUi({});
   await turnEnd({ message: REPLY }, again.ctx);

@@ -9,7 +9,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import test from "node:test";
 import {
-  armCapture,
+  createCaptureState,
   awaitWireRecord,
   extractSystemPromptFromPayload,
   findWireRecord,
@@ -20,7 +20,6 @@ import {
   renderImmediateDump,
   renderProviderDump,
   renderWireDump,
-  takeArmedCapture,
 } from "../lib/inspect.ts";
 
 const GOLDEN = new URL("../fixtures/golden/", import.meta.url);
@@ -76,9 +75,12 @@ test("immediate dump: empty options golden byte-compare", () => {
   assert.equal(renderImmediateDump(input as never), expected);
 });
 
-test("arm: capture is one-shot", () => {
+test("arm: capture is one-shot and instance-local", () => {
+  const { armCapture, takeArmedCapture } = createCaptureState();
+  const other = createCaptureState();
   assert.equal(takeArmedCapture(), null);
   armCapture("2026-01-01-000000");
+  assert.equal(other.takeArmedCapture(), null);
   assert.equal(takeArmedCapture(), "2026-01-01-000000");
   assert.equal(takeArmedCapture(), null);
   // Re-arming replaces the pending stamp rather than queueing.

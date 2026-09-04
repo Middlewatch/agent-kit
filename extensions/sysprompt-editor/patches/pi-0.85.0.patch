@@ -1,0 +1,441 @@
+diff --git a/packages/coding-agent/docs/sdk.md b/packages/coding-agent/docs/sdk.md
+index 095bf24..13698ea 100644
+--- a/packages/coding-agent/docs/sdk.md
++++ b/packages/coding-agent/docs/sdk.md
+@@ -1222,3 +1222,14 @@ type Tool
+ ```
+ 
+ For extension types, see [extensions.md](extensions.md) for the full API.
++
++## Instruction scope
++
++
++`getAgentsFiles().agentsFiles` and `BuildSystemPromptOptions.contextFiles` carry
++loader provenance in `scope`: `{ kind: "global" }` for the agent-directory file,
++or `{ kind: "workspace", directory }` for each ancestor file. Both stock and
++custom system prompts render these as `global_instructions` and
++`workspace_instructions` under a neutral `instruction_context` wrapper.
++SDK-supplied files without scope receive a neutral `instructions` tag.
++Instruction content is preserved verbatim; path attributes are escaped.
+diff --git a/packages/coding-agent/docs/session-format.md b/packages/coding-agent/docs/session-format.md
+index c5956ed..b7ef951 100644
+--- a/packages/coding-agent/docs/session-format.md
++++ b/packages/coding-agent/docs/session-format.md
+@@ -264,6 +264,10 @@ Optional fields:
+ 
+ Extension state persistence. Does NOT participate in LLM context.
+ 
++Custom entries are written immediately in persisted sessions, even before the
++first assistant reply. A failed custom-entry write leaves the in-memory branch
++unchanged; partial append failures truncate back to the prior file size.
++
+ ```json
+ {"type":"custom","id":"h8i9j0k1","parentId":"g7h8i9j0","timestamp":"2024-12-03T14:20:00.000Z","customType":"my-extension","data":{"count":42}}
+ ```
+diff --git a/packages/coding-agent/src/core/instruction-context.ts b/packages/coding-agent/src/core/instruction-context.ts
+new file mode 100644
+index 0000000..ca55298
+--- /dev/null
++++ b/packages/coding-agent/src/core/instruction-context.ts
+@@ -0,0 +1,27 @@
++/** Instruction authority comes from the loader, never from the file's prose. */
++export interface InstructionFile {
++	path: string;
++	content: string;
++	/** Absent for legacy SDK-provided context whose authority is unspecified. */
++	scope?: { kind: "global" } | { kind: "workspace"; directory: string };
++}
++
++function attribute(value: string): string {
++	return value.replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
++}
++
++export function formatInstructionFile(file: InstructionFile): string {
++	const tag =
++		file.scope?.kind === "global"
++			? "global_instructions"
++			: file.scope?.kind === "workspace"
++				? "workspace_instructions"
++				: "instructions";
++	const directory = file.scope?.kind === "workspace" ? ` directory="${attribute(file.scope.directory)}"` : "";
++	return `<${tag} path="${attribute(file.path)}"${directory}>\n${file.content}\n</${tag}>`;
++}
++
++export function formatInstructionContext(files: InstructionFile[]): string {
++	if (files.length === 0) return "";
++	return `\n\n<instruction_context>\n\nGlobal instructions apply across workspaces. Workspace instructions apply within their named directory; deeper workspace instructions take precedence for files in their scope.\n\n${files.map(formatInstructionFile).join("\n\n")}\n\n</instruction_context>`;
++}
+diff --git a/packages/coding-agent/src/core/resource-loader.ts b/packages/coding-agent/src/core/resource-loader.ts
+index 0410242..51921d8 100644
+--- a/packages/coding-agent/src/core/resource-loader.ts
++++ b/packages/coding-agent/src/core/resource-loader.ts
+@@ -4,6 +4,7 @@ import chalk from "chalk";
+ import { CONFIG_DIR_NAME } from "../config.ts";
+ import { loadThemeFromPath, type Theme } from "../modes/interactive/theme/theme.ts";
+ import type { ResourceDiagnostic } from "./diagnostics.ts";
++import type { InstructionFile } from "./instruction-context.ts";
+ 
+ export type { ResourceCollision, ResourceDiagnostic } from "./diagnostics.ts";
+ 
+@@ -42,7 +43,7 @@ export interface ResourceLoader {
+ 	getSkills(): { skills: Skill[]; diagnostics: ResourceDiagnostic[] };
+ 	getPrompts(): { prompts: PromptTemplate[]; diagnostics: ResourceDiagnostic[] };
+ 	getThemes(): { themes: Theme[]; diagnostics: ResourceDiagnostic[] };
+-	getAgentsFiles(): { agentsFiles: Array<{ path: string; content: string }> };
++	getAgentsFiles(): { agentsFiles: InstructionFile[] };
+ 	getSystemPrompt(): string | undefined;
+ 	getSystemPromptSource(): { path: string } | undefined;
+ 	getAppendSystemPrompt(): string[];
+@@ -116,23 +117,20 @@ function findShadowedContextFile(cwd: string): string | undefined {
+ 	return worktreeContextFile ? join(mainRepoRoot, basename(worktreeContextFile.path)) : undefined;
+ }
+ 
+-export function loadProjectContextFiles(options: {
+-	cwd: string;
+-	agentDir: string;
+-}): Array<{ path: string; content: string }> {
++export function loadProjectContextFiles(options: { cwd: string; agentDir: string }): InstructionFile[] {
+ 	const resolvedCwd = resolvePath(options.cwd);
+ 	const resolvedAgentDir = resolvePath(options.agentDir);
+ 
+-	const contextFiles: Array<{ path: string; content: string }> = [];
++	const contextFiles: InstructionFile[] = [];
+ 	const seenPaths = new Set<string>();
+ 
+ 	const globalContext = loadContextFileFromDir(resolvedAgentDir);
+ 	if (globalContext) {
+-		contextFiles.push(globalContext);
++		contextFiles.push({ ...globalContext, scope: { kind: "global" } });
+ 		seenPaths.add(globalContext.path);
+ 	}
+ 
+-	const ancestorContextFiles: Array<{ path: string; content: string }> = [];
++	const ancestorContextFiles: InstructionFile[] = [];
+ 
+ 	const shadowedContextFile = findShadowedContextFile(resolvedCwd);
+ 	let currentDir = resolvedCwd;
+@@ -142,7 +140,7 @@ export function loadProjectContextFiles(options: {
+ 		const isShadowed =
+ 			shadowedContextFile !== undefined && canonicalizePath(contextFile?.path ?? "") === shadowedContextFile;
+ 		if (contextFile && !isShadowed && !seenPaths.has(contextFile.path)) {
+-			ancestorContextFiles.unshift(contextFile);
++			ancestorContextFiles.unshift({ ...contextFile, scope: { kind: "workspace", directory: currentDir } });
+ 			seenPaths.add(contextFile.path);
+ 		}
+ 
+@@ -186,8 +184,8 @@ export interface DefaultResourceLoaderOptions {
+ 		themes: Theme[];
+ 		diagnostics: ResourceDiagnostic[];
+ 	};
+-	agentsFilesOverride?: (base: { agentsFiles: Array<{ path: string; content: string }> }) => {
+-		agentsFiles: Array<{ path: string; content: string }>;
++	agentsFilesOverride?: (base: { agentsFiles: InstructionFile[] }) => {
++		agentsFiles: InstructionFile[];
+ 	};
+ 	systemPromptOverride?: (base: string | undefined) => string | undefined;
+ 	appendSystemPromptOverride?: (base: string[]) => string[];
+@@ -224,8 +222,8 @@ export class DefaultResourceLoader implements ResourceLoader {
+ 		themes: Theme[];
+ 		diagnostics: ResourceDiagnostic[];
+ 	};
+-	private agentsFilesOverride?: (base: { agentsFiles: Array<{ path: string; content: string }> }) => {
+-		agentsFiles: Array<{ path: string; content: string }>;
++	private agentsFilesOverride?: (base: { agentsFiles: InstructionFile[] }) => {
++		agentsFiles: InstructionFile[];
+ 	};
+ 	private systemPromptOverride?: (base: string | undefined) => string | undefined;
+ 	private appendSystemPromptOverride?: (base: string[]) => string[];
+@@ -237,7 +235,7 @@ export class DefaultResourceLoader implements ResourceLoader {
+ 	private promptDiagnostics: ResourceDiagnostic[];
+ 	private themes: Theme[];
+ 	private themeDiagnostics: ResourceDiagnostic[];
+-	private agentsFiles: Array<{ path: string; content: string }>;
++	private agentsFiles: InstructionFile[];
+ 	private systemPrompt?: string;
+ 	private systemPromptSourcePath?: string;
+ 	private appendSystemPrompt: string[];
+@@ -317,7 +315,7 @@ export class DefaultResourceLoader implements ResourceLoader {
+ 		return { themes: this.themes, diagnostics: this.themeDiagnostics };
+ 	}
+ 
+-	getAgentsFiles(): { agentsFiles: Array<{ path: string; content: string }> } {
++	getAgentsFiles(): { agentsFiles: InstructionFile[] } {
+ 		return { agentsFiles: this.agentsFiles };
+ 	}
+ 
+diff --git a/packages/coding-agent/src/core/session-manager.ts b/packages/coding-agent/src/core/session-manager.ts
+index d25b196..bcd42a3 100644
+--- a/packages/coding-agent/src/core/session-manager.ts
++++ b/packages/coding-agent/src/core/session-manager.ts
+@@ -6,11 +6,14 @@ import {
+ 	closeSync,
+ 	createReadStream,
+ 	existsSync,
++	fstatSync,
++	ftruncateSync,
+ 	mkdirSync,
+ 	openSync,
+ 	readdirSync,
+ 	readSync,
+ 	statSync,
++	unlinkSync,
+ 	writeFileSync,
+ } from "fs";
+ import { readdir, stat } from "fs/promises";
+@@ -1055,11 +1058,35 @@ export class SessionManager {
+ 		}
+ 	}
+ 
++	/** Custom state must survive a restart even before an assistant has replied. */
++	private _persistCustomEntry(entry: CustomEntry): void {
++		if (!this.persist || !this.sessionFile) return;
++		const entries = this.flushed ? [entry] : [...this.fileEntries, entry];
++		const bytes = entries.map((item) => `${JSON.stringify(item)}\n`).join("");
++		const fd = openSync(this.sessionFile, this.flushed ? "a" : "wx");
++		const size = fstatSync(fd).size;
++		let written = false;
++		try {
++			writeFileSync(fd, bytes);
++			written = true;
++		} catch (error) {
++			// Undo a partial append before reporting failure to the extension.
++			ftruncateSync(fd, size);
++			throw error;
++		} finally {
++			closeSync(fd);
++			if (!written && !this.flushed) unlinkSync(this.sessionFile);
++		}
++		this.flushed = true;
++	}
++
+ 	private _appendEntry(entry: SessionEntry): void {
++		// Commit custom state to memory only after its filesystem write succeeds.
++		if (entry.type === "custom") this._persistCustomEntry(entry);
+ 		this.fileEntries.push(entry);
+ 		this.byId.set(entry.id, entry);
+ 		this.leafId = entry.id;
+-		this._persist(entry);
++		if (entry.type !== "custom") this._persist(entry);
+ 	}
+ 
+ 	/** Append a message as child of current leaf, then advance leaf. Returns entry id.
+diff --git a/packages/coding-agent/src/core/system-prompt.ts b/packages/coding-agent/src/core/system-prompt.ts
+index 9247691..e3b0b04 100644
+--- a/packages/coding-agent/src/core/system-prompt.ts
++++ b/packages/coding-agent/src/core/system-prompt.ts
+@@ -3,6 +3,7 @@
+  */
+ 
+ import { getDocsPath, getExamplesPath, getReadmePath } from "../config.ts";
++import { formatInstructionContext, type InstructionFile } from "./instruction-context.ts";
+ import { formatSkillsForPrompt, type Skill } from "./skills.ts";
+ 
+ export interface BuildSystemPromptOptions {
+@@ -19,7 +20,7 @@ export interface BuildSystemPromptOptions {
+ 	/** Working directory. */
+ 	cwd: string;
+ 	/** Pre-loaded context files. */
+-	contextFiles?: Array<{ path: string; content: string }>;
++	contextFiles?: InstructionFile[];
+ 	/** Pre-loaded skills. */
+ 	skills?: Skill[];
+ }
+@@ -52,15 +53,7 @@ export function buildSystemPrompt(options: BuildSystemPromptOptions): string {
+ 			prompt += appendSection;
+ 		}
+ 
+-		// Append project context files
+-		if (contextFiles.length > 0) {
+-			prompt += "\n\n<project_context>\n\n";
+-			prompt += "Project-specific instructions and guidelines:\n\n";
+-			for (const { path: filePath, content } of contextFiles) {
+-				prompt += `<project_instructions path="${filePath}">\n${content}\n</project_instructions>\n\n`;
+-			}
+-			prompt += "</project_context>\n";
+-		}
++		prompt += formatInstructionContext(contextFiles);
+ 
+ 		// Append skills when a tool capable of reading their files is available.
+ 		if (skillFileReadTool && skills.length > 0) {
+@@ -147,15 +140,7 @@ Pi documentation (read only when the user asks about pi itself, its SDK, extensi
+ 		prompt += appendSection;
+ 	}
+ 
+-	// Append project context files
+-	if (contextFiles.length > 0) {
+-		prompt += "\n\n<project_context>\n\n";
+-		prompt += "Project-specific instructions and guidelines:\n\n";
+-		for (const { path: filePath, content } of contextFiles) {
+-			prompt += `<project_instructions path="${filePath}">\n${content}\n</project_instructions>\n\n`;
+-		}
+-		prompt += "</project_context>\n";
+-	}
++	prompt += formatInstructionContext(contextFiles);
+ 
+ 	// Append skills when a tool capable of reading their files is available.
+ 	if (skillFileReadTool && skills.length > 0) {
+diff --git a/packages/coding-agent/src/index.ts b/packages/coding-agent/src/index.ts
+index 6667389..415f78e 100644
+--- a/packages/coding-agent/src/index.ts
++++ b/packages/coding-agent/src/index.ts
+@@ -172,6 +172,7 @@ export {
+ } from "./core/extensions/index.ts";
+ // Footer data provider (git branch + extension statuses - data not otherwise available to extensions)
+ export type { ReadonlyFooterDataProvider } from "./core/footer-data-provider.ts";
++export { formatInstructionContext, formatInstructionFile, type InstructionFile } from "./core/instruction-context.ts";
+ export { convertToLlm } from "./core/messages.ts";
+ export { ModelRegistry } from "./core/model-registry.ts";
+ export {
+diff --git a/packages/coding-agent/test/resource-loader.test.ts b/packages/coding-agent/test/resource-loader.test.ts
+index 145eca3..bdf5dfe 100644
+--- a/packages/coding-agent/test/resource-loader.test.ts
++++ b/packages/coding-agent/test/resource-loader.test.ts
+@@ -368,9 +368,17 @@ Content`,
+ 			await loader.reload();
+ 
+ 			expect(loader.getAgentsFiles().agentsFiles).toEqual([
+-				{ path: join(agentDir, "AGENTS.override.md"), content: "global override" },
+-				{ path: join(cwd, "AGENTS.md"), content: "project instructions" },
+-				{ path: join(nestedCwd, "AGENTS.override.md"), content: "service override" },
++				{ path: join(agentDir, "AGENTS.override.md"), content: "global override", scope: { kind: "global" } },
++				{
++					path: join(cwd, "AGENTS.md"),
++					content: "project instructions",
++					scope: { kind: "workspace", directory: cwd },
++				},
++				{
++					path: join(nestedCwd, "AGENTS.override.md"),
++					content: "service override",
++					scope: { kind: "workspace", directory: nestedCwd },
++				},
+ 			]);
+ 		});
+ 
+@@ -386,6 +394,7 @@ Content`,
+ 			expect(loader.getAgentsFiles().agentsFiles).toContainEqual({
+ 				path: join(cwd, "CLAUDE.md"),
+ 				content: "Fallback instructions",
++				scope: { kind: "workspace", directory: cwd },
+ 			});
+ 			expect(consoleError).not.toHaveBeenCalledWith(expect.stringContaining(join(cwd, "AGENTS.md")));
+ 			expect(consoleError).not.toHaveBeenCalledWith(expect.stringContaining(join(cwd, "AGENTS.override.md")));
+diff --git a/packages/coding-agent/test/scoped-instructions.test.ts b/packages/coding-agent/test/scoped-instructions.test.ts
+new file mode 100644
+index 0000000..c0c5946
+--- /dev/null
++++ b/packages/coding-agent/test/scoped-instructions.test.ts
+@@ -0,0 +1,56 @@
++import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
++import { tmpdir } from "node:os";
++import { join } from "node:path";
++import { afterEach, expect, test } from "vitest";
++import { DefaultResourceLoader } from "../src/core/resource-loader.ts";
++import { SettingsManager } from "../src/core/settings-manager.ts";
++import { buildSystemPrompt } from "../src/core/system-prompt.ts";
++
++const roots: string[] = [];
++afterEach(() => {
++	for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
++});
++
++test.each([undefined, "CUSTOM CORE"])(
++	"real loader preserves instruction authority with %s core",
++	async (customPrompt) => {
++		const root = mkdtempSync(join(tmpdir(), "pi-scopes-"));
++		roots.push(root);
++		const agentDir = join(root, "agent");
++		const parent = join(root, "workspace");
++		const cwd = join(parent, "nested");
++		mkdirSync(agentDir, { recursive: true });
++		mkdirSync(cwd, { recursive: true });
++		const content = "OPAQUE\n```\n<project_context> literal {{GLOBAL_INSTRUCTIONS}}\n```\n";
++		writeFileSync(join(agentDir, "AGENTS.md"), content);
++		writeFileSync(join(parent, "AGENTS.md"), "PARENT");
++		writeFileSync(join(cwd, "CLAUDE.md"), "NESTED");
++		const settingsManager = SettingsManager.inMemory();
++		settingsManager.setProjectTrusted(true);
++		const loader = new DefaultResourceLoader({
++			cwd,
++			agentDir,
++			settingsManager,
++			noExtensions: true,
++			noSkills: true,
++			noThemes: true,
++			noPromptTemplates: true,
++		});
++		await loader.reload();
++		const contextFiles = loader.getAgentsFiles().agentsFiles;
++		expect(contextFiles.map((f) => f.scope)).toEqual([
++			{ kind: "global" },
++			{ kind: "workspace", directory: parent },
++			{ kind: "workspace", directory: cwd },
++		]);
++		const prompt = buildSystemPrompt({ cwd, contextFiles, customPrompt });
++		expect(prompt).toContain(
++			`<global_instructions path="${join(agentDir, "AGENTS.md")}">\n${content}\n</global_instructions>`,
++		);
++		expect(prompt).toContain(
++			`<workspace_instructions path="${join(parent, "AGENTS.md")}" directory="${parent}">\nPARENT\n</workspace_instructions>`,
++		);
++		expect(prompt.indexOf("PARENT")).toBeLessThan(prompt.indexOf("NESTED"));
++		expect(prompt).not.toContain("Project-specific instructions and guidelines:");
++	},
++);
+diff --git a/packages/coding-agent/test/session-custom-persistence.test.ts b/packages/coding-agent/test/session-custom-persistence.test.ts
+new file mode 100644
+index 0000000..840ebdd
+--- /dev/null
++++ b/packages/coding-agent/test/session-custom-persistence.test.ts
+@@ -0,0 +1,52 @@
++import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync } from "node:fs";
++import { tmpdir } from "node:os";
++import { join } from "node:path";
++import { afterEach, expect, test } from "vitest";
++import { SessionManager } from "../src/core/session-manager.ts";
++
++const roots: string[] = [];
++afterEach(() => {
++	for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
++});
++
++function manager() {
++	const root = mkdtempSync(join(tmpdir(), "pi-custom-persist-"));
++	roots.push(root);
++	return SessionManager.create(root, root);
++}
++
++test("custom state is written before the first assistant and restored on open", () => {
++	const sm = manager();
++	sm.appendCustomEntry("selection", { name: "voice.md" });
++	expect(existsSync(sm.getSessionFile()!)).toBe(true);
++	expect(SessionManager.open(sm.getSessionFile()!).getBranch().at(-1)).toMatchObject({
++		type: "custom",
++		data: { name: "voice.md" },
++	});
++});
++
++test("failed initial custom write leaves no in-memory selection", () => {
++	const sm = manager();
++	const before = sm.getEntries();
++	mkdirSync(sm.getSessionFile()!);
++	expect(() => sm.appendCustomEntry("selection", { name: "voice.md" })).toThrow();
++	expect(sm.getEntries()).toEqual(before);
++	expect(sm.getLeafId()).toBe(null);
++});
++
++test("failed subsequent custom write retains previous branch and disk state", () => {
++	const sm = manager();
++	const first = sm.appendCustomEntry("selection", { name: "one.md" });
++	const file = sm.getSessionFile()!;
++	const bytes = readFileSync(file, "utf8");
++	renameSync(file, `${file}.saved`);
++	mkdirSync(file);
++	expect(() => sm.appendCustomEntry("selection", { name: "two.md" })).toThrow();
++	expect(sm.getLeafId()).toBe(first);
++	expect(sm.getBranch()).toHaveLength(1);
++	rmSync(file, { recursive: true });
++	renameSync(`${file}.saved`, file);
++	expect(readFileSync(file, "utf8")).toBe(bytes);
++	sm.appendCustomEntry("selection", { name: "three.md" });
++	expect(SessionManager.open(file).getBranch().at(-1)).toMatchObject({ data: { name: "three.md" } });
++});

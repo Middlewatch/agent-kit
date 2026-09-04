@@ -4,6 +4,7 @@
 # dependency install may access the npm registry.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+: "${PI_SOURCE_DIR:?verify requires the patched Pi source checkout; see README.md}"
 
 # Toolchain floor: the unit tests run TypeScript directly through node's
 # --experimental-strip-types (node 22.6+; on by default from node 23).
@@ -17,3 +18,4 @@ npm ci --ignore-scripts --no-audit --no-fund
 npm run format:check
 npm run typecheck
 npm run test:unit
+npm run test:conformance

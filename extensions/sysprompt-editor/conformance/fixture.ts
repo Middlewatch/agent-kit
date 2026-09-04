@@ -13,9 +13,10 @@ import {
   SettingsManager,
   SessionManager,
   createAgentSession,
+  type ExtensionAPI,
 } from "@earendil-works/pi-coding-agent";
-import { createHarness } from "@pi-source/packages/coding-agent/test/suite/harness.ts";
-import { createFauxStreamFn } from "@pi-source/packages/coding-agent/test/test-harness.ts";
+import { createHarness } from "@pi-source/packages/coding-agent/test/suite/harness";
+import { createFauxStreamFn } from "@pi-source/packages/coding-agent/test/test-harness";
 import systemPromptExtension from "../index.ts";
 
 const cleanups: (() => void)[] = [];
@@ -32,6 +33,8 @@ export async function fixture({
   additions = false,
   reuse,
   sessionManager,
+  eraseScope = false,
+  driftCore = false,
 }: {
   customPrompt?: string;
   template?: string;
@@ -41,6 +44,8 @@ export async function fixture({
   additions?: boolean;
   reuse?: { root: string };
   sessionManager?: SessionManager;
+  eraseScope?: boolean;
+  driftCore?: boolean;
 } = {}) {
   const root = reuse?.root ?? mkdtempSync(join(tmpdir(), "sysprompt-real-"));
   if (!reuse)
@@ -71,6 +76,7 @@ export async function fixture({
   const settingsManager = SettingsManager.inMemory();
   settingsManager.setProjectTrusted(true);
   const payloads: unknown[] = [];
+  const incoming: string[] = [];
   const resourceLoader = new DefaultResourceLoader({
     cwd,
     agentDir,
@@ -80,30 +86,58 @@ export async function fixture({
     noExtensions: true,
     noSkills: false,
     noThemes: true,
+    agentsFilesOverride: eraseScope
+      ? (base) => ({
+          agentsFiles: base.agentsFiles.map(({ path, content }) => ({
+            path,
+            content,
+          })),
+        })
+      : undefined,
     noPromptTemplates: true,
     extensionFactories: [
+      (pi: ExtensionAPI) => {
+        pi.on("before_agent_start", (event) =>
+          driftCore
+            ? {
+                systemPrompt: event.systemPrompt.replace(
+                  "Guidelines:",
+                  "Changed guidelines:",
+                ),
+              }
+            : undefined,
+        );
+      },
       ...(additions
         ? [
-            (pi) => {
+            (pi: ExtensionAPI) => {
               pi.on("before_agent_start", (event) => ({
                 systemPrompt: event.systemPrompt + "\nPRIOR ADDITION",
               }));
             },
           ]
         : []),
+      (pi: ExtensionAPI) => {
+        pi.on("before_agent_start", (event) => {
+          incoming.push(event.systemPrompt);
+        });
+      },
       ...(editor
-        ? [(pi) => systemPromptExtension(pi, { templatesDir, artifactsDir })]
+        ? [
+            (pi: ExtensionAPI) =>
+              systemPromptExtension(pi, { templatesDir, artifactsDir }),
+          ]
         : []),
       ...(additions
         ? [
-            (pi) => {
+            (pi: ExtensionAPI) => {
               pi.on("before_agent_start", (event) => ({
                 systemPrompt: event.systemPrompt + "\nLATER ADDITION",
               }));
             },
           ]
         : []),
-      (pi) => {
+      (pi: ExtensionAPI) => {
         pi.on("before_provider_request", (event) => {
           payloads.push(structuredClone(event.payload));
         });
@@ -156,6 +190,7 @@ export async function fixture({
     templatesDir,
     artifactsDir,
     payloads,
+    incoming,
     resourceLoader,
     prompt,
   };

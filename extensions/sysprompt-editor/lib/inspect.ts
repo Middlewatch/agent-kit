@@ -4,6 +4,7 @@
  * state, and the shared stamp/collision helpers for artifact filenames.
  */
 import * as fs from "node:fs";
+import { evidenceLines, sha256, type PromptEvidence } from "./evidence.ts";
 import * as path from "node:path";
 import type { BuildSystemPromptOptions } from "@earendil-works/pi-coding-agent";
 
@@ -178,9 +179,17 @@ function headerLines(title: string, header: DumpHeader): string {
 export function renderProviderDump(
   header: DumpHeader,
   payload: unknown,
+  evidence?: PromptEvidence | null,
 ): { md: string; txt: string | null } {
-  const head = headerLines("Provider system prompt (ground truth)", header);
+  let head = headerLines("Provider system prompt (ground truth)", header);
   const extracted = extractSystemPromptFromPayload(payload);
+  if (evidence)
+    head += evidenceLines({
+      ...evidence,
+      ...(extracted === null
+        ? {}
+        : { providerSystemSha256: sha256(extracted) }),
+    });
   if (extracted !== null) {
     return { md: `${head}\n${fenced(extracted)}`, txt: extracted };
   }
@@ -196,18 +205,19 @@ export function renderProviderDump(
   return { md: `${head}\n${note}\n${body}`, txt: null };
 }
 
-// One-shot armed capture state: the raw stamp of the pending inspect, taken
-// once by the next provider request.
-let armed: string | null = null;
-
-export function armCapture(stamp: string): void {
-  armed = stamp;
-}
-
-export function takeArmedCapture(): string | null {
-  const stamp = armed;
-  armed = null;
-  return stamp;
+/** One-shot capture belongs to an extension instance, never the module. */
+export function createCaptureState() {
+  let armed: string | null = null;
+  return {
+    armCapture(stamp: string): void {
+      armed = stamp;
+    },
+    takeArmedCapture(): string | null {
+      const stamp = armed;
+      armed = null;
+      return stamp;
+    },
+  };
 }
 
 // Wire pickup for claude-go: with CLAUDE_GO_CAPTURE_DIR set, the bridge's
