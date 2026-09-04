@@ -67,3 +67,19 @@ turn ends without the event, the capture is cancelled with a warning.
 
 `DESIGN.md` is the design basis. `scripts/verify.sh` is the definition of
 green (node 22, `npm ci`, prettier, tsc, unit tests).
+
+## Source conformance
+
+Scoped instruction placement targets Pi v0.85.0 with the companion source
+change based on upstream `107d79f11072bbc8a3a757ed7fd69596bee7d68c`.
+The loader records global or workspace scope, including the workspace directory,
+in `contextFiles[].scope`. Pi renders a neutral `instruction_context` container
+with `global_instructions` and `workspace_instructions` blocks for both stock
+and custom cores. Legacy SDK context without scope uses an `instructions` block.
+
+Run `PI_SOURCE_DIR=<patched-checkout> node scripts/conformance.mjs` from this
+extension directory. The fixture uses the real loader and AgentSession, then
+records a provider payload without network access. Install the source checkout's
+locked dependencies and build its chord, telemetry, and ai packages first;
+Pi's development guide covers generated model data. This command does not
+modify or deploy the installed runtime.

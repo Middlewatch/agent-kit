@@ -7,6 +7,7 @@
 /** Split the assembled prompt into [core, tail] at the first appended layer. */
 export function splitTail(prompt: string): [core: string, tail: string] {
   for (const marker of [
+    "\n\n<instruction_context>",
     "\n\n<project_context>",
     "\n\nThe following skills provide specialized instructions",
     "\n<available_skills>",
