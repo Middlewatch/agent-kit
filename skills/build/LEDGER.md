@@ -9,3 +9,6 @@ Revision record per AUTHORING.md's ledger section.
   features.
 - Change: step 4 (Gate once) now says a slice that adds a gate invariant
   breaks it once and watches it go red before trusting green.
+- Outcome (2026-09-04 sweep): followed in both build-driven sessions since
+  (09-04 introspect-scan and autojournal Files-section builds: new fixture
+  gates broken once before trusting green). One day of evidence.

@@ -21,7 +21,7 @@ beneath it.
 | `guidance/trail-standard.md` | Decision-trail format, when a trail earns its place, pause/resume conventions. |
 | `guidance/planning-map.md` | The long-horizon decision map format. |
 | `playbooks/TEMPLATE.md` | The playbook file template. |
-| `playbooks/*.md` | Task-shape step lists (investigation, bug-fix, hillclimb, trace-forensics, refactoring, prototype, interrogate, authoring-a-skill, long-horizon-planning, session-pickup, pause-safely). |
+| `playbooks/*.md` | Task-shape step lists (investigation, bug-fix, hillclimb, trace-forensics, refactoring, prototype, interrogate, long-horizon-planning, session-pickup, pause-safely). |
 | `principles/*.md` | 20 leaf principle files, adapted from pstack near verbatim. |
 | `tools/trail/trail` | Append-only TSV decision logger: owns header, UTC timestamp, cell sanitization, formula-prefix escaping. The kit's `deployments.json` links it into `~/.local/bin`. |
 | `tools/trail/test_trail.sh` | The trail tool's gate, 15 checks. |

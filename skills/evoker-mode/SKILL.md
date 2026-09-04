@@ -145,7 +145,7 @@ proceed without one.
 - **Refactoring.** Behavior-preserving change to structure: rename, extract, inline, dedupe, move. `playbooks/refactoring.md`.
 - **Prototype.** A throwaway sketch to settle a design or empirical fork by observing instead of asking. `playbooks/prototype.md`.
 - **Interrogate.** Multi-perspective adversarial review of a contested design or risky diff, on review children. `playbooks/interrogate.md`.
-- **Authoring a skill.** Writing or editing a SKILL.md or playbook. `playbooks/authoring-a-skill.md`.
+- **Authoring a skill.** Writing or editing a SKILL.md or playbook: run the `skill-author` skill; a playbook also follows `guidance/playbook-standard.md`.
 - **Long-horizon planning.** A decision map (`docs/plans/<slug>.md`) for an effort too foggy for one spec conversation; one question per session, feeding `spec`. `playbooks/long-horizon-planning.md`.
 - **Session pickup.** Resuming or taking over a prior agent's in-flight work. `playbooks/session-pickup.md`.
 - **Pause safely.** Suspending in-flight work cleanly so it can be resumed. `playbooks/pause-safely.md`.
