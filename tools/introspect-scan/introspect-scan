@@ -2,11 +2,16 @@
 """Scan journals for steering-artifact usage: skill invocations and wiki touches.
 
 The read side of the introspect sweep (the kit's docs/specs/2026-09-01-introspect.md).
-Scans journal episodes for skill invocations (the harness's skill-injection
-marker: pi's `<skill name="x"` tag, Claude Code's `Base directory for this
-skill: .../skills/x` line), path-shaped skill mentions (`skills/<name>`,
-`<name>/SKILL.md`) and wiki note slugs outside injected skill bodies, and
-inventories friction notes in the inbox. `--episodes <artifact>` lists the
+Scans journal episodes for skill invocations and wiki note touches. An
+episode carrying a `## Files` section (autojournal 2.1, policy pi-visible-v3,
+live or backfilled) is read exactly: a successful `read`, `bash`, or
+`child:read` of a file under `skills/<name>/` is an invocation of that skill
+and of a wiki note filename a touch. Older episodes fall back to the
+harness's skill-injection marker (pi's `<skill name="x"` tag, Claude Code's
+`Base directory for this skill: .../skills/x` line). Path-shaped skill
+mentions (`skills/<name>`, `<name>/SKILL.md`) in prose outside injected
+skill bodies and the Files section are reported separately, and friction
+notes in the inbox are inventoried. `--episodes <artifact>` lists the
 episodes behind a count so the sweep can sample them; `--write` appends the
 dated snapshot under the wiki's `metrics/introspect/` so months compare.
 
@@ -37,6 +42,25 @@ AGENTS = pathlib.Path.home() / ".agents"
 INJECTED = re.compile(
     r'<skill name="[^"]+"[^>]*>.*?(?:</skill>|\Z)|Base directory for this skill:[^\n]*',
     re.S)
+# autojournal's consultation footprint: the body's trailing `## Files`
+# section, one `- <op> <target>` line per entry. Only successful reads are
+# consultation; `read!`/`child:read!` are failures and `memory_get`/
+# `web_fetch` are not corpus files.
+FILES_SECTION = re.compile(r"\n\n## Files\n\n((?:- \S+ [^\n]*\n)+)\Z")
+CONSULT_OPS = {"read", "bash", "child:read"}
+
+
+def consulted(text):
+    """Returns (targets, body_without_files_section) or (None, text)."""
+    m = FILES_SECTION.search(text)
+    if m is None:
+        return None, text
+    targets = []
+    for line in m.group(1).splitlines():
+        op, _, target = line[2:].partition(" ")
+        if op in CONSULT_OPS:
+            targets.append(target)
+    return targets, text[:m.start()] + "\n"
 
 
 def parse_args():
@@ -96,16 +120,22 @@ def scan(journals, skills, notes):
     note_pat = re.compile(
         r"wiki/[A-Za-z0-9_/.-]*?([A-Za-z0-9_-]+\.md)|(?:^|[\s`'\"(/])((?:%s))(?![\w-])"
         % "|".join(re.escape(n) for n in sorted(notes))) if notes else NEVER
+    files_skill = re.compile(r"(?<![\w-])skills/(%s)/" % names) if skills else NEVER
     rows = []  # (path, date, invoked, mentioned, note_hits)
     for ep in sorted(journals.resolve().rglob("*.md")):
         try:
             text = ep.read_text(errors="replace")
         except OSError:
             continue
-        invoked = {m.group(1) or m.group(2) for m in invoke_pat.finditer(text)}
+        targets, text = consulted(text)
         body = INJECTED.sub("", text)
+        if targets is None:
+            invoked = {m.group(1) or m.group(2) for m in invoke_pat.finditer(text)}
+            n_hits = {m.group(1) or m.group(2) for m in note_pat.finditer(body)} & notes
+        else:
+            invoked = {m.group(1) for t in targets for m in [files_skill.search(t)] if m}
+            n_hits = {t.rsplit("/", 1)[-1].split(":")[0] for t in targets} & notes
         mentioned = {m.group(1) or m.group(2) for m in skill_pat.finditer(body)}
-        n_hits = {m.group(1) or m.group(2) for m in note_pat.finditer(body)} & notes
         rows.append((ep, episode_date(ep), invoked, mentioned, n_hits))
     return rows
 

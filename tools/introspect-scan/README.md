@@ -7,13 +7,18 @@ uses `--episodes` to pull the evidence behind any count.
 
 Three signals per episode:
 
-- **Invocation**: the harness's skill-injection marker. pi wraps the body in
+- **Invocation**: when the episode carries autojournal's `## Files` section
+  (policy `pi-visible-v3`, live or backfilled), a successful `read`, `bash`,
+  or `child:read` of any file under `skills/<name>/`. Otherwise the
+  harness's skill-injection marker: pi wraps the body in
   `<skill name="x" ...>...</skill>`; Claude Code prefixes it with
   `Base directory for this skill: .../skills/x`.
 - **Mention**: a path-shaped reference (`skills/<name>`, `<name>/SKILL.md`)
-  outside any injected skill body. Mostly sessions editing the skill.
-- **Note touch**: a wiki note slug or `wiki/...` path outside any injected
-  skill body.
+  in prose outside any injected skill body and the Files section. Mostly
+  sessions editing the skill.
+- **Note touch**: with a Files section, a consulted target whose filename is
+  a wiki note; otherwise a wiki note slug or `wiki/...` path outside any
+  injected skill body.
 
 ## Usage
 
@@ -42,13 +47,15 @@ untriaged inbox depth.
 
 ## Measurement bias
 
-By construction, an invocation marker undercounts influence (a skill absorbed
-into habit leaves no marker; prose mentions deliberately do not count) and a
-model-invoked skill in pi leaves none either: the model calls `read` on
-`SKILL.md`, and the journal's `## Tools` section records tool names, not
-arguments, so the adr skill read as never invoked while 33 episodes wrote
-ADRs in its exact template (2026-09-03 sweep). Only `/skill:name` produces
-the pi tag. A
+Episodes with a Files section count consultation exactly for the `read`
+tool, `.md` path tokens in bash commands, and delegated children's
+`inspect_read`; they still miss a skill absorbed into habit (no read at
+all) and paths read by other means. Episodes without one (before the
+2026-09 backfill, and every Claude Code episode) fall back to the injection
+marker, which undercounts: a model-invoked skill in pi is a `read` of
+`SKILL.md` that the marker never sees, so the adr skill read as never
+invoked while 33 episodes wrote ADRs in its exact template (2026-09-03
+sweep). Prose mentions deliberately do not count as invocations. A
 path mention mostly measures curation (sessions that edit a skill name its
 path without following it). Injected skill bodies are stripped before
 matching mentions and note touches, because a skill that cites another
