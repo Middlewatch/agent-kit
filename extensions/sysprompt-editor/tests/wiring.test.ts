@@ -44,7 +44,16 @@ function harness(paths: Partial<ExtensionPaths> = {}): Harness {
   const stub = {
     appendEntry: state.appendEntry,
     on(name: string, fn: Handler) {
-      handlers.set(name, (event, ctx) => fn(event, state.context(ctx)));
+      handlers.set(name, (event, ctx) =>
+        fn(
+          {
+            originalSystemPrompt: event.systemPrompt,
+            model: ctx?.model ?? { provider: "unknown", id: "unknown" },
+            ...event,
+          },
+          state.context(ctx),
+        ),
+      );
     },
     registerCommand(name: string, options: { handler: Harness["command"] }) {
       assert.equal(name, "sysprompt");
@@ -244,12 +253,12 @@ test("wiring: inspect inventories inputs and arms an instance-local capture", as
   const stamp = await arm(h);
   const file = path.join(h.artifactsDir, "inspect", `${stamp}-immediate.md`);
   assert.match(fs.readFileSync(file, "utf8"), /Selection and scoped inputs/);
-  await other.handlers.get("before_provider_request")!(
+  await other.handlers.get("provider_request")!(
     { payload: { system: "OTHER" } },
     stubUi().ctx,
   );
   assert.equal(fs.existsSync(path.join(other.artifactsDir, "inspect")), false);
-  await h.handlers.get("before_provider_request")!(
+  await h.handlers.get("provider_request")!(
     { payload: { system: "EXACT\nBYTES" } },
     stubUi().ctx,
   );
@@ -260,7 +269,7 @@ test("wiring: inspect inventories inputs and arms an instance-local capture", as
     ),
     "EXACT\nBYTES",
   );
-  await h.handlers.get("before_provider_request")!(
+  await h.handlers.get("provider_request")!(
     { payload: { system: "LATER" } },
     stubUi().ctx,
   );
@@ -299,7 +308,7 @@ test("wiring: turn end cancels a provider that did not expose its payload", asyn
   await h.handlers.get("turn_end")!({}, ui.ctx);
   assert.match(ui.notices[0]!.message, /provider did not expose its payload/);
   assert.equal(ui.notices[0]!.type, "warning");
-  await h.handlers.get("before_provider_request")!(
+  await h.handlers.get("provider_request")!(
     { payload: { system: "late" } },
     ui.ctx,
   );
@@ -315,7 +324,7 @@ test("wiring: unrecognized payload writes raw JSON and warns", async () => {
   const h = harness();
   const stamp = await arm(h);
   const ui = stubUi();
-  await h.handlers.get("before_provider_request")!(
+  await h.handlers.get("provider_request")!(
     { payload: { input: "unknown" } },
     ui.ctx,
   );
@@ -334,7 +343,7 @@ test("wiring: provider artifact write failure reports error and clears capture",
   const ui = stubUi();
   fs.rmSync(h.artifactsDir, { recursive: true });
   fs.writeFileSync(h.artifactsDir, "blocked");
-  await h.handlers.get("before_provider_request")!(
+  await h.handlers.get("provider_request")!(
     { payload: { system: "SYS" } },
     ui.ctx,
   );
@@ -385,7 +394,7 @@ test("wiring: turn_end with pending capture writes the result file", async () =>
   );
   const before = h.handlers.get("before_agent_start")!;
   assert.equal(await before({ systemPrompt: STOCK_CORE }, ui.ctx), undefined);
-  await h.handlers.get("before_provider_request")!(
+  await h.handlers.get("provider_request")!(
     { payload: { system: STOCK_CORE } },
     stubUi({ model }).ctx,
   );
@@ -484,9 +493,13 @@ test("wiring: result header records the rendered template name and sha256", asyn
   await before({ systemPrompt: STOCK_CORE }, {});
   await turnEnd({ message: REPLY }, stubUi({ model }).ctx);
   assert.equal(fs.readdirSync(dir).length, 5);
-  // A model without ctx.model falls to unknown/unknown in file and header.
+  // Model identity comes from the provider observation, not the command context.
   await h.command("test", stubUi({}).ctx);
   await before({ systemPrompt: STOCK_CORE }, {});
+  await h.handlers.get("provider_request")!(
+    { payload: { system: STOCK_CORE } },
+    stubUi({}).ctx,
+  );
   await turnEnd({ message: REPLY }, stubUi({}).ctx);
   const names = fs.readdirSync(dir).sort();
   assert.equal(names.length, 6);

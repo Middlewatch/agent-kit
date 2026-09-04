@@ -27,3 +27,12 @@ the editor requires scope before it can relocate loaded files.
 The loader's array order preserves global then ancestor-to-descendant precedence.
 Inspection records each file's scope, directory where applicable, and content hash.
 These are evidence about a capture, not another instruction store.
+
+## Prompt provenance
+
+Pi's `coreSource` identifies a stock core, inline custom text, or the path of a
+custom-core file. `before_agent_start.originalSystemPrompt` preserves the baseline
+for checking chained edits. The `provider_request` event exposes isolated final
+payload snapshots plus request-time model identity. The editor's `PromptEvidence`
+type in `~/.agents/kit/extensions/sysprompt-editor/lib/evidence.ts` records those facts and content hashes for explicit
+captures and output tests.

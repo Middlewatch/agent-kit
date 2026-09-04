@@ -57,7 +57,14 @@ function capturedHandler(): (
     appendEntry: state.appendEntry,
     on(name: string, fn: unknown) {
       if (name === "before_agent_start")
-        handler = (event: unknown) => (fn as any)(event, state.context());
+        handler = (event: unknown) =>
+          (fn as any)(
+            {
+              originalSystemPrompt: (event as any).systemPrompt,
+              ...(event as object),
+            },
+            state.context(),
+          );
     },
     registerCommand() {},
   };
@@ -201,7 +208,14 @@ test("{{SKILLS}} relocates pi's stock skills block into the template", async () 
       appendEntry: state.appendEntry,
       on(name: string, fn: unknown) {
         if (name === "before_agent_start")
-          handler = (event: unknown) => (fn as any)(event, state.context());
+          handler = (event: unknown) =>
+            (fn as any)(
+              {
+                originalSystemPrompt: (event as any).systemPrompt,
+                ...(event as object),
+              },
+              state.context(),
+            );
       },
       registerCommand() {},
     } as never,
@@ -245,7 +259,14 @@ test("{{SKILLS}} lifts the block when no project context precedes it", async () 
       appendEntry: state.appendEntry,
       on(name: string, fn: unknown) {
         if (name === "before_agent_start")
-          handler = (event: unknown) => (fn as any)(event, state.context());
+          handler = (event: unknown) =>
+            (fn as any)(
+              {
+                originalSystemPrompt: (event as any).systemPrompt,
+                ...(event as object),
+              },
+              state.context(),
+            );
       },
       registerCommand() {},
     } as never,

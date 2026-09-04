@@ -42,7 +42,14 @@ function capturedHandler(
     appendEntry: state.appendEntry,
     on(name: string, fn: unknown) {
       if (name === "before_agent_start")
-        handler = (event: unknown) => (fn as any)(event, state.context());
+        handler = (event: unknown) =>
+          (fn as any)(
+            {
+              originalSystemPrompt: (event as any).systemPrompt,
+              ...(event as object),
+            },
+            state.context(),
+          );
     },
     registerCommand() {},
   };

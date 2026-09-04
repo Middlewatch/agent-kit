@@ -1,6 +1,6 @@
 # Scoped system-prompt templates
 
-Date: 2026-09-04   Status: building
+Date: 2026-09-04   Status: done
 
 ## Problem
 
@@ -173,3 +173,16 @@ separate owner-approved activity, not a mandatory paid unit-test dependency.
 - Confirm the supported Pi revision and local source checkout before S1. This
   change includes the Pi loader contract as well as the kit extension; changing
   installed generated JavaScript is not the implementation path.
+
+## Build evidence
+
+All four slices are committed. The companion patch at
+`~/.agents/kit/extensions/sysprompt-editor/patches/pi-0.85.0.patch` targets upstream
+Pi v0.85.0 (`107d79f11072bbc8a3a757ed7fd69596bee7d68c`) and reproduces the development
+source tree when applied to that revision.
+
+Final gates: 52 extension unit tests, 30 source-conformance cases, 231 focused Pi
+tests, Pi's full check, and the kit's install/lint/checker gates. The single review
+found core-prose loss and provenance gaps; the regressions and fixes are in
+`~/.agents/kit/extensions/sysprompt-editor/conformance/review.test.ts`.
+No live provider evaluation or runtime deployment was performed.

@@ -35,6 +35,10 @@ export async function fixture({
   sessionManager,
   eraseScope = false,
   driftCore = false,
+  insertCore = false,
+  transformPayload = false,
+  customFile,
+  beforeStart,
 }: {
   customPrompt?: string;
   template?: string;
@@ -46,6 +50,10 @@ export async function fixture({
   sessionManager?: SessionManager;
   eraseScope?: boolean;
   driftCore?: boolean;
+  insertCore?: boolean;
+  transformPayload?: boolean;
+  customFile?: "global" | "workspace";
+  beforeStart?: () => Promise<void>;
 } = {}) {
   const root = reuse?.root ?? mkdtempSync(join(tmpdir(), "sysprompt-real-"));
   if (!reuse)
@@ -73,9 +81,15 @@ export async function fixture({
       "---\nname: probe\ndescription: SKILL DESCRIPTION\n---\nSkill body.\n",
     );
   }
+  if (customFile) {
+    const dir = customFile === "global" ? agentDir : join(cwd, ".pi");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, "SYSTEM.md"), "FILE CORE");
+  }
   const settingsManager = SettingsManager.inMemory();
   settingsManager.setProjectTrusted(true);
   const payloads: unknown[] = [];
+  const finalPayloads: unknown[] = [];
   const incoming: string[] = [];
   const resourceLoader = new DefaultResourceLoader({
     cwd,
@@ -96,6 +110,25 @@ export async function fixture({
       : undefined,
     noPromptTemplates: true,
     extensionFactories: [
+      (pi: ExtensionAPI) => {
+        if (transformPayload)
+          pi.on("provider_request", (event) => {
+            (event.payload as { system: string }).system = "OBSERVER MUTATION";
+            event.model.id = "OBSERVER MODEL MUTATION";
+          });
+      },
+      (pi: ExtensionAPI) => {
+        pi.on("before_agent_start", async (event) => {
+          await beforeStart?.();
+          if (insertCore)
+            return {
+              systemPrompt: event.systemPrompt.replace(
+                "\n\nAvailable tools:",
+                "\n\nCRITICAL PRIOR POLICY\n\nAvailable tools:",
+              ),
+            };
+        });
+      },
       (pi: ExtensionAPI) => {
         pi.on("before_agent_start", (event) =>
           driftCore
@@ -138,6 +171,13 @@ export async function fixture({
           ]
         : []),
       (pi: ExtensionAPI) => {
+        if (transformPayload)
+          pi.on("before_provider_request", (event) => ({
+            ...(event.payload as object),
+            system: "ACTUAL FINAL",
+          }));
+      },
+      (pi: ExtensionAPI) => {
         pi.on("before_provider_request", (event) => {
           payloads.push(structuredClone(event.payload));
         });
@@ -167,16 +207,17 @@ export async function fixture({
   const { streamFn } = createFauxStreamFn(["recorded"]);
   session.agent.streamFunction = async (model, context, options) => {
     // A recording provider's serialization boundary, with no network transport.
-    await options?.onPayload?.(
-      { system: context.systemPrompt, messages: context.messages },
-      model,
-    );
+    const payload = {
+      system: context.systemPrompt,
+      messages: context.messages,
+    };
+    finalPayloads.push((await options?.onPayload?.(payload, model)) ?? payload);
     return streamFn(model, context, options);
   };
   async function prompt() {
     await session.prompt("probe");
     expect(payloads.length).toBeGreaterThan(0);
-    const payload = payloads.at(-1) as { system: string };
+    const payload = finalPayloads.at(-1) as { system: string };
     return payload.system;
   }
   return {
@@ -190,6 +231,7 @@ export async function fixture({
     templatesDir,
     artifactsDir,
     payloads,
+    finalPayloads,
     incoming,
     resourceLoader,
     prompt,

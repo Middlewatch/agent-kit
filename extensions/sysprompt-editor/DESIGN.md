@@ -12,7 +12,9 @@ have no role in selection.
 
 ## Assembly
 
-`lib/splice.ts` separates the stock core, explicit append, and remaining tail.
+The runner's `originalSystemPrompt` lets the editor reject unaccounted core changes
+before rewriting. `lib/splice.ts` separates the stock core, explicit append, and
+remaining tail.
 `lib/instructions.ts` matches the complete scoped container before scanning the
 rest of the tail for skills. Loaded file contents remain opaque. Global and
 workspace slots consume their blocks once; omitted slots leave those files in the
@@ -44,8 +46,10 @@ Template contents and prompt history are not stored in the selection entry.
 
 ## Inspection and output tests
 
-The immediate dump is a command-time input inventory. An armed provider capture
-records the next payload and is authoritative for prompt bytes. Providers must
+The immediate dump is a command-time input inventory, including the effective
+core source. An armed `provider_request` observer captures the final payload after
+all transforms. Pi gives each observer an isolated snapshot and request-time model
+identity; observer mutations cannot alter the request. Providers must
 call `options.onPayload`; a turn ending without a payload cancels the arm and
 warns. The optional bridge wire capture records downstream system bytes separately.
 
@@ -53,7 +57,9 @@ The output test sends its fixture through a normal session turn and records the
 final reply. Tool-use turns leave it pending. The command refuses a busy session
 or a second pending test. Results identify the template bytes that rendered. The command also arms provider
 capture. Both artifacts include selection, fallback/bypass reason, scoped input
-hashes, and the provider-text hash. Capture state is instance-local and clears on
+hashes, core source, and the provider-text hash. Output tests capture each provider
+request and link the final capture from the result. Model labels come from that
+request; without an observation the result says `unobserved`. Capture state is instance-local and clears on
 session replacement or tree navigation.
 
 ## Verification

@@ -1,8 +1,66 @@
+diff --git a/packages/coding-agent/docs/extensions.md b/packages/coding-agent/docs/extensions.md
+index ce13db6..a54ee26 100644
+--- a/packages/coding-agent/docs/extensions.md
++++ b/packages/coding-agent/docs/extensions.md
+@@ -297,6 +297,7 @@ user sends prompt ────────────────────
+   │   ├─► context (can modify messages)            │       │
+   │   ├─► before_provider_headers (can mutate headers)     |
+   │   ├─► before_provider_request (can inspect or replace payload)
++  │   ├─► provider_request (isolated observation of the final payload)
+   │   ├─► after_provider_response (status + headers, before stream consume)
+   │   │                                            │       │
+   │   │   LLM responds, may call tools:            │       │
+@@ -537,6 +538,7 @@ pi.on("before_agent_start", async (event, ctx) => {
+   // event.images - attached images (if any)
+   // event.systemPrompt - current chained system prompt for this handler
+   //   (includes changes from earlier before_agent_start handlers)
++  // event.originalSystemPrompt - Pi's assembled prompt before any handler changes
+   // event.systemPromptOptions - structured options used to build the system prompt
+   //   .customPrompt - any custom system prompt (from --system-prompt, SYSTEM.md, or custom templates)
+   //   .selectedTools - tools currently active in the prompt
+@@ -719,6 +721,25 @@ pi.on("before_provider_request", (event, ctx) => {
+ 
+ This is mainly useful for debugging provider serialization and cache behavior.
+ 
++#### provider_request
++
++Fires after all `before_provider_request` transforms and before the provider sends
++the request. Use it to capture the final provider payload. Each handler receives
++its own structured clone; mutations and return values cannot change the transport
++payload or another observer's snapshot. The event's `model` is the request's
++`{ provider, id }`, independent of later session/model changes.
++
++```typescript
++pi.on("provider_request", (event, ctx) => {
++  // event.payload - final provider payload snapshot
++  // event.model - request-time model identity
++});
++```
++
++This event requires the provider to call `options.onPayload`, like the transform
++hook. Errors in observers are reported as extension errors and leave the request
++unchanged.
++
+ #### after_provider_response
+ 
+ Fired after an HTTP response is received and before its stream body is consumed. Handlers run in extension load order.
+@@ -1121,6 +1142,11 @@ const contextPaths = options.contextFiles?.map((file) => file.path) ?? [];
+ 
+ This has the same shape and mutability as `before_agent_start` `event.systemPromptOptions`: custom prompt, active tools, tool snippets, prompt guidelines, appended system prompt text, cwd, loaded context files, and loaded skills. It may include full context file contents, so treat it as sensitive extension-local data and avoid exposing it through command lists, logs, or autocomplete metadata.
+ 
++`options.coreSource` identifies the effective core as `{ kind: "stock" }`,
++`{ kind: "inline" }`, or `{ kind: "file", path }`. A programmatic override that
++changes a loaded file's text is reported as inline. `options.contextFiles[].scope`
++records global/workspace provenance as described in the SDK guide.
++
+ This reports the current base prompt inputs. It does not include per-turn `before_agent_start` chained system-prompt changes, later `context` event message mutations, or `before_provider_request` payload rewrites.
+ 
+ ### ctx.waitForIdle()
 diff --git a/packages/coding-agent/docs/sdk.md b/packages/coding-agent/docs/sdk.md
-index 095bf24..13698ea 100644
+index 095bf24..ebd3909 100644
 --- a/packages/coding-agent/docs/sdk.md
 +++ b/packages/coding-agent/docs/sdk.md
-@@ -1222,3 +1222,14 @@ type Tool
+@@ -1222,3 +1222,20 @@ type Tool
  ```
  
  For extension types, see [extensions.md](extensions.md) for the full API.
@@ -17,6 +75,12 @@ index 095bf24..13698ea 100644
 +`workspace_instructions` under a neutral `instruction_context` wrapper.
 +SDK-supplied files without scope receive a neutral `instructions` tag.
 +Instruction content is preserved verbatim; path attributes are escaped.
++
++AgentSession also exposes `coreSource` in its system-prompt options: stock, inline,
++or a file with its resolved path. `before_agent_start.originalSystemPrompt` keeps
++Pi's assembled prompt distinct from the chained current prompt. Payload observers
++use `provider_request` after all transform hooks; each gets an isolated snapshot
++and the request-time model identity. See [Extensions](extensions.md).
 diff --git a/packages/coding-agent/docs/session-format.md b/packages/coding-agent/docs/session-format.md
 index c5956ed..b7ef951 100644
 --- a/packages/coding-agent/docs/session-format.md
@@ -32,6 +96,155 @@ index c5956ed..b7ef951 100644
  ```json
  {"type":"custom","id":"h8i9j0k1","parentId":"g7h8i9j0","timestamp":"2024-12-03T14:20:00.000Z","customType":"my-extension","data":{"count":42}}
  ```
+diff --git a/packages/coding-agent/src/core/agent-session.ts b/packages/coding-agent/src/core/agent-session.ts
+index ac2bd4b..b36b0a7 100644
+--- a/packages/coding-agent/src/core/agent-session.ts
++++ b/packages/coding-agent/src/core/agent-session.ts
+@@ -1079,6 +1079,7 @@ export class AgentSession {
+ 		}
+ 
+ 		const loaderSystemPrompt = this._resourceLoader.getSystemPrompt();
++		const corePath = this._resourceLoader.getSystemPromptSource?.()?.path;
+ 		const loaderAppendSystemPrompt = this._resourceLoader.getAppendSystemPrompt();
+ 		const appendSystemPrompt =
+ 			loaderAppendSystemPrompt.length > 0 ? loaderAppendSystemPrompt.join("\n\n") : undefined;
+@@ -1090,6 +1091,11 @@ export class AgentSession {
+ 			skills: loadedSkills,
+ 			contextFiles: loadedContextFiles,
+ 			customPrompt: loaderSystemPrompt,
++			coreSource: !loaderSystemPrompt
++				? { kind: "stock" }
++				: corePath
++					? { kind: "file", path: corePath }
++					: { kind: "inline" },
+ 			appendSystemPrompt,
+ 			selectedTools: validToolNames,
+ 			toolSnippets,
+diff --git a/packages/coding-agent/src/core/extensions/index.ts b/packages/coding-agent/src/core/extensions/index.ts
+index f19816a..270212d 100644
+--- a/packages/coding-agent/src/core/extensions/index.ts
++++ b/packages/coding-agent/src/core/extensions/index.ts
+@@ -115,6 +115,7 @@ export type {
+ 	// Provider Registration
+ 	ProviderConfig,
+ 	ProviderModelConfig,
++	ProviderRequestEvent,
+ 	ReadToolCallEvent,
+ 	ReadToolResultEvent,
+ 	// Commands
+diff --git a/packages/coding-agent/src/core/extensions/runner.ts b/packages/coding-agent/src/core/extensions/runner.ts
+index 3346645..b17fccc 100644
+--- a/packages/coding-agent/src/core/extensions/runner.ts
++++ b/packages/coding-agent/src/core/extensions/runner.ts
+@@ -3,7 +3,7 @@
+  */
+ 
+ import type { AgentMessage } from "@earendil-works/pi-agent-core";
+-import type { ImageContent, Model, Provider, ProviderHeaders } from "@earendil-works/pi-ai";
++import type { Api, ImageContent, Model, Provider, ProviderHeaders } from "@earendil-works/pi-ai";
+ import type { KeyId } from "@earendil-works/pi-tui";
+ import { type Theme, theme } from "../../modes/interactive/theme/theme.ts";
+ import type { ResourceDiagnostic } from "../diagnostics.ts";
+@@ -47,6 +47,7 @@ import type {
+ 	ProjectTrustEvent,
+ 	ProjectTrustEventResult,
+ 	ProviderConfig,
++	ProviderRequestEvent,
+ 	RegisteredCommand,
+ 	RegisteredTool,
+ 	ReplacedSessionContext,
+@@ -131,6 +132,7 @@ type RunnerEmitEvent = Exclude<
+ 	| UserBashEvent
+ 	| ContextEvent
+ 	| BeforeProviderRequestEvent
++	| ProviderRequestEvent
+ 	| BeforeProviderHeadersEvent
+ 	| BeforeAgentStartEvent
+ 	| MessageEndEvent
+@@ -1097,6 +1099,31 @@ export class ExtensionRunner {
+ 		return currentPayload;
+ 	}
+ 
++	async emitProviderRequest(payload: unknown, model: Model<Api>): Promise<void> {
++		const ctx = this.createContext();
++		for (const ext of this.extensions) {
++			const handlers = ext.handlers.get("provider_request");
++			if (!handlers) continue;
++			for (const handler of handlers) {
++				try {
++					const event: ProviderRequestEvent = {
++						type: "provider_request",
++						payload: structuredClone(payload),
++						model: { provider: model.provider, id: model.id },
++					};
++					await handler(event, ctx);
++				} catch (error) {
++					this.emitError({
++						extensionPath: ext.path,
++						event: "provider_request",
++						error: error instanceof Error ? error.message : String(error),
++						stack: error instanceof Error ? error.stack : undefined,
++					});
++				}
++			}
++		}
++	}
++
+ 	async emitBeforeProviderHeaders(headers: ProviderHeaders): Promise<ProviderHeaders> {
+ 		const ctx = this.createContext();
+ 
+@@ -1157,6 +1184,7 @@ export class ExtensionRunner {
+ 						prompt,
+ 						images,
+ 						systemPrompt: currentSystemPrompt,
++						originalSystemPrompt: systemPrompt,
+ 						systemPromptOptions,
+ 					};
+ 					const handlerResult = await handler(event, ctx);
+diff --git a/packages/coding-agent/src/core/extensions/types.ts b/packages/coding-agent/src/core/extensions/types.ts
+index eaff3a8..4a9d923 100644
+--- a/packages/coding-agent/src/core/extensions/types.ts
++++ b/packages/coding-agent/src/core/extensions/types.ts
+@@ -696,6 +696,14 @@ export interface BeforeProviderRequestEvent {
+ 	payload: unknown;
+ }
+ 
++/** Read-only observation after all payload transforms. Each handler gets its own clone. */
++export interface ProviderRequestEvent {
++	type: "provider_request";
++	payload: unknown;
++	/** The model attached to this request, independent of later UI/model switches. */
++	model: Pick<Model<Api>, "provider" | "id">;
++}
++
+ /**
+  * Fired after request headers are assembled, before the provider HTTP call.
+  * Handlers mutate `headers` in place (e.g. to inject tracing/session headers);
+@@ -722,6 +730,8 @@ export interface BeforeAgentStartEvent {
+ 	images?: ImageContent[];
+ 	/** The fully assembled system prompt string. */
+ 	systemPrompt: string;
++	/** Pi's assembled prompt before any before_agent_start handler changes it. */
++	originalSystemPrompt: string;
+ 	/** Structured options used to build the system prompt. Extensions can inspect this to understand what Pi loaded without re-discovering resources. */
+ 	systemPromptOptions: BuildSystemPromptOptions;
+ }
+@@ -1089,6 +1099,7 @@ export type ExtensionEvent =
+ 	| SessionEvent
+ 	| ContextEvent
+ 	| BeforeProviderRequestEvent
++	| ProviderRequestEvent
+ 	| BeforeProviderHeadersEvent
+ 	| AfterProviderResponseEvent
+ 	| BeforeAgentStartEvent
+@@ -1277,6 +1288,7 @@ export interface ExtensionAPI {
+ 		event: "before_provider_request",
+ 		handler: ExtensionHandler<BeforeProviderRequestEvent, BeforeProviderRequestEventResult>,
+ 	): void;
++	on(event: "provider_request", handler: ExtensionHandler<ProviderRequestEvent>): void;
+ 	on(event: "before_provider_headers", handler: ExtensionHandler<BeforeProviderHeadersEvent>): void;
+ 	on(event: "after_provider_response", handler: ExtensionHandler<AfterProviderResponseEvent>): void;
+ 	on(event: "before_agent_start", handler: ExtensionHandler<BeforeAgentStartEvent, BeforeAgentStartEventResult>): void;
 diff --git a/packages/coding-agent/src/core/instruction-context.ts b/packages/coding-agent/src/core/instruction-context.ts
 new file mode 100644
 index 0000000..ca55298
@@ -66,7 +279,7 @@ index 0000000..ca55298
 +	return `\n\n<instruction_context>\n\nGlobal instructions apply across workspaces. Workspace instructions apply within their named directory; deeper workspace instructions take precedence for files in their scope.\n\n${files.map(formatInstructionFile).join("\n\n")}\n\n</instruction_context>`;
 +}
 diff --git a/packages/coding-agent/src/core/resource-loader.ts b/packages/coding-agent/src/core/resource-loader.ts
-index 0410242..51921d8 100644
+index 0410242..f2a4f2b 100644
 --- a/packages/coding-agent/src/core/resource-loader.ts
 +++ b/packages/coding-agent/src/core/resource-loader.ts
 @@ -4,6 +4,7 @@ import chalk from "chalk";
@@ -163,6 +376,37 @@ index 0410242..51921d8 100644
  		return { agentsFiles: this.agentsFiles };
  	}
  
+@@ -528,6 +526,7 @@ export class DefaultResourceLoader implements ResourceLoader {
+ 		this.systemPrompt = this.systemPromptOverride ? this.systemPromptOverride(baseSystemPrompt) : baseSystemPrompt;
+ 		this.systemPromptSourcePath =
+ 			systemPromptSource && existsSync(systemPromptSource) ? resolvePath(systemPromptSource) : undefined;
++		if (this.systemPrompt !== baseSystemPrompt) this.systemPromptSourcePath = undefined;
+ 
+ 		let appendSources = this.appendSystemPromptSource;
+ 		if (!appendSources) {
+diff --git a/packages/coding-agent/src/core/sdk.ts b/packages/coding-agent/src/core/sdk.ts
+index adbf102..5d42927 100644
+--- a/packages/coding-agent/src/core/sdk.ts
++++ b/packages/coding-agent/src/core/sdk.ts
+@@ -340,12 +340,13 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
+ 				},
+ 			});
+ 		},
+-		onPayload: async (payload, _model) => {
++		onPayload: async (payload, model) => {
+ 			const runner = extensionRunnerRef.current;
+-			if (!runner?.hasHandlers("before_provider_request")) {
+-				return payload;
+-			}
+-			return runner.emitBeforeProviderRequest(payload);
++			const finalPayload = runner?.hasHandlers("before_provider_request")
++				? await runner.emitBeforeProviderRequest(payload)
++				: payload;
++			if (runner?.hasHandlers("provider_request")) await runner.emitProviderRequest(finalPayload, model);
++			return finalPayload;
+ 		},
+ 		onResponse: async (response, _model) => {
+ 			const runner = extensionRunnerRef.current;
 diff --git a/packages/coding-agent/src/core/session-manager.ts b/packages/coding-agent/src/core/session-manager.ts
 index d25b196..bcd42a3 100644
 --- a/packages/coding-agent/src/core/session-manager.ts
@@ -220,18 +464,25 @@ index d25b196..bcd42a3 100644
  
  	/** Append a message as child of current leaf, then advance leaf. Returns entry id.
 diff --git a/packages/coding-agent/src/core/system-prompt.ts b/packages/coding-agent/src/core/system-prompt.ts
-index 9247691..e3b0b04 100644
+index 9247691..c410f2f 100644
 --- a/packages/coding-agent/src/core/system-prompt.ts
 +++ b/packages/coding-agent/src/core/system-prompt.ts
-@@ -3,6 +3,7 @@
+@@ -3,9 +3,14 @@
   */
  
  import { getDocsPath, getExamplesPath, getReadmePath } from "../config.ts";
 +import { formatInstructionContext, type InstructionFile } from "./instruction-context.ts";
  import { formatSkillsForPrompt, type Skill } from "./skills.ts";
  
++export type CorePromptSource = { kind: "stock" } | { kind: "inline" } | { kind: "file"; path: string };
++
  export interface BuildSystemPromptOptions {
-@@ -19,7 +20,7 @@ export interface BuildSystemPromptOptions {
++	/** Origin of the effective core, supplied by AgentSession for inspection. */
++	coreSource?: CorePromptSource;
+ 	/** Custom system prompt (replaces default). */
+ 	customPrompt?: string;
+ 	/** Tools to include in prompt. Default: [read, bash, edit, write] */
+@@ -19,7 +24,7 @@ export interface BuildSystemPromptOptions {
  	/** Working directory. */
  	cwd: string;
  	/** Pre-loaded context files. */
@@ -240,7 +491,7 @@ index 9247691..e3b0b04 100644
  	/** Pre-loaded skills. */
  	skills?: Skill[];
  }
-@@ -52,15 +53,7 @@ export function buildSystemPrompt(options: BuildSystemPromptOptions): string {
+@@ -52,15 +57,7 @@ export function buildSystemPrompt(options: BuildSystemPromptOptions): string {
  			prompt += appendSection;
  		}
  
@@ -257,7 +508,7 @@ index 9247691..e3b0b04 100644
  
  		// Append skills when a tool capable of reading their files is available.
  		if (skillFileReadTool && skills.length > 0) {
-@@ -147,15 +140,7 @@ Pi documentation (read only when the user asks about pi itself, its SDK, extensi
+@@ -147,15 +144,7 @@ Pi documentation (read only when the user asks about pi itself, its SDK, extensi
  		prompt += appendSection;
  	}
  
@@ -275,10 +526,18 @@ index 9247691..e3b0b04 100644
  	// Append skills when a tool capable of reading their files is available.
  	if (skillFileReadTool && skills.length > 0) {
 diff --git a/packages/coding-agent/src/index.ts b/packages/coding-agent/src/index.ts
-index 6667389..415f78e 100644
+index 6667389..58c1886 100644
 --- a/packages/coding-agent/src/index.ts
 +++ b/packages/coding-agent/src/index.ts
-@@ -172,6 +172,7 @@ export {
+@@ -115,6 +115,7 @@ export type {
+ 	ProjectTrustHandler,
+ 	ProviderConfig,
+ 	ProviderModelConfig,
++	ProviderRequestEvent,
+ 	ReadToolCallEvent,
+ 	RegisteredCommand,
+ 	RegisteredTool,
+@@ -172,6 +173,7 @@ export {
  } from "./core/extensions/index.ts";
  // Footer data provider (git branch + extension statuses - data not otherwise available to extensions)
  export type { ReadonlyFooterDataProvider } from "./core/footer-data-provider.ts";
@@ -286,6 +545,100 @@ index 6667389..415f78e 100644
  export { convertToLlm } from "./core/messages.ts";
  export { ModelRegistry } from "./core/model-registry.ts";
  export {
+@@ -277,6 +279,7 @@ export {
+ 	type SkillFrontmatter,
+ } from "./core/skills.ts";
+ export { createSyntheticSourceInfo } from "./core/source-info.ts";
++export type { CorePromptSource } from "./core/system-prompt.ts";
+ export { type EditDiffResult, generateDiffString, generateUnifiedPatch } from "./core/tools/edit-diff.ts";
+ // Tools
+ export {
+diff --git a/packages/coding-agent/test/prompt-provenance.test.ts b/packages/coding-agent/test/prompt-provenance.test.ts
+new file mode 100644
+index 0000000..9fec9b0
+--- /dev/null
++++ b/packages/coding-agent/test/prompt-provenance.test.ts
+@@ -0,0 +1,80 @@
++import { mkdtempSync, rmSync } from "node:fs";
++import { tmpdir } from "node:os";
++import { join } from "node:path";
++import { afterEach, expect, test } from "vitest";
++import { AuthStorage } from "../src/core/auth-storage.ts";
++import { ExtensionRunner } from "../src/core/extensions/runner.ts";
++import type { ExtensionFactory } from "../src/core/extensions/types.ts";
++import { DefaultResourceLoader } from "../src/core/resource-loader.ts";
++import { SessionManager } from "../src/core/session-manager.ts";
++import { SettingsManager } from "../src/core/settings-manager.ts";
++import { createInMemoryModelRegistry } from "./model-runtime-test-utils.ts";
++import { fauxModel } from "./test-harness.ts";
++
++const roots: string[] = [];
++afterEach(() => {
++	for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
++});
++async function runner(extensionFactories: ExtensionFactory[]) {
++	const root = mkdtempSync(join(tmpdir(), "pi-provenance-"));
++	roots.push(root);
++	const loader = new DefaultResourceLoader({
++		cwd: root,
++		agentDir: root,
++		settingsManager: SettingsManager.inMemory(),
++		noExtensions: true,
++		noSkills: true,
++		noThemes: true,
++		noPromptTemplates: true,
++		extensionFactories,
++	});
++	await loader.reload();
++	const loaded = loader.getExtensions();
++	expect(loaded.errors).toEqual([]);
++	return new ExtensionRunner(
++		loaded.extensions,
++		loaded.runtime,
++		root,
++		SessionManager.inMemory(),
++		await createInMemoryModelRegistry(AuthStorage.inMemory()),
++	);
++}
++
++test("each before-start handler sees the original prompt as well as the current transformed prompt", async () => {
++	const seen: string[] = [];
++	const r = await runner([
++		(pi) => {
++			pi.on("before_agent_start", () => ({ systemPrompt: "TRANSFORMED" }));
++		},
++		(pi) => {
++			pi.on("before_agent_start", (event) => {
++				seen.push(event.originalSystemPrompt, event.systemPrompt);
++			});
++		},
++	]);
++	await r.emitBeforeAgentStart("probe", undefined, "ORIGINAL", { cwd: "/fixture" });
++	expect(seen).toEqual(["ORIGINAL", "TRANSFORMED"]);
++});
++
++test("post-transform observation cannot change transport payload or another observer's snapshot", async () => {
++	const seen: unknown[] = [];
++	const r = await runner([
++		(pi) => {
++			pi.on("before_provider_request", () => ({ system: "FINAL" }));
++			pi.on("provider_request", (event) => {
++				(event.payload as { system: string }).system = "MUTATED";
++				event.model.id = "MUTATED";
++				throw new Error("observer failure");
++			});
++		},
++		(pi) => {
++			pi.on("provider_request", (event) => {
++				seen.push(event.payload, event.model.id);
++			});
++		},
++	]);
++	const payload = await r.emitBeforeProviderRequest({ system: "INITIAL" });
++	await r.emitProviderRequest(payload, fauxModel);
++	expect(payload).toEqual({ system: "FINAL" });
++	expect(seen).toEqual([{ system: "FINAL" }, fauxModel.id]);
++});
 diff --git a/packages/coding-agent/test/resource-loader.test.ts b/packages/coding-agent/test/resource-loader.test.ts
 index 145eca3..bdf5dfe 100644
 --- a/packages/coding-agent/test/resource-loader.test.ts

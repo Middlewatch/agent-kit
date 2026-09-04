@@ -32,7 +32,12 @@ import {
   sha256,
   type PromptEvidence,
 } from "./lib/evidence.ts";
-import { splicePrompt } from "./lib/splice.ts";
+import {
+  coreSource,
+  onProviderRequest,
+  type ScopedStartEvent,
+} from "./lib/pi-contract.ts";
+import { splitTail, splicePrompt } from "./lib/splice.ts";
 import {
   listTemplates,
   readTemplate,
@@ -132,9 +137,10 @@ export default function systemPromptExtension(
     }
   }
 
-  pi.on("before_agent_start", async (event, ctx) => {
+  pi.on("before_agent_start", async (event: ScopedStartEvent, ctx) => {
     const pin = selection(ctx);
     lastEvidence = {
+      coreSource: coreSource(event.systemPromptOptions ?? {}),
       selectedName: pin.kind === "selected" ? pin.name : null,
       renderedName: null,
       templateSha256: null,
@@ -151,6 +157,18 @@ export default function systemPromptExtension(
     }
     if (!prompt.startsWith(STOCK_FIRST_LINE)) {
       warn(ctx, "stock core boundary not recognized");
+      return;
+    }
+    if (event.originalSystemPrompt === undefined) {
+      warn(ctx, "original prompt provenance unavailable; patched Pi required");
+      return;
+    }
+    const append = event.systemPromptOptions?.appendSystemPrompt;
+    if (
+      splitTail(prompt, append)[0] !==
+      splitTail(event.originalSystemPrompt, append)[0]
+    ) {
+      warn(ctx, "stock core boundary not recognized (core was modified)");
       return;
     }
     const active = activeTemplate(ctx);
@@ -250,18 +268,22 @@ export default function systemPromptExtension(
     }
   }
 
-  pi.on("before_provider_request", async (event, ctx) => {
+  onProviderRequest(pi, async (event, ctx) => {
     const system = extractSystemPromptFromPayload(event.payload);
     if (lastEvidence && system !== null)
       lastEvidence.providerSystemSha256 = sha256(system);
-    const stamp = takeArmedCapture();
+    if (pendingTest) {
+      pendingTest.provider = event.model.provider;
+      pendingTest.modelId = event.model.id;
+    }
+    const stamp = takeArmedCapture() ?? pendingTest?.stamp ?? null;
     if (stamp === null) return;
     if (artifactsDir === null) {
       ctx.ui.notify("artifacts directory could not be resolved", "error");
       return;
     }
     const inspectDir = path.join(artifactsDir, "inspect");
-    const { provider, modelId } = modelLabel(ctx.model);
+    const { provider, modelId } = modelLabel(event.model);
     // Wire pickup: the capture dir is snapshotted before the request leaves
     // so the record that appears after it is this turn's. Not awaited here;
     // pi holds the request until this handler returns.
@@ -427,7 +449,7 @@ export default function systemPromptExtension(
     }
     const stamp = makeStamp(new Date());
     const { provider, modelId } = modelLabel(ctx.model);
-    pendingTest = { stamp, provider, modelId };
+    pendingTest = { stamp, provider: "unobserved", modelId: "unobserved" };
     armCapture(stamp);
     pi.sendUserMessage(buildTestMessage(fixture));
     ctx.ui.notify(`output test ${stamp} sent (${provider}/${modelId})`);
@@ -461,6 +483,7 @@ export default function systemPromptExtension(
         renderImmediateDump(options) +
         "\n## Selection and scoped inputs\n\n" +
         evidenceLines({
+          coreSource: coreSource(options),
           selectedName: selected,
           renderedName: null,
           templateSha256,

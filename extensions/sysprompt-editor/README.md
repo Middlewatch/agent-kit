@@ -34,7 +34,7 @@ straight to one. Cancelling any picker ends the command with no write.
   system text as readable `.md` and extracted `.txt` in `artifacts/inspect/`.
   Multiple provider text blocks are joined with blank lines. The metadata records
   selected and rendered names, template and provider-text hashes, fallback/bypass
-  reason, and each loaded instruction file's scope and content hash. On `claude-go`
+  reason, core source, and each loaded instruction file's scope and content hash. On `claude-go`
   with `CLAUDE_GO_CAPTURE_DIR` set, a separate wire capture can reveal downstream
   system-text changes.
 - `test`: sends "Summarize this article for me." with
@@ -76,7 +76,7 @@ and custom cores. Legacy SDK context without scope uses an `instructions` block.
 
 Apply the patch to a clean checkout of that revision with `git apply <patch-path>`.
 It includes both loader provenance and immediate, transactional custom-entry
-persistence. Pi source commits `47c7b18` and `11355ee` correspond to these slices.
+persistence, original-prompt provenance, and isolated final-payload observation.
 
 Run `PI_SOURCE_DIR=<patched-checkout> node scripts/conformance.mjs` from this
 extension directory. The fixture uses the real loader and AgentSession, then
@@ -95,3 +95,9 @@ text inside a file or generated section stays literal. The splice separates
 `APPEND_SYSTEM.md` from the core and preserves it even when `{{PI_DOCS}}` is absent.
 Unrecognized provenance or boundaries leave the incoming prompt unchanged and
 produce a warning. Inspection captures the resulting provider bytes.
+
+The splice compares the incoming core with `originalSystemPrompt` before rewriting.
+Unaccounted core prose fails open rather than being dropped. Final payload capture
+runs after every transform hook and records the request's model identity. Output
+tests capture each provider request explicitly and link the final request's artifact
+from the result. Without a provider observation, the model label is `unobserved`.

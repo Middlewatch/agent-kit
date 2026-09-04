@@ -1,3 +1,4 @@
+import type { CoreSource } from "./pi-contract.ts";
 import { createHash } from "node:crypto";
 import type { InstructionFile } from "./instructions.ts";
 
@@ -6,6 +7,7 @@ export function sha256(text: string): string {
 }
 
 export interface PromptEvidence {
+  coreSource: CoreSource;
   selectedName: string | null;
   renderedName: string | null;
   templateSha256: string | null;
@@ -17,6 +19,7 @@ export interface PromptEvidence {
     sha256: string;
   }[];
   providerSystemSha256?: string;
+  providerCapture?: string;
 }
 
 export function instructionInventory(
@@ -35,6 +38,10 @@ export function instructionInventory(
 export function evidenceLines(evidence: PromptEvidence): string {
   return (
     [
+      `- core-source: ${evidence.coreSource.kind}${evidence.coreSource.kind === "file" ? ` ${evidence.coreSource.path}` : ""}`,
+      ...(evidence.providerCapture
+        ? [`- provider-capture: ${evidence.providerCapture}`]
+        : []),
       `- selected-template: ${evidence.selectedName ?? "(none)"}`,
       `- rendered-template: ${evidence.renderedName ?? "(incoming prompt)"}`,
       `- template-sha256: ${evidence.templateSha256 ?? "(unavailable)"}`,

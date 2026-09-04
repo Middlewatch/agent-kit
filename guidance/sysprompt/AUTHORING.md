@@ -93,13 +93,17 @@ not proof that the example improves instruction following.
 Run `/sysprompt inspect`, then send a normal message. The immediate inventory names
 selected state and scoped input hashes at command time; it is not an assembled
 prompt. The provider `.md` records the selected and rendered names, template hash,
-fallback or bypass reason, and each loaded file's scope and content hash. The
+fallback or bypass reason, core source (stock, inline, or file path), and each
+loaded file's scope and content hash. Capture runs after all payload-transform
+hooks, so a later transform cannot make the recorded text stale. The
 `.txt` contains extracted system text; multiple provider text blocks are joined
 with blank lines. The optional bridge wire capture can reveal downstream changes.
 
 `/sysprompt test` sends the bundled article through an ordinary turn and captures
 its provider prompt plus final response. The result names the provider and model
-and records the same provenance. Compare captures before judging the responses:
+and records the same provenance. It captures each provider request and links the
+final request's artifact; model labels come from that request rather than command
+time. An unobserved request is labeled `unobserved`. Compare captures before judging the responses:
 check each instruction file appears once, global and workspace order, tools and
 skills, and the fallback field. Then compare task outcomes with the same model,
 fixture, and settings. A successful assembly test says nothing about compliance.
