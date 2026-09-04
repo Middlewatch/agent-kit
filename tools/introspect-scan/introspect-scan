@@ -2,17 +2,21 @@
 """Scan journals for steering-artifact usage: skill invocations and wiki touches.
 
 The read side of the introspect sweep (the kit's docs/specs/2026-09-01-introspect.md).
-Scans journal episodes for path-shaped skill references (`skills/<name>`,
-`<name>/SKILL.md`) and wiki note slugs, and inventories friction notes in the
-inbox. `--episodes <artifact>` lists the episodes behind a count so the sweep
-can sample them; `--write` appends the dated snapshot under the wiki's
-`metrics/introspect/` so months compare.
+Scans journal episodes for skill invocations (the harness's skill-injection
+marker: pi's `<skill name="x"` tag, Claude Code's `Base directory for this
+skill: .../skills/x` line), path-shaped skill mentions (`skills/<name>`,
+`<name>/SKILL.md`) and wiki note slugs outside injected skill bodies, and
+inventories friction notes in the inbox. `--episodes <artifact>` lists the
+episodes behind a count so the sweep can sample them; `--write` appends the
+dated snapshot under the wiki's `metrics/introspect/` so months compare.
 
-Measurement bias, by construction: a journal path-mention undercounts influence
-(a skill absorbed into habit leaves no path reference; prose mentions are
-deliberately not counted) and overcounts curation (sessions that edit a skill
-mention its path without following it). Read the numbers as trend signal for
-the periodic introspect sweep, never as a per-artifact verdict.
+Measurement bias, by construction: an invocation marker undercounts influence
+(a skill absorbed into habit leaves no marker; prose mentions are deliberately
+not counted) and a path mention mostly measures curation (sessions that edit a
+skill name its path without following it). Injected skill bodies are stripped
+before matching so a skill citing another skill's files does not count as that
+skill's use. Read the numbers as trend signal for the periodic introspect
+sweep, never as a per-artifact verdict.
 """
 import argparse
 import collections
@@ -24,7 +28,15 @@ import sys
 LANES = ["core", "platform", "infra", "personal", "knowledge", "reference", "work"]
 GENERIC = {"index.md", "log.md", "README.md", "AGENTS.md", "CLAUDE.md"}
 RECENT_DAYS = 30
+EPISODE_CAP = 20
 AGENTS = pathlib.Path.home() / ".agents"
+# Injected skill text stripped before matching mentions and note touches, so
+# neither the marker nor the body's own citations count as the session's: pi's
+# <skill ...>...</skill> block, and Claude Code's marker line (its body has no
+# closing delimiter, so the body itself stays).
+INJECTED = re.compile(
+    r'<skill name="[^"]+"[^>]*>.*?(?:</skill>|\Z)|Base directory for this skill:[^\n]*',
+    re.S)
 
 
 def parse_args():
@@ -35,7 +47,8 @@ def parse_args():
     p.add_argument("--today", type=datetime.date.fromisoformat,
                    default=datetime.date.today())
     p.add_argument("--episodes", metavar="ARTIFACT",
-                   help="list episodes referencing this skill name or note filename")
+                   help="list episodes referencing this skill name or note filename "
+                        f"(newest first, at most {EPISODE_CAP})")
     p.add_argument("--write", action="store_true",
                    help="also write the snapshot under <wiki>/metrics/introspect/")
     return p.parse_args()
@@ -68,22 +81,32 @@ NEVER = re.compile(r"(?!x)x()()")  # matches nothing, keeps two groups
 
 
 def scan(journals, skills, notes):
-    """Per episode: which skills (path-shaped refs only) and notes it touches."""
+    """Per episode: skills invoked, skills mentioned by path, notes touched.
+
+    Invocation is the harness's injection marker. Mentions and note touches are
+    matched after injected skill bodies are stripped.
+    """
+    names = "|".join(re.escape(s) for s in skills)
+    invoke_pat = re.compile(
+        r'<skill name="(%(n)s)"|Base directory for this skill: \S*/(%(n)s)(?![\w-])'
+        % {"n": names}) if skills else NEVER
     skill_pat = re.compile(
         r"(?<![\w-])skills/(%(n)s)(?![\w-])|(?<![\w-])(%(n)s)/SKILL\.md"
-        % {"n": "|".join(re.escape(s) for s in skills)}) if skills else NEVER
+        % {"n": names}) if skills else NEVER
     note_pat = re.compile(
         r"wiki/[A-Za-z0-9_/.-]*?([A-Za-z0-9_-]+\.md)|(?:^|[\s`'\"(/])((?:%s))(?![\w-])"
         % "|".join(re.escape(n) for n in sorted(notes))) if notes else NEVER
-    rows = []  # (path, date, skill_hits, note_hits)
+    rows = []  # (path, date, invoked, mentioned, note_hits)
     for ep in sorted(journals.resolve().rglob("*.md")):
         try:
             text = ep.read_text(errors="replace")
         except OSError:
             continue
-        s_hits = {m.group(1) or m.group(2) for m in skill_pat.finditer(text)}
-        n_hits = {m.group(1) or m.group(2) for m in note_pat.finditer(text)} & notes
-        rows.append((ep, episode_date(ep), s_hits, n_hits))
+        invoked = {m.group(1) or m.group(2) for m in invoke_pat.finditer(text)}
+        body = INJECTED.sub("", text)
+        mentioned = {m.group(1) or m.group(2) for m in skill_pat.finditer(body)}
+        n_hits = {m.group(1) or m.group(2) for m in note_pat.finditer(body)} & notes
+        rows.append((ep, episode_date(ep), invoked, mentioned, n_hits))
     return rows
 
 
@@ -95,17 +118,20 @@ def snapshot(rows, skills, notes, wiki, today):
     wiki_month = collections.Counter()
     skill_hits = collections.Counter()
     skill_recent = collections.Counter()
+    skill_mentions = collections.Counter()
     note_hits = collections.Counter()
     cutoff = today - datetime.timedelta(days=RECENT_DAYS)
-    for _, date, s_hits, n_hits in rows:
+    for _, date, invoked, mentioned, n_hits in rows:
         month = f"{date:%Y-%m}" if date else "unknown"
         by_month[month] += 1
-        skill_month[month] += bool(s_hits)
+        skill_month[month] += bool(invoked)
         wiki_month[month] += bool(n_hits)
-        for s in s_hits:
+        for s in invoked:
             skill_hits[s] += 1
             if date and cutoff < date <= today:
                 skill_recent[s] += 1
+        for s in mentioned:
+            skill_mentions[s] += 1
         for n in n_hits:
             note_hits[n] += 1
 
@@ -114,9 +140,13 @@ def snapshot(rows, skills, notes, wiki, today):
         lines.append(f"- {month}: {skill_month[month]}/{wiki_month[month]}/{by_month[month]}")
     lines.append("")
 
-    lines.append(f"## skill invocations (episodes ever / last {RECENT_DAYS} days)")
-    for name, c in sorted(skill_hits.items(), key=lambda kv: (-kv[1], kv[0])):
-        lines.append(f"- {c:3d} / {skill_recent[name]}  {name}")
+    lines.append(f"## skill invocations (episodes ever / last {RECENT_DAYS} days; "
+                 "path mentions outside injected bodies, mostly curation)")
+    seen = sorted(set(skill_hits) | set(skill_mentions),
+                  key=lambda s: (-skill_hits[s], -skill_mentions[s], s))
+    for name in seen:
+        lines.append(f"- {skill_hits[name]:3d} / {skill_recent[name]}  {name}"
+                     f"  mentions {skill_mentions[name]}")
     never = [s for s in skills if s not in skill_hits]
     lines.append("- never invoked: " + (", ".join(never) if never else "none"))
     lines.append("")
@@ -149,10 +179,15 @@ def main():
         target = args.episodes
         if target not in skills and target not in notes:
             sys.exit(f"unknown artifact: {target} (not a skill name or wiki note filename)")
-        matches = [(date, ep) for ep, date, s, n in rows if target in s or target in n]
-        for date, ep in sorted(matches, key=lambda r: (r[0] or datetime.date.min, r[1]),
-                               reverse=True)[:20]:
-            print(ep)
+        matches = [(date, ep, "invoked" if target in inv else "mention")
+                   for ep, date, inv, men, n in rows
+                   if target in inv or target in men or target in n]
+        matches.sort(key=lambda r: (r[0] or datetime.date.min, r[1]), reverse=True)
+        for date, ep, kind in matches[:EPISODE_CAP]:
+            print(f"{kind}\t{ep}")
+        if len(matches) > EPISODE_CAP:
+            print(f"showing {EPISODE_CAP} of {len(matches)} episodes (newest first)",
+                  file=sys.stderr)
         return
 
     report = snapshot(rows, skills, notes, args.wiki, args.today)

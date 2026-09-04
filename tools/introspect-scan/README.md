@@ -1,10 +1,19 @@
 # introspect-scan
 
 The read side of the introspect sweep (spec: `../../docs/specs/2026-09-01-introspect.md`):
-scans journal episodes for steering-artifact usage — path-shaped skill
-references (`skills/<name>`, `<name>/SKILL.md`) and wiki note slugs — and
-inventories `friction-` notes in the inbox. Plain runs print a dated snapshot;
-the sweep uses `--episodes` to pull the evidence behind any count.
+scans journal episodes for steering-artifact usage and inventories
+`friction-` notes in the inbox. Plain runs print a dated snapshot; the sweep
+uses `--episodes` to pull the evidence behind any count.
+
+Three signals per episode:
+
+- **Invocation**: the harness's skill-injection marker. pi wraps the body in
+  `<skill name="x" ...>...</skill>`; Claude Code prefixes it with
+  `Base directory for this skill: .../skills/x`.
+- **Mention**: a path-shaped reference (`skills/<name>`, `<name>/SKILL.md`)
+  outside any injected skill body. Mostly sessions editing the skill.
+- **Note touch**: a wiki note slug or `wiki/...` path outside any injected
+  skill body.
 
 ## Usage
 
@@ -12,7 +21,9 @@ the sweep uses `--episodes` to pull the evidence behind any count.
 introspect-scan [options]
 
   --episodes <artifact>  list episodes (newest first, max 20) referencing this
-                         skill name or wiki note filename; exit 1 if unknown
+                         skill name or wiki note filename, one per line as
+                         `invoked<TAB>path` or `mention<TAB>path`; reports
+                         the cap on stderr when it truncates; exit 1 if unknown
   --write                also write the snapshot to
                          <wiki>/metrics/introspect/<date>.txt; refuses to
                          overwrite an existing snapshot (it may hold sweep
@@ -25,18 +36,25 @@ introspect-scan [options]
 ```
 
 Snapshot sections: episodes by month (skill-invoking/wiki-touching/total),
-per-skill episode counts with a 30-day column plus the never-invoked list,
-most-touched wiki notes, friction notes, and the untriaged inbox depth.
+per-skill invocations with a 30-day column and a mentions count plus the
+never-invoked list, most-touched wiki notes, friction notes, and the
+untriaged inbox depth.
 
 ## Measurement bias
 
-By construction, a journal path-mention undercounts influence (a skill
-absorbed into habit leaves no path reference; prose mentions deliberately do
-not count) and overcounts curation (sessions that edit a skill mention its
-path without following it). Read the numbers as trend signal for the periodic
-introspect sweep, never as a per-artifact verdict. The wiki's own
-`bin/usage-report` keeps the write-side stats (commit cadence, substantive
-edits, cold notes).
+By construction, an invocation marker undercounts influence (a skill absorbed
+into habit leaves no marker; prose mentions deliberately do not count) and a
+path mention mostly measures curation (sessions that edit a skill name its
+path without following it). Injected skill bodies are stripped before
+matching mentions and note touches, because a skill that cites another
+skill's files otherwise inflates that skill on every run: before the strip,
+evoker-mode's citation of slopfix's prose standard made slopfix read 56
+episodes against 4 real invocations (2026-09-03 sweep). Claude Code's
+injected body has no closing delimiter, so only its marker line is stripped
+and the body's citations still count as mentions. Read the numbers as trend signal
+for the periodic introspect sweep, never as a per-artifact verdict. The
+wiki's own `bin/usage-report` keeps the write-side stats (commit cadence,
+substantive edits, cold notes).
 
 ## Tests
 

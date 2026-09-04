@@ -94,7 +94,9 @@ failed the spec.
 
 ## Open questions
 
-- Charters and always-loaded guidance in sweep scope: owner leans toward
-  eventually yes; decide after two sweeps have shown the session weight.
+- Always-loaded guidance in sweep scope: owner leans toward eventually yes;
+  decide after two sweeps have shown the session weight. (Charters left the
+  question when `guidance/workflows/` retired into its consumers, kit
+  44bc9a2, 2026-09-03.)
 - Whether `wiki/bin/usage-report` thins to delegate its read side to the
   kit scanner once S1 exists.

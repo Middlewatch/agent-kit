@@ -20,3 +20,6 @@ are backfilled from git.
   ones.
 - Change: hand-off step now appends a motivation → change entry to the revised
   skill's LEDGER.md.
+- Outcome (2026-09-03 sweep): followed at first use. The charter retirement
+  (kit 44bc9a2) appended edit-time entries to build, deep-review,
+  evoker-mode, and project-scaffold.

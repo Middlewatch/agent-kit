@@ -16,3 +16,7 @@ are backfilled from git.
   are the introspect sweep's input, not wiki candidates.
 - Change: inventory skips `friction-` prefixed notes; the sweep consumes and
   archives them.
+- Outcome (2026-09-03 sweep): triage ran once since (aj1-33dbf477) and
+  cleared the backlog from 13 untriaged to 0 (usage snapshots 08-31 to
+  09-03). The exemption itself was not exercised: the inbox held no
+  `friction-` notes.

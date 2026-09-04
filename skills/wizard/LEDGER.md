@@ -9,3 +9,6 @@ are backfilled from git.
   lost from view (0e78ff0).
 - Change: the wizard prints its URL on headless sessions and re-prints
   cross-stage values.
+- Outcome (2026-09-03 sweep): no evidence either way. The one journal
+  episode naming wizard (aj1-c67332ea, 2026-08-22) is the adoption
+  discussion, not a run; no friction notes.

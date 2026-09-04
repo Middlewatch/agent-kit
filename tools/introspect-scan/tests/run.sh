@@ -48,10 +48,15 @@ hasnt() {
 ok snapshot-runs 0 "$tool" "${base[@]}"
 has header '^# introspect scan — 2026-09-01$'
 has month-jul '^- 2026-07: 0/0/1$'
-has month-aug '^- 2026-08: 2/2/2$'
-has skill-diagnose '^- +2 / 2  diagnose$'
-has skill-slopfix '^- +1 / 1  slopfix$'
+has month-aug '^- 2026-08: 2/2/4$'
+# invocations are the harness markers (pi tag in ddd3, Claude Code line in
+# eee4); path-shaped references in aaa1/bbb2 are mentions
+has skill-diagnose '^- +1 / 1  diagnose  mentions 2$'
+has skill-slopfix '^- +1 / 1  slopfix  mentions 1$'
 has never-invoked '^- never invoked: harvest$'
+# ddd3's injected slopfix body cites skills/harvest and zig-notes.md; neither
+# counts as the session's own use
+hasnt body-echo-skill 'harvest  mentions'
 hasnt authoring-not-a-skill 'AUTHORING'
 has note-hits '^- +2  zig-notes\.md$'
 has distinct-notes '^- distinct notes touched ever: 1 of 2$'
@@ -67,9 +72,11 @@ hasnt july-skill-touch '^- 2026-07: [12]/'
 
 # --- --episodes -------------------------------------------------------------
 ok episodes-skill 0 "$tool" "${base[@]}" --episodes diagnose
-has ep-recent-first 'aj1-bbb2\.md'
+has ep-invoked '^invoked	.*aj1-eee4\.md'
+has ep-recent-mention '^mention	.*aj1-bbb2\.md'
 has ep-older 'aj1-aaa1\.md'
 hasnt ep-no-prose-hit 'aj1-ccc0\.md'
+hasnt ep-under-cap 'showing'
 
 ok episodes-note 0 "$tool" "${base[@]}" --episodes zig-notes.md
 has ep-note-a 'aj1-aaa1\.md'
@@ -82,7 +89,7 @@ tmp="$(mktemp -d)"
 mkdir "$tmp/noskills"
 ok empty-skills-runs 0 "$tool" --journals "$fx/journals" --skills "$tmp/noskills" \
   --wiki "$fx/wiki" --today 2026-09-01
-has empty-skills-months '^- 2026-08: 0/2/2$'
+has empty-skills-months '^- 2026-08: 0/2/4$'
 has empty-skills-never '^- never invoked: none$'
 rm -rf "$tmp"
 

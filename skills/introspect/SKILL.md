@@ -68,5 +68,5 @@ chat: proposals ruled, edits landed, outcomes closed, and what was deferred.
   stop.
 - Retiring a skill or note is executed only on an explicit ruling naming it, never
   bundled into a batch ruling.
-- Scope today is skills and wiki notes; charters and always-loaded guidance join only
-  by owner decision (open question in the spec).
+- Scope today is skills and wiki notes; always-loaded guidance joins by owner decision
+  (open question in the spec).
