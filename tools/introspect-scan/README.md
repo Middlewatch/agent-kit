@@ -44,6 +44,11 @@ untriaged inbox depth.
 
 By construction, an invocation marker undercounts influence (a skill absorbed
 into habit leaves no marker; prose mentions deliberately do not count) and a
+model-invoked skill in pi leaves none either: the model calls `read` on
+`SKILL.md`, and the journal's `## Tools` section records tool names, not
+arguments, so the adr skill read as never invoked while 33 episodes wrote
+ADRs in its exact template (2026-09-03 sweep). Only `/skill:name` produces
+the pi tag. A
 path mention mostly measures curation (sessions that edit a skill name its
 path without following it). Injected skill bodies are stripped before
 matching mentions and note touches, because a skill that cites another
