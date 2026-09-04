@@ -99,7 +99,9 @@ extension (installed separately from this kit) derives per-turn journal entries 
 
 The wiki at `~/.agents/wiki` is a knowledge base we curate together: research
 reports, verified reference notes, and domain knowledge, in lanes its README
-defines. Anything durable you meet mid-session goes to the capture inbox
+defines; its `platform/` lane holds verified pi runtime findings (compaction,
+hooks, TUI, providers), so read `~/.agents/wiki/platform/index.md` before
+extension or harness work. Anything durable you meet mid-session goes to the capture inbox
 (`~/.agents/inbox`), one observation per file; the `inbox-triage` skill files
 or discards inbox notes with me in the loop, so outside research-report filing,
 route wiki candidates through the inbox rather than filing directly. Wiki notes
