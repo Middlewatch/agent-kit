@@ -1,3 +1,4 @@
+import { takeInstructions, type InstructionFile } from "./instructions.ts";
 /**
  * The template splice: split Pi's assembled prompt into core and tail,
  * extract the live data from the stock core, and render an owner template
@@ -5,8 +6,13 @@
  */
 
 /** Split the assembled prompt into [core, tail] at the first appended layer. */
-export function splitTail(prompt: string): [core: string, tail: string] {
+export function splitTail(
+  prompt: string,
+  append?: string,
+): [core: string, tail: string] {
+  let boundary = prompt.length;
   for (const marker of [
+    ...(append ? [`\n\n${append}`] : []),
     "\n\n<instruction_context>",
     "\n\n<project_context>",
     "\n\nThe following skills provide specialized instructions",
@@ -14,9 +20,9 @@ export function splitTail(prompt: string): [core: string, tail: string] {
     "\nCurrent working directory:",
   ]) {
     const i = prompt.indexOf(marker);
-    if (i !== -1) return [prompt.slice(0, i), prompt.slice(i)];
+    if (i !== -1) boundary = Math.min(boundary, i);
   }
-  return [prompt, ""];
+  return [prompt.slice(0, boundary), prompt.slice(boundary)];
 }
 
 const SKILLS_START = "The following skills provide specialized instructions";
@@ -85,6 +91,7 @@ export function renderTemplate(
   core: string,
   scratchpad?: string,
   skills = "",
+  instructions = { global: "", workspace: "" },
 ): string | null {
   const tools = extract(
     core,
@@ -96,11 +103,56 @@ export function renderTemplate(
   if (tools === null || guidelines === null || docsAt === -1) return null;
   const docs = core.slice(docsAt).trimEnd();
 
+  const slots: Record<string, string> = {
+    AVAILABLE_TOOLS: tools,
+    GUIDELINES: guidelines,
+    PI_DOCS: docs,
+    PI_SCRATCHPAD: scratchpadSection(scratchpad),
+    SKILLS: skills,
+    GLOBAL_INSTRUCTIONS: instructions.global,
+    WORKSPACE_INSTRUCTIONS: instructions.workspace,
+  };
   return template
-    .replaceAll("{{AVAILABLE_TOOLS}}", tools)
-    .replaceAll("{{GUIDELINES}}", guidelines)
-    .replaceAll("{{PI_DOCS}}", docs)
-    .replaceAll("{{PI_SCRATCHPAD}}", scratchpadSection(scratchpad))
-    .replaceAll("{{SKILLS}}", skills)
+    .replace(
+      /{{(AVAILABLE_TOOLS|GUIDELINES|PI_DOCS|PI_SCRATCHPAD|SKILLS|GLOBAL_INSTRUCTIONS|WORKSPACE_INSTRUCTIONS)}}/g,
+      (_match, name: string) => slots[name]!,
+    )
     .trimEnd();
+}
+
+export function splicePrompt(
+  template: string,
+  prompt: string,
+  options: { appendSystemPrompt?: string; contextFiles?: InstructionFile[] },
+  scratchpad?: string,
+): { prompt: string } | { reason: string } {
+  const [core, rawTail] = splitTail(prompt, options.appendSystemPrompt);
+  const append = options.appendSystemPrompt
+    ? `\n\n${options.appendSystemPrompt}`
+    : "";
+  if (!rawTail.startsWith(append))
+    return { reason: "appended prompt boundary not recognized" };
+  const instructions = takeInstructions(
+    rawTail.slice(append.length),
+    options.contextFiles ?? [],
+    template,
+  );
+  if (!instructions)
+    return {
+      reason:
+        "instruction scope or boundary not recognized (or repeated instruction slot)",
+    };
+  const [skills, rest] = template.includes("{{SKILLS}}")
+    ? liftSkillsBlock(instructions.rest)
+    : ["", instructions.rest];
+  const rendered = renderTemplate(
+    template,
+    core,
+    scratchpad,
+    skills,
+    instructions,
+  );
+  if (rendered === null)
+    return { reason: "stock core boundary not recognized" };
+  return { prompt: rendered + append + instructions.fallback + rest };
 }

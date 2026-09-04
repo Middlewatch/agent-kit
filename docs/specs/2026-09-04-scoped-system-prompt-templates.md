@@ -1,6 +1,6 @@
 # Scoped system-prompt templates
 
-Date: 2026-09-04   Status: draft
+Date: 2026-09-04   Status: building
 
 ## Problem
 
@@ -151,11 +151,11 @@ separate owner-approved activity, not a mandatory paid unit-test dependency.
 
 ## Slices
 
-- [ ] S1 Preserve instruction scope in Pi and show correctly tagged global and
+- [x] S1 Preserve instruction scope in Pi and show correctly tagged global and
   workspace instructions with both stock and custom cores. Demonstrate through
   real-loader fixtures and a recording provider; adapt editor boundary detection
   in the same slice so the new wrapper does not break the existing splice.
-- [ ] S2 Place scoped instruction blocks through templates while preserving
+- [x] S2 Place scoped instruction blocks through templates while preserving
   each file once, unrelated extension additions, and fail-open behavior. Show
   early global placement and an old template that omits the new slots. (after S1)
 - [ ] S3 Make manual template selection session-local and persistent. Demonstrate

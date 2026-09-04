@@ -54,7 +54,7 @@ import {
   formatResult,
   resultBase,
 } from "./lib/output-test.ts";
-import { liftSkillsBlock, renderTemplate, splitTail } from "./lib/splice.ts";
+import { splicePrompt } from "./lib/splice.ts";
 import {
   listTemplates,
   readActiveTemplate,
@@ -113,7 +113,7 @@ export default function systemPromptExtension(
     modelId: string;
   } | null = null;
 
-  pi.on("before_agent_start", async (event: any) => {
+  pi.on("before_agent_start", async (event: any, ctx) => {
     lastRender = null;
     const prompt: string = event.systemPrompt ?? "";
     if (event.systemPromptOptions?.customPrompt) return; // SYSTEM.md wins
@@ -123,24 +123,24 @@ export default function systemPromptExtension(
     const active = readActiveTemplate(templatesDir);
     if (active === null) return; // no template resolves: stock prompt stands
 
-    const [core, fullTail] = splitTail(prompt);
-    // A template with {{SKILLS}} takes pi's skills block out of the tail
-    // and places it itself; without the placeholder the tail is untouched.
-    const [skills, tail] = active.content.includes("{{SKILLS}}")
-      ? liftSkillsBlock(fullTail)
-      : ["", fullTail];
-    const rendered = renderTemplate(
+    const result = splicePrompt(
       active.content,
-      core,
+      prompt,
+      event.systemPromptOptions ?? {},
       process.env.PI_SCRATCHPAD,
-      skills,
     );
-    if (rendered === null) return; // shape drifted: fail open
+    if ("reason" in result) {
+      ctx?.ui?.notify(
+        `sysprompt: ${result.reason}; incoming prompt preserved`,
+        "warning",
+      );
+      return;
+    }
     lastRender = {
       name: active.name,
       sha256: createHash("sha256").update(active.content, "utf8").digest("hex"),
     };
-    return { systemPrompt: rendered + tail };
+    return { systemPrompt: result.prompt };
   });
 
   async function actionSwitch(ctx: ExtensionCommandContext): Promise<void> {

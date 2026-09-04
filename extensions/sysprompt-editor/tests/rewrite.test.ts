@@ -18,8 +18,12 @@ const GUIDELINES =
   "- Use bash for file operations\n- Be concise in your responses";
 const DOCS =
   "Pi documentation (read only when the user asks about pi itself):\n- Main documentation: /tmp/README.md";
-const TAIL =
-  "\n\n<project_context>\nstub\n</project_context>\n\nCurrent working directory: /tmp";
+const CONTEXT =
+  '\n\n<instruction_context>\n\nGlobal instructions apply across workspaces. Workspace instructions apply within their named directory; deeper workspace instructions take precedence for files in their scope.\n\n<global_instructions path="/g/AGENTS.md">\nstub\n</global_instructions>\n\n</instruction_context>';
+const FILES = [
+  { path: "/g/AGENTS.md", content: "stub", scope: { kind: "global" as const } },
+];
+const TAIL = CONTEXT + "\nCurrent working directory: /tmp";
 
 const STOCK_CORE =
   "You are an expert coding assistant operating inside pi, a coding agent harness. " +
@@ -55,9 +59,14 @@ function capturedHandler(): (
   };
   systemPromptExtension(stub as never, { templatesDir: TEMPLATES_DIR });
   assert.ok(handler, "extension registered a before_agent_start handler");
-  return handler as (
-    event: unknown,
-  ) => Promise<{ systemPrompt: string } | undefined>;
+  return (event: any) =>
+    (handler as any)({
+      ...event,
+      systemPromptOptions: {
+        contextFiles: event.systemPrompt.includes(CONTEXT) ? FILES : [],
+        ...event.systemPromptOptions,
+      },
+    });
 }
 
 test("stock prompt is rebuilt from the template with the tail preserved", async () => {
@@ -171,10 +180,7 @@ test("{{SKILLS}} relocates pi's stock skills block into the template", async () 
     "The following skills provide specialized instructions for specific tasks.\n" +
     "Use the read tool to load a skill's file when the task matches its description.\n\n" +
     "<available_skills>\n  <skill>\n    <name>harvest</name>\n  </skill>\n</available_skills>";
-  const tail =
-    "\n\n<project_context>ctx</project_context>\n\n" +
-    block +
-    "\nCurrent working directory: /w";
+  const tail = CONTEXT + "\n\n" + block + "\nCurrent working directory: /w";
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sysprompt-skills-"));
   fs.writeFileSync(
     path.join(dir, "default.md"),
@@ -190,11 +196,15 @@ test("{{SKILLS}} relocates pi's stock skills block into the template", async () 
     } as never,
     { templatesDir: dir },
   );
-  const result = await handler({ systemPrompt: STOCK_CORE + tail });
+  const result = await handler({
+    systemPrompt: STOCK_CORE + tail,
+    systemPromptOptions: { contextFiles: FILES },
+  });
   assert.equal(
     result?.systemPrompt,
     `Intro.\n\n## Tools\n\n${TOOLS}\n\n## Skills\n\n${block}\n\n## Rules\n\n${GUIDELINES}\n\n${DOCS}` +
-      "\n\n<project_context>ctx</project_context>\nCurrent working directory: /w",
+      CONTEXT +
+      "\nCurrent working directory: /w",
   );
   // No skills block in the tail: the placeholder renders empty.
   const bare = await handler({

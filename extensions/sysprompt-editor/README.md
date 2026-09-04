@@ -83,3 +83,13 @@ records a provider payload without network access. Install the source checkout's
 locked dependencies and build its chord, telemetry, and ai packages first;
 Pi's development guide covers generated model data. This command does not
 modify or deploy the installed runtime.
+
+## Scoped slots
+
+`{{GLOBAL_INSTRUCTIONS}}` and `{{WORKSPACE_INSTRUCTIONS}}` place the loader's
+verbatim tagged files. An omitted slot leaves that scope in the tail, in loader
+order. Repeating either slot fails open. Expansion is single-pass, so placeholder
+text inside a file or generated section stays literal. The splice separates
+`APPEND_SYSTEM.md` from the core and preserves it even when `{{PI_DOCS}}` is absent.
+Unrecognized provenance or boundaries leave the incoming prompt unchanged and
+produce a warning. Inspection captures the resulting provider bytes.

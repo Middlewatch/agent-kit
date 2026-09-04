@@ -161,3 +161,14 @@ document would rebuild the behavior if the tree vanished.
   harness.
 - Built 2026-08-17; the two harness-semantics behaviors in Expected
   behaviors were review findings ratified as amendments during that build.
+
+## Scoped instruction placement
+
+Pi's loader owns authority. `lib/instructions.ts` matches its complete neutral
+container against scoped `contextFiles` before removing any instruction text.
+It separates instruction files from appended text and skills before those
+sections are scanned. The real-loader conformance suite checks this wire contract.
+Global and workspace slots consume their scope once; omitted slots keep their
+files in the tail. Repeated instruction slots, missing provenance, or mismatched
+boundaries preserve the incoming prompt and warn. Template expansion makes one
+pass over template source, so generated content cannot expand another slot.

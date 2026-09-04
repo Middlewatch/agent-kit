@@ -25,7 +25,17 @@ export async function fixture({
   customPrompt,
   template,
   editor = true,
-}: { customPrompt?: string; template?: string; editor?: boolean } = {}) {
+  globalContent = "GLOBAL OPAQUE\n",
+  appendSystemPrompt,
+  additions = false,
+}: {
+  customPrompt?: string;
+  template?: string;
+  editor?: boolean;
+  globalContent?: string;
+  appendSystemPrompt?: string;
+  additions?: boolean;
+} = {}) {
   const root = mkdtempSync(join(tmpdir(), "sysprompt-real-"));
   cleanups.push(() => rmSync(root, { recursive: true, force: true }));
   const agentDir = join(root, "agent");
@@ -35,13 +45,19 @@ export async function fixture({
   const artifactsDir = join(root, "artifacts");
   for (const dir of [agentDir, cwd, templatesDir])
     mkdirSync(dir, { recursive: true });
-  writeFileSync(join(agentDir, "AGENTS.md"), "GLOBAL OPAQUE\n");
+  writeFileSync(join(agentDir, "AGENTS.md"), globalContent);
   writeFileSync(join(parent, "AGENTS.md"), "PARENT OPAQUE\n");
   writeFileSync(join(cwd, "AGENTS.md"), "NESTED OPAQUE\n");
   writeFileSync(
     join(templatesDir, "default.md"),
     template ??
       "TEMPLATE CORE\n{{AVAILABLE_TOOLS}}\n{{GUIDELINES}}\n{{PI_DOCS}}\n{{SKILLS}}\n",
+  );
+  const skillDir = join(agentDir, "skills", "probe");
+  mkdirSync(skillDir, { recursive: true });
+  writeFileSync(
+    join(skillDir, "SKILL.md"),
+    "---\nname: probe\ndescription: SKILL DESCRIPTION\n---\nSkill body.\n",
   );
   const settingsManager = SettingsManager.inMemory();
   settingsManager.setProjectTrusted(true);
@@ -51,13 +67,32 @@ export async function fixture({
     agentDir,
     settingsManager,
     systemPrompt: customPrompt,
+    appendSystemPrompt: appendSystemPrompt ? [appendSystemPrompt] : [],
     noExtensions: true,
-    noSkills: true,
+    noSkills: false,
     noThemes: true,
     noPromptTemplates: true,
     extensionFactories: [
+      ...(additions
+        ? [
+            (pi) => {
+              pi.on("before_agent_start", (event) => ({
+                systemPrompt: event.systemPrompt + "\nPRIOR ADDITION",
+              }));
+            },
+          ]
+        : []),
       ...(editor
         ? [(pi) => systemPromptExtension(pi, { templatesDir, artifactsDir })]
+        : []),
+      ...(additions
+        ? [
+            (pi) => {
+              pi.on("before_agent_start", (event) => ({
+                systemPrompt: event.systemPrompt + "\nLATER ADDITION",
+              }));
+            },
+          ]
         : []),
       (pi) => {
         pi.on("before_provider_request", (event) => {
@@ -133,4 +168,63 @@ test("custom core bypass retains scoped instructions through provider", async ()
   expect(system).not.toContain("TEMPLATE CORE");
   expect(system).toContain("<global_instructions ");
   expect(system).toContain("<workspace_instructions ");
+});
+
+test("early placement consumes each scope once and keeps opaque prose, append, and extension additions", async () => {
+  const globalContent =
+    "GLOBAL OPAQUE\n```xml\n<project_context>\n{{WORKSPACE_INSTRUCTIONS}} {{SKILLS}}\nThe following skills provide specialized instructions\n</available_skills>\n```\n";
+  const appended =
+    "APPENDED EXACT\n{{GLOBAL_INSTRUCTIONS}}\n<project_context> literal";
+  const h = await fixture({
+    globalContent,
+    appendSystemPrompt: appended,
+    additions: true,
+    template:
+      "EARLY\n{{GLOBAL_INSTRUCTIONS}}\nMIDDLE\n{{WORKSPACE_INSTRUCTIONS}}\nLATE\n{{SKILLS}}",
+  });
+  const system = await h.prompt();
+  expect(system).toContain(globalContent);
+  expect(system).toContain(appended);
+  expect(system).toContain("<name>probe</name>");
+  expect(system.split("<name>probe</name>")).toHaveLength(2);
+  expect(system.indexOf("GLOBAL OPAQUE")).toBeLessThan(
+    system.indexOf("MIDDLE"),
+  );
+  expect(system.indexOf("PARENT OPAQUE")).toBeGreaterThan(
+    system.indexOf("MIDDLE"),
+  );
+  expect(system.indexOf("NESTED OPAQUE")).toBeLessThan(system.indexOf("LATE"));
+  for (const text of [
+    "GLOBAL OPAQUE",
+    "PARENT OPAQUE",
+    "NESTED OPAQUE",
+    "APPENDED EXACT",
+    "PRIOR ADDITION",
+    "LATER ADDITION",
+  ])
+    expect(system.split(text)).toHaveLength(2);
+});
+
+test.each(["GLOBAL", "WORKSPACE"])(
+  "omitted %s slot retains that scoped block in the tail",
+  async (scope) => {
+    const h = await fixture({
+      template: `CORE\n{{${scope === "GLOBAL" ? "WORKSPACE" : "GLOBAL"}_INSTRUCTIONS}}\nEND`,
+    });
+    const system = await h.prompt();
+    const omitted = scope === "GLOBAL" ? "GLOBAL OPAQUE" : "PARENT OPAQUE";
+    expect(system.indexOf(omitted)).toBeGreaterThan(system.indexOf("END"));
+    for (const text of ["GLOBAL OPAQUE", "PARENT OPAQUE", "NESTED OPAQUE"])
+      expect(system.split(text)).toHaveLength(2);
+  },
+);
+
+test("repeated instruction slot fails open without duplicate loaded content", async () => {
+  const h = await fixture({
+    template: "BAD\n{{GLOBAL_INSTRUCTIONS}}\n{{GLOBAL_INSTRUCTIONS}}",
+  });
+  const system = await h.prompt();
+  expect(system).toMatch(/^You are an expert coding assistant/);
+  expect(system).not.toContain("BAD");
+  expect(system.split("GLOBAL OPAQUE")).toHaveLength(2);
 });
