@@ -53,20 +53,22 @@ has month-aug '^- 2026-08: 3/3/6$'
 # --today so outside the 30-day column): adr read,
 # harvest LEDGER via bash, code-maps note read with a line range
 has month-sep '^- 2026-09: 1/1/1$'
-has skill-adr '^- +1 / 0  adr  mentions 0$'
+has skill-adr '^- +1 / 0  adr  mentions 0  bash-only 0$'
 has note-range '^- +1  structural-code-maps-for-agents\.md$'
 # ggg6 is policy v2 with a Files-shaped tail in prose: fallback, so its
 # wizard path is a mention, not an invocation
-has ggg6-fallback '^- +0 / 0  wizard  mentions 1$'
+has ggg6-fallback '^- +0 / 0  wizard  mentions 1  bash-only 0$'
 # invocations are the harness markers (pi tag in ddd3, Claude Code line in
 # eee4) or, when the episode carries a Files section (fff5), its successful
 # reads; path-shaped references in aaa1/bbb2 and fff5's prose are mentions
-has skill-diagnose '^- +2 / 2  diagnose  mentions 2$'
-has skill-slopfix '^- +1 / 1  slopfix  mentions 1$'
+has skill-diagnose '^- +2 / 2  diagnose  mentions 2  bash-only 0$'
+has skill-slopfix '^- +1 / 1  slopfix  mentions 1  bash-only 0$'
 # fff5's read! of harvest is a failed read, not consultation; its prose
 # mention of skills/harvest/SKILL.md is a mention
 has never-invoked '^- never invoked: wizard$'
-has harvest-bash-read '^- +1 / 0  harvest  mentions 1$'
+# ...and the golden episode's harvest LEDGER via bash alone is counted as an
+# invocation but flagged bash-only (a cat and a grep -l render identically)
+has harvest-bash-read '^- +1 / 0  harvest  mentions 1  bash-only 1$'
 # ddd3's injected slopfix body cites skills/harvest and zig-notes.md; neither
 # counts as the session's own use
 hasnt body-echo-skill 'harvest  mentions 2'
@@ -93,6 +95,10 @@ has ep-recent-mention '^mention	.*aj1-bbb2\.md'
 has ep-older 'aj1-aaa1\.md'
 hasnt ep-no-prose-hit 'aj1-ccc0\.md'
 hasnt ep-under-cap 'showing'
+
+ok episodes-bash-only 0 "$tool" "${base[@]}" --episodes harvest
+has ep-invoked-bash '^invoked-bash	.*aj1-daff9910cf3e098a01e14e49e10812e9\.md'
+has ep-failed-read-is-mention '^mention	.*aj1-fff5\.md'
 
 ok episodes-note 0 "$tool" "${base[@]}" --episodes zig-notes.md
 has ep-note-a 'aj1-aaa1\.md'

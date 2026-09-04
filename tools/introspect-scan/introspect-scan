@@ -55,16 +55,16 @@ FILES_POLICY = re.compile(r"^capture_policy: pi-visible-v(?:[3-9]|\d{2,})$", re.
 
 
 def consulted(text):
-    """Returns (targets, body_without_files_section) or (None, text)."""
+    """Returns ((op, target) pairs, body_without_files_section) or (None, text)."""
     m = FILES_SECTION.search(text) if FILES_POLICY.search(text) else None
     if m is None:
         return None, text
-    targets = []
+    entries = []
     for line in m.group(1).splitlines():
         op, _, target = line[2:].partition(" ")
         if op in CONSULT_OPS:
-            targets.append(target)
-    return targets, text[:m.start()] + "\n"
+            entries.append((op, target))
+    return entries, text[:m.start()] + "\n"
 
 
 def parse_args():
@@ -125,22 +125,32 @@ def scan(journals, skills, notes):
         r"wiki/[A-Za-z0-9_/.-]*?([A-Za-z0-9_-]+\.md)|(?:^|[\s`'\"(/])((?:%s))(?![\w-])"
         % "|".join(re.escape(n) for n in sorted(notes))) if notes else NEVER
     files_skill = re.compile(r"(?<![\w-])skills/(%s)/" % names) if skills else NEVER
-    rows = []  # (path, date, invoked, mentioned, note_hits)
+    rows = []  # (path, date, invoked, bash_only, mentioned, note_hits)
     for ep in sorted(journals.resolve().rglob("*.md")):
         try:
             text = ep.read_text(errors="replace")
         except OSError:
             continue
-        targets, text = consulted(text)
+        entries, text = consulted(text)
         body = INJECTED.sub("", text)
-        if targets is None:
+        bash_only = set()
+        if entries is None:
             invoked = {m.group(1) or m.group(2) for m in invoke_pat.finditer(text)}
             n_hits = {m.group(1) or m.group(2) for m in note_pat.finditer(body)} & notes
         else:
-            invoked = {m.group(1) for t in targets for m in [files_skill.search(t)] if m}
-            n_hits = {t.rsplit("/", 1)[-1].split(":")[0] for t in targets} & notes
+            # A bash path token is a `cat` as often as a `grep -l` or a test
+            # fixture naming the file; only a read tool call is unambiguous.
+            # Skills seen through bash alone are counted and reported apart.
+            by_op = collections.defaultdict(set)
+            for op, t in entries:
+                m = files_skill.search(t)
+                if m:
+                    by_op[op].add(m.group(1))
+            invoked = set().union(*by_op.values())
+            bash_only = invoked - by_op["read"] - by_op["child:read"]
+            n_hits = {t.rsplit("/", 1)[-1].split(":")[0] for _, t in entries} & notes
         mentioned = {m.group(1) or m.group(2) for m in skill_pat.finditer(body)}
-        rows.append((ep, episode_date(ep), invoked, mentioned, n_hits))
+        rows.append((ep, episode_date(ep), invoked, bash_only, mentioned, n_hits))
     return rows
 
 
@@ -153,9 +163,10 @@ def snapshot(rows, skills, notes, wiki, today):
     skill_hits = collections.Counter()
     skill_recent = collections.Counter()
     skill_mentions = collections.Counter()
+    skill_bash_only = collections.Counter()
     note_hits = collections.Counter()
     cutoff = today - datetime.timedelta(days=RECENT_DAYS)
-    for _, date, invoked, mentioned, n_hits in rows:
+    for _, date, invoked, bash_only, mentioned, n_hits in rows:
         month = f"{date:%Y-%m}" if date else "unknown"
         by_month[month] += 1
         skill_month[month] += bool(invoked)
@@ -164,6 +175,8 @@ def snapshot(rows, skills, notes, wiki, today):
             skill_hits[s] += 1
             if date and cutoff < date <= today:
                 skill_recent[s] += 1
+        for s in bash_only:
+            skill_bash_only[s] += 1
         for s in mentioned:
             skill_mentions[s] += 1
         for n in n_hits:
@@ -175,12 +188,14 @@ def snapshot(rows, skills, notes, wiki, today):
     lines.append("")
 
     lines.append(f"## skill invocations (episodes ever / last {RECENT_DAYS} days; "
-                 "path mentions outside injected bodies, mostly curation)")
+                 "path mentions outside injected bodies, mostly curation; "
+                 "bash-only: invocations seen through a bash path token alone)")
     seen = sorted(set(skill_hits) | set(skill_mentions),
                   key=lambda s: (-skill_hits[s], -skill_mentions[s], s))
     for name in seen:
         lines.append(f"- {skill_hits[name]:3d} / {skill_recent[name]}  {name}"
-                     f"  mentions {skill_mentions[name]}")
+                     f"  mentions {skill_mentions[name]}"
+                     f"  bash-only {skill_bash_only[name]}")
     never = [s for s in skills if s not in skill_hits]
     lines.append("- never invoked: " + (", ".join(never) if never else "none"))
     lines.append("")
@@ -213,8 +228,9 @@ def main():
         target = args.episodes
         if target not in skills and target not in notes:
             sys.exit(f"unknown artifact: {target} (not a skill name or wiki note filename)")
-        matches = [(date, ep, "invoked" if target in inv else "mention")
-                   for ep, date, inv, men, n in rows
+        matches = [(date, ep,
+                    "invoked-bash" if target in bo else "invoked" if target in inv else "mention")
+                   for ep, date, inv, bo, men, n in rows
                    if target in inv or target in men or target in n]
         matches.sort(key=lambda r: (r[0] or datetime.date.min, r[1]), reverse=True)
         for date, ep, kind in matches[:EPISODE_CAP]:

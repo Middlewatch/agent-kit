@@ -27,7 +27,9 @@ introspect-scan [options]
 
   --episodes <artifact>  list episodes (newest first, max 20) referencing this
                          skill name or wiki note filename, one per line as
-                         `invoked<TAB>path` or `mention<TAB>path`; reports
+                         `invoked<TAB>path`, `invoked-bash<TAB>path` (seen
+                         through a bash path token alone), or
+                         `mention<TAB>path`; reports
                          the cap on stderr when it truncates; exit 1 if unknown
   --write                also write the snapshot to
                          <wiki>/metrics/introspect/<date>.txt; refuses to
@@ -41,16 +43,25 @@ introspect-scan [options]
 ```
 
 Snapshot sections: episodes by month (skill-invoking/wiki-touching/total),
-per-skill invocations with a 30-day column and a mentions count plus the
-never-invoked list, most-touched wiki notes, friction notes, and the
-untriaged inbox depth.
+per-skill invocations with a 30-day column, a mentions count, and a
+bash-only count, plus the never-invoked list, most-touched wiki notes,
+friction notes, and the untriaged inbox depth.
 
 ## Measurement bias
 
 Episodes with a Files section count consultation exactly for the `read`
 tool, `.md` path tokens in bash commands, and delegated children's
 `inspect_read`; they still miss a skill absorbed into habit (no read at
-all) and paths read by other means. Episodes without one (before the
+all) and paths read by other means. A bash path token overcounts: a `cat`
+of a skill file and a `grep -l`, `ls`, or test fixture naming it render as
+the same `- bash <path>` line. The 2026-09-04 check found the share of
+invocations seen through bash alone ran from a seventh (build 9 of 62) to
+half (project-scaffold 10 of 20, structural-review 8 of 15, diagnose 7 of
+12), and the bash-only adr episodes were the sessions building this
+scanner and autojournal's Files section, whose fixtures name
+`skills/adr/SKILL.md`. The `bash-only` column carries that count so the
+sweep reads `read`-backed invocations as the firm number and treats
+bash-only ones as a sample to open. Episodes without one (before the
 2026-09 backfill, and every Claude Code episode) fall back to the injection
 marker, which undercounts: a model-invoked skill in pi is a `read` of
 `SKILL.md` that the marker never sees, so the adr skill read as never
