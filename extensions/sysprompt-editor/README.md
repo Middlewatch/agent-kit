@@ -24,9 +24,10 @@ or stderr in headless mode. A custom `SYSTEM.md` or programmatic core bypasses t
 template without an error.
 
 Pi writes custom entries to the session file together with the first assistant
-message. A switch made before any reply is held in memory until then; quitting
-first loses it, and the next session starts from the `.active` pointer again. A
-switch whose write fails is reported as memory-only for the same reason.
+message. A switch made before any reply is held in memory until then and says
+so ("saved with the first reply"); quitting first loses it, and the next session
+starts from the `.active` pointer again. A switch whose write fails is reported
+as memory-only for the same reason.
 
 ## The `/sysprompt` command
 
@@ -92,9 +93,10 @@ container. The extension supplies what the event lacks:
   core equals that reconstruction byte for byte. An insertion by an earlier
   extension, inputs that disagree with the prompt, or a Pi release with changed
   prose all fail open with a warning that names the pinned and running versions.
-- Instruction scope. The file Pi loaded from its agent directory (`getAgentDir()`)
-  is global; every other file is workspace, scoped to the directory holding it,
-  which is how the loader found it. The stock container is lifted from the tail
+- Instruction scope. The file Pi loaded from its agent directory (`getAgentDir()`,
+  matched in lexical and real-path form) is global; every other file is
+  workspace, scoped to the directory holding it, which is how the loader found
+  it. The stock container is lifted from the tail
   and each file is rendered once as `<global_instructions>` or
   `<workspace_instructions>`, into a template slot or, for an omitted slot, into
   an `<instruction_context>` container left in the tail in loader order.

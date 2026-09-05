@@ -5,8 +5,8 @@ Status: as built 2026-09-05.
 ## Ownership
 
 Pi's loader decides which instruction files apply. The editor reads each file's
-scope from where the loader found it: the agent directory is global, any other
-directory is workspace. It neither discovers instruction files nor infers scope
+scope from where the loader found it: the agent directory (lexical or real
+path) is global, any other directory is workspace. It neither discovers instruction files nor infers scope
 from prose. Template selection belongs to one session branch. Model changes have
 no role in selection. The extension runs on stock Pi and pins one release in
 `lib/stock-core.ts`; `docs/adr/0006` records why it stopped requiring a patch.
@@ -42,9 +42,9 @@ cannot leave a stale cached name. The trade-off is recorded in
 fallback is `default.md`. The selected name is saved before first use. A switch
 validates that the file is readable, appends state, then reports success. Pi
 records a custom entry in memory before writing it and writes it with the first
-assistant message, so a switch before any reply is held in memory until then,
-and a failed write leaves this process pinned to a selection the session file
-lacks; the switch reports that case as memory-only. In-memory SDK sessions keep
+assistant message, so a switch before any reply is held in memory until then
+(the switch says so), and a failed write leaves this process pinned to a
+selection the session file lacks; the switch reports that case as memory-only. In-memory SDK sessions keep
 state for their lifetime without claiming disk storage.
 
 Each render rereads the pinned file. Removing it leaves the name in session state

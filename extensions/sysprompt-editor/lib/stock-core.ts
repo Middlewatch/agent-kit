@@ -13,6 +13,7 @@
  * Pi release that changes the core prose goes red there and the runtime
  * fails open until the mirror is re-pinned.
  */
+import * as fs from "node:fs";
 import * as path from "node:path";
 import type { InstructionFile } from "./instructions.ts";
 
@@ -113,20 +114,36 @@ export function projectContext(
   return block + "</project_context>\n";
 }
 
+/** The directory as written and, when it exists, as the filesystem knows it. */
+function directoryForms(dir: string): Set<string> {
+  const forms = new Set([path.resolve(dir)]);
+  try {
+    forms.add(fs.realpathSync.native(dir));
+  } catch {
+    // A missing directory has only its lexical form.
+  }
+  return forms;
+}
+
 /**
  * Recover each file's scope from where the loader found it. Pi loads the
  * global file from the agent directory and every other file from an
  * ancestor of the working directory (or a linked worktree's main root), so
- * the directory holding the file is its scope.
+ * the directory holding the file is its scope. The agent directory is
+ * matched in lexical and real-path form so a symlinked agent directory
+ * still reads as global.
  */
 export function scopeFiles(
   files: readonly { path: string; content: string }[],
   agentDir: string,
 ): InstructionFile[] {
-  const globalDir = path.resolve(agentDir);
+  const globalForms = directoryForms(agentDir);
   return files.map((file) => {
     const directory = path.dirname(path.resolve(file.path));
-    return directory === globalDir
+    const isGlobal = [...directoryForms(directory)].some((form) =>
+      globalForms.has(form),
+    );
+    return isGlobal
       ? { path: file.path, content: file.content, scope: { kind: "global" } }
       : {
           path: file.path,

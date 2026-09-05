@@ -101,28 +101,38 @@ export default function systemPromptExtension(
   const fixturePath =
     paths.fixturePath ?? resolvePath("./fixtures/output-test-document.md");
 
+  // Pi's own answers are read once, starting at construction so the first
+  // turn does not wait on the import and the agent directory is the one in
+  // force when Pi loaded this extension. A failed import is retried on the
+  // next use rather than cached.
   let facts: Promise<PiFacts> | null = null;
   function piFacts(): Promise<PiFacts> {
-    facts ??= (async () => {
-      if (paths.agentDir !== undefined && paths.docPaths !== undefined)
+    if (facts === null) {
+      facts = (async () => {
+        if (paths.agentDir !== undefined && paths.docPaths !== undefined)
+          return {
+            agentDir: paths.agentDir,
+            docPaths: paths.docPaths,
+            version: PINNED_PI_VERSION,
+          };
+        const pi = await import("@earendil-works/pi-coding-agent");
         return {
-          agentDir: paths.agentDir,
-          docPaths: paths.docPaths,
-          version: PINNED_PI_VERSION,
+          agentDir: paths.agentDir ?? pi.getAgentDir(),
+          docPaths: paths.docPaths ?? {
+            readme: pi.getReadmePath(),
+            docs: pi.getDocsPath(),
+            examples: pi.getExamplesPath(),
+          },
+          version: pi.VERSION,
         };
-      const pi = await import("@earendil-works/pi-coding-agent");
-      return {
-        agentDir: paths.agentDir ?? pi.getAgentDir(),
-        docPaths: paths.docPaths ?? {
-          readme: pi.getReadmePath(),
-          docs: pi.getDocsPath(),
-          examples: pi.getExamplesPath(),
-        },
-        version: pi.VERSION,
-      };
-    })();
+      })();
+      facts.catch(() => {
+        facts = null;
+      });
+    }
     return facts;
   }
+  void piFacts().catch(() => {});
 
   let lastEvidence: PromptEvidence | null = null;
   const { armCapture, takeArmedCapture } = createCaptureState();
@@ -174,7 +184,26 @@ export default function systemPromptExtension(
   pi.on("before_agent_start", async (event: BeforeAgentStartEvent, ctx) => {
     const pin = selection(ctx);
     const options = event.systemPromptOptions ?? { cwd: "" };
-    const { agentDir, docPaths, version } = await piFacts();
+    let agentDir: string;
+    let docPaths: DocPaths;
+    let version: string;
+    try {
+      ({ agentDir, docPaths, version } = await piFacts());
+    } catch (error) {
+      lastEvidence = {
+        coreSource: coreSource(options),
+        selectedName: pin.kind === "selected" ? pin.name : null,
+        renderedName: null,
+        templateSha256: null,
+        reason: null,
+        instructions: [],
+      };
+      warn(
+        ctx,
+        `Pi package facts unavailable: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return;
+    }
     const files = scopeFiles(options.contextFiles ?? [], agentDir);
     lastEvidence = {
       coreSource: coreSource(options),
@@ -275,7 +304,14 @@ export default function systemPromptExtension(
       else process.stderr.write(`${message}\n`);
       return;
     }
-    const message = `session template: ${chosen} (applies next message)`;
+    // Stock Pi writes custom entries with the first assistant message, so a
+    // switch in a session with no file yet is held in memory until then.
+    const sessionFile =
+      typeof ctx.sessionManager.getSessionFile === "function"
+        ? ctx.sessionManager.getSessionFile()
+        : undefined;
+    const unsaved = sessionFile !== undefined && !fs.existsSync(sessionFile);
+    const message = `session template: ${chosen} (applies next message${unsaved ? "; saved with the first reply" : ""})`;
     if (ctx.hasUI) ctx.ui.notify(message);
     else process.stderr.write(`${message}\n`);
   }

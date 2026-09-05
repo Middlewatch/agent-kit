@@ -93,7 +93,13 @@ test("a switch before the first reply is held in memory until the session file i
   // no file, so the next session starts from the active pointer again.
   const h = await fixture({ template: "DEFAULT CORE" });
   writeFileSync(join(h.templatesDir, "voice.md"), "VOICE CORE");
-  await h.session.prompt("/sysprompt switch voice.md");
+  const { lines } = await capturingStderr(() =>
+    h.session.prompt("/sysprompt switch voice.md"),
+  );
+  assert.ok(
+    lines.some((text) => text.includes("saved with the first reply")),
+    lines.join(),
+  );
   assert.deepEqual(pin(h.sessionManager), {
     kind: "selected",
     name: "voice.md",

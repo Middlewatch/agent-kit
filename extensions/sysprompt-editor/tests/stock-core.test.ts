@@ -4,6 +4,9 @@
  * published builder.
  */
 import assert from "node:assert/strict";
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
 import test from "node:test";
 import {
   projectContext,
@@ -90,6 +93,29 @@ test("projectContext reproduces Pi's container bytes and is empty with no files"
       '<project_instructions path="/w/AGENTS.md">\ntwo\n\n</project_instructions>\n\n' +
       "</project_context>\n",
   );
+});
+
+test("scopeFiles reads a symlinked agent directory as global in either spelling", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "sysprompt-scope-"));
+  const real = path.join(root, "real-agent");
+  const link = path.join(root, "agent-link");
+  fs.mkdirSync(real);
+  fs.symlinkSync(real, link);
+  const file = { path: path.join(real, "AGENTS.md"), content: "g" };
+  fs.writeFileSync(file.path, "g");
+  assert.deepEqual(scopeFiles([file], link)[0]!.scope, { kind: "global" });
+  assert.deepEqual(
+    scopeFiles([{ ...file, path: path.join(link, "AGENTS.md") }], real)[0]!
+      .scope,
+    { kind: "global" },
+  );
+  assert.deepEqual(scopeFiles([file], `${real}/`)[0]!.scope, {
+    kind: "global",
+  });
+  assert.deepEqual(scopeFiles([file], path.join(root, "missing"))[0]!.scope, {
+    kind: "workspace",
+    directory: real,
+  });
 });
 
 test("scopeFiles marks the agent-directory file global and every other file by its directory", () => {

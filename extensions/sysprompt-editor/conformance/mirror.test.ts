@@ -18,9 +18,13 @@ import {
 } from "../lib/stock-core.ts";
 
 // The builder is internal to the package; reach it by file, not by specifier.
-const builderUrl = import.meta
-  .resolve("@earendil-works/pi-coding-agent")
-  .replace(/index\.js$/, "core/system-prompt.js");
+const entryUrl = import.meta.resolve("@earendil-works/pi-coding-agent");
+assert.match(
+  entryUrl,
+  /\/dist\/index\.js$/,
+  "package entry moved; update the builder path below",
+);
+const builderUrl = entryUrl.replace(/index\.js$/, "core/system-prompt.js");
 const { buildSystemPrompt } = (await import(builderUrl)) as {
   buildSystemPrompt: (options: Record<string, unknown>) => string;
 };
