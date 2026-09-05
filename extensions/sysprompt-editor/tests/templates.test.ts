@@ -8,20 +8,19 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import test from "node:test";
-import { sessionStub } from "./stubs.ts";
+import {
+  AGENT_DIR,
+  DOC_PATHS,
+  STOCK_CORE,
+  STOCK_OPTIONS,
+  sessionStub,
+} from "./stubs.ts";
 import systemPromptExtension from "../index.ts";
 import {
   listTemplates,
   readActiveTemplate,
   scaffoldTemplate,
 } from "../lib/templates.ts";
-
-const STOCK_CORE =
-  "You are an expert coding assistant operating inside pi, a coding agent harness. Intro.\n\n" +
-  "Available tools:\n- read: Read\n\n" +
-  "In addition to the tools above, more.\n\n" +
-  "Guidelines:\n- Be concise\n\n" +
-  "Pi documentation (read only when asked):\n- Main: /tmp/README.md";
 
 function tempDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), "sysprompt-templates-"));
@@ -44,16 +43,17 @@ function capturedHandler(
       if (name === "before_agent_start")
         handler = (event: unknown) =>
           (fn as any)(
-            {
-              originalSystemPrompt: (event as any).systemPrompt,
-              ...(event as object),
-            },
+            { systemPromptOptions: STOCK_OPTIONS, ...(event as object) },
             state.context(),
           );
     },
     registerCommand() {},
   };
-  systemPromptExtension(stub as never, { templatesDir });
+  systemPromptExtension(stub as never, {
+    templatesDir,
+    agentDir: AGENT_DIR,
+    docPaths: DOC_PATHS,
+  });
   assert.ok(handler, "extension registered a before_agent_start handler");
   return handler as (
     event: unknown,
@@ -114,12 +114,21 @@ test("pointer resolution: changing the initial default leaves an existing sessio
   });
   const handler = capturedHandler(dir);
   const before = await handler({ systemPrompt: STOCK_CORE });
-  assert.equal(before?.systemPrompt, "DEFAULT VOICE\n- read: Read");
+  assert.equal(
+    before?.systemPrompt,
+    "DEFAULT VOICE\n- read: Read\n- bash: Execute bash commands",
+  );
   seedDefault(dir, "terse.md");
   const after = await handler({ systemPrompt: STOCK_CORE });
-  assert.equal(after?.systemPrompt, "DEFAULT VOICE\n- read: Read");
+  assert.equal(
+    after?.systemPrompt,
+    "DEFAULT VOICE\n- read: Read\n- bash: Execute bash commands",
+  );
   const fresh = await capturedHandler(dir)({ systemPrompt: STOCK_CORE });
-  assert.equal(fresh?.systemPrompt, "TERSE VOICE\n- read: Read");
+  assert.equal(
+    fresh?.systemPrompt,
+    "TERSE VOICE\n- read: Read\n- bash: Execute bash commands",
+  );
 });
 
 test("list: active template sorts first", () => {

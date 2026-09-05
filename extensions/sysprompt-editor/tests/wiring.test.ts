@@ -9,7 +9,13 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import test from "node:test";
-import { sessionStub } from "./stubs.ts";
+import {
+  AGENT_DIR,
+  DOC_PATHS,
+  STOCK_CORE,
+  STOCK_OPTIONS,
+  sessionStub,
+} from "./stubs.ts";
 import systemPromptExtension, { type ExtensionPaths } from "../index.ts";
 import { createHash } from "node:crypto";
 
@@ -46,11 +52,7 @@ function harness(paths: Partial<ExtensionPaths> = {}): Harness {
     on(name: string, fn: Handler) {
       handlers.set(name, (event, ctx) =>
         fn(
-          {
-            originalSystemPrompt: event.systemPrompt,
-            model: ctx?.model ?? { provider: "unknown", id: "unknown" },
-            ...event,
-          },
+          { systemPromptOptions: STOCK_OPTIONS, ...event },
           state.context(ctx),
         ),
       );
@@ -67,6 +69,8 @@ function harness(paths: Partial<ExtensionPaths> = {}): Harness {
     templatesDir,
     artifactsDir,
     fixturePath: paths.fixturePath,
+    agentDir: AGENT_DIR,
+    docPaths: DOC_PATHS,
   });
   assert.ok(command, "extension registered the sysprompt command");
   return { templatesDir, artifactsDir, handlers, command, sent };
@@ -253,12 +257,12 @@ test("wiring: inspect inventories inputs and arms an instance-local capture", as
   const stamp = await arm(h);
   const file = path.join(h.artifactsDir, "inspect", `${stamp}-immediate.md`);
   assert.match(fs.readFileSync(file, "utf8"), /Selection and scoped inputs/);
-  await other.handlers.get("provider_request")!(
+  await other.handlers.get("before_provider_request")!(
     { payload: { system: "OTHER" } },
     stubUi().ctx,
   );
   assert.equal(fs.existsSync(path.join(other.artifactsDir, "inspect")), false);
-  await h.handlers.get("provider_request")!(
+  await h.handlers.get("before_provider_request")!(
     { payload: { system: "EXACT\nBYTES" } },
     stubUi().ctx,
   );
@@ -269,7 +273,7 @@ test("wiring: inspect inventories inputs and arms an instance-local capture", as
     ),
     "EXACT\nBYTES",
   );
-  await h.handlers.get("provider_request")!(
+  await h.handlers.get("before_provider_request")!(
     { payload: { system: "LATER" } },
     stubUi().ctx,
   );
@@ -308,7 +312,7 @@ test("wiring: turn end cancels a provider that did not expose its payload", asyn
   await h.handlers.get("turn_end")!({}, ui.ctx);
   assert.match(ui.notices[0]!.message, /provider did not expose its payload/);
   assert.equal(ui.notices[0]!.type, "warning");
-  await h.handlers.get("provider_request")!(
+  await h.handlers.get("before_provider_request")!(
     { payload: { system: "late" } },
     ui.ctx,
   );
@@ -324,7 +328,7 @@ test("wiring: unrecognized payload writes raw JSON and warns", async () => {
   const h = harness();
   const stamp = await arm(h);
   const ui = stubUi();
-  await h.handlers.get("provider_request")!(
+  await h.handlers.get("before_provider_request")!(
     { payload: { input: "unknown" } },
     ui.ctx,
   );
@@ -343,7 +347,7 @@ test("wiring: provider artifact write failure reports error and clears capture",
   const ui = stubUi();
   fs.rmSync(h.artifactsDir, { recursive: true });
   fs.writeFileSync(h.artifactsDir, "blocked");
-  await h.handlers.get("provider_request")!(
+  await h.handlers.get("before_provider_request")!(
     { payload: { system: "SYS" } },
     ui.ctx,
   );
@@ -352,13 +356,6 @@ test("wiring: provider artifact write failure reports error and clears capture",
   await h.handlers.get("turn_end")!({}, ui.ctx);
   assert.equal(ui.notices.length, 0);
 });
-
-const STOCK_CORE =
-  "You are an expert coding assistant operating inside pi, a coding agent harness. Intro.\n\n" +
-  "Available tools:\n- read: Read\n\n" +
-  "In addition to the tools above, more.\n\n" +
-  "Guidelines:\n- Be concise\n\n" +
-  "Pi documentation (read only when asked):\n- Main: /tmp/README.md";
 
 const REPLY = {
   role: "assistant",
@@ -394,7 +391,7 @@ test("wiring: turn_end with pending capture writes the result file", async () =>
   );
   const before = h.handlers.get("before_agent_start")!;
   assert.equal(await before({ systemPrompt: STOCK_CORE }, ui.ctx), undefined);
-  await h.handlers.get("provider_request")!(
+  await h.handlers.get("before_provider_request")!(
     { payload: { system: STOCK_CORE } },
     stubUi({ model }).ctx,
   );
@@ -444,7 +441,10 @@ test("wiring: result header records the rendered template name and sha256", asyn
   await h.command("test", stubUi({ model }).ctx);
   fs.writeFileSync(path.join(h.templatesDir, ".active"), "voice.md\n");
   const spliced = await before({ systemPrompt: STOCK_CORE }, {});
-  assert.equal(spliced?.systemPrompt, "VOICE\n- read: Read");
+  assert.equal(
+    spliced?.systemPrompt,
+    "VOICE\n- read: Read\n- bash: Execute bash commands",
+  );
   const endUi = stubUi({ model });
   await turnEnd({ message: REPLY }, endUi.ctx);
   const [file] = fs.readdirSync(dir);
@@ -473,7 +473,7 @@ test("wiring: result header records the rendered template name and sha256", asyn
     );
     assert.match(
       stock,
-      /fallback-or-bypass: (custom system prompt bypass|stock core boundary not recognized)/,
+      /fallback-or-bypass: (custom system prompt bypass|stock core boundary not recognized|stock core differs from Pi)/,
     );
   }
   // Busy agent: the test is refused, nothing sent, nothing pending.
@@ -496,7 +496,7 @@ test("wiring: result header records the rendered template name and sha256", asyn
   // Model identity comes from the provider observation, not the command context.
   await h.command("test", stubUi({}).ctx);
   await before({ systemPrompt: STOCK_CORE }, {});
-  await h.handlers.get("provider_request")!(
+  await h.handlers.get("before_provider_request")!(
     { payload: { system: STOCK_CORE } },
     stubUi({}).ctx,
   );

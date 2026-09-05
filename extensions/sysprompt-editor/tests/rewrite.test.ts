@@ -1,38 +1,36 @@
 /**
  * Unit tests for the template splice. A stub ExtensionAPI captures the
- * before_agent_start handler; a synthetic stock prompt exercises the rewrite
- * and each fail-open branch through the index.ts composition, and two tests
- * drive lib/splice.ts renderTemplate directly. No Pi process and no provider
- * request.
+ * before_agent_start handler; a stock prompt built the way Pi builds it
+ * exercises the rewrite and each fail-open branch through the index.ts
+ * composition, and a few tests drive lib/splice.ts renderTemplate directly.
+ * No Pi process and no provider request.
  */
 import assert from "node:assert/strict";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import test from "node:test";
-import { sessionStub } from "./stubs.ts";
+import {
+  AGENT_DIR,
+  CONTEXT,
+  DOC_PATHS,
+  DOCS,
+  FILES,
+  GLOBAL_BLOCK,
+  GUIDELINES,
+  STOCK_CORE,
+  STOCK_OPTIONS,
+  TOOLS,
+  sessionStub,
+} from "./stubs.ts";
 import systemPromptExtension from "../index.ts";
 import { renderTemplate, scratchpadSection } from "../lib/splice.ts";
 
-const TOOLS = "- read: Read file contents\n- bash: Execute bash commands";
-const GUIDELINES =
-  "- Use bash for file operations\n- Be concise in your responses";
-const DOCS =
-  "Pi documentation (read only when the user asks about pi itself):\n- Main documentation: /tmp/README.md";
-const CONTEXT =
-  '\n\n<instruction_context>\n\nGlobal instructions apply across workspaces. Workspace instructions apply within their named directory; deeper workspace instructions take precedence for files in their scope.\n\n<global_instructions path="/g/AGENTS.md">\nstub\n</global_instructions>\n\n</instruction_context>';
-const FILES = [
-  { path: "/g/AGENTS.md", content: "stub", scope: { kind: "global" as const } },
-];
 const TAIL = CONTEXT + "\nCurrent working directory: /tmp";
-
-const STOCK_CORE =
-  "You are an expert coding assistant operating inside pi, a coding agent harness. " +
-  "You help users by reading files, executing commands, editing code, and writing new files.\n\n" +
-  `Available tools:\n${TOOLS}\n\n` +
-  "In addition to the tools above, you may have access to other custom tools depending on the project.\n\n" +
-  `Guidelines:\n${GUIDELINES}\n\n` +
-  DOCS;
+const SCOPED_TAIL =
+  "\n\n<instruction_context>\n\nGlobal instructions apply across workspaces. Workspace instructions apply within their named directory; deeper workspace instructions take precedence for files in their scope.\n\n" +
+  GLOBAL_BLOCK +
+  "\n\n</instruction_context>";
 
 /**
  * A temp templates dir holding only the repo's default.md, so the rewrite
@@ -48,32 +46,34 @@ const TEMPLATES_DIR = fs.mkdtempSync(
 );
 fs.writeFileSync(path.join(TEMPLATES_DIR, "default.md"), DEFAULT_TEMPLATE);
 
-function capturedHandler(): (
-  event: unknown,
-) => Promise<{ systemPrompt: string } | undefined> {
+type Handler = (event: {
+  systemPrompt: string;
+  systemPromptOptions?: Record<string, unknown>;
+}) => Promise<{ systemPrompt: string } | undefined>;
+
+/** Build the extension on a templates dir; events get stock inputs by default. */
+function capturedHandler(templatesDir = TEMPLATES_DIR): Handler {
   let handler: unknown;
   const state = sessionStub();
   const stub = {
     appendEntry: state.appendEntry,
     on(name: string, fn: unknown) {
       if (name === "before_agent_start")
-        handler = (event: unknown) =>
-          (fn as any)(
-            {
-              originalSystemPrompt: (event as any).systemPrompt,
-              ...(event as object),
-            },
-            state.context(),
-          );
+        handler = (event: unknown) => (fn as any)(event, state.context());
     },
     registerCommand() {},
   };
-  systemPromptExtension(stub as never, { templatesDir: TEMPLATES_DIR });
+  systemPromptExtension(stub as never, {
+    templatesDir,
+    agentDir: AGENT_DIR,
+    docPaths: DOC_PATHS,
+  });
   assert.ok(handler, "extension registered a before_agent_start handler");
-  return (event: any) =>
+  return (event) =>
     (handler as any)({
       ...event,
       systemPromptOptions: {
+        ...STOCK_OPTIONS,
         contextFiles: event.systemPrompt.includes(CONTEXT) ? FILES : [],
         ...event.systemPromptOptions,
       },
@@ -85,11 +85,8 @@ test("stock prompt is rebuilt with scoped instructions moved and other tail byte
   assert.ok(result, "handler returned a rewritten prompt");
   for (const value of [TOOLS, GUIDELINES, DOCS])
     assert.ok(result.systemPrompt.includes(value));
-  assert.equal(
-    result.systemPrompt.split('<global_instructions path="/g/AGENTS.md">')
-      .length,
-    2,
-  );
+  assert.equal(result.systemPrompt.split(GLOBAL_BLOCK).length, 2);
+  assert.ok(!result.systemPrompt.includes("<project_context>"));
   assert.ok(
     result.systemPrompt.indexOf("stub") <
       result.systemPrompt.indexOf("Available tools:"),
@@ -108,6 +105,30 @@ test("stock prompt is rebuilt with scoped instructions moved and other tail byte
   }
 });
 
+test("a template without instruction slots keeps the files in the tail, scoped, in loader order", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sysprompt-noslot-"));
+  fs.writeFileSync(path.join(dir, "default.md"), "CORE\n{{AVAILABLE_TOOLS}}");
+  const files = [
+    { path: "/g/AGENTS.md", content: "global" },
+    { path: "/w/AGENTS.md", content: "parent" },
+    { path: "/w/n/AGENTS.md", content: "nested" },
+  ];
+  const { projectContext } = await import("../lib/stock-core.ts");
+  const result = await capturedHandler(dir)({
+    systemPrompt:
+      STOCK_CORE + projectContext(files) + "\nCurrent working directory: /w/n",
+    systemPromptOptions: { contextFiles: files },
+  });
+  assert.equal(
+    result?.systemPrompt,
+    `CORE\n${TOOLS}\n\n<instruction_context>\n\nGlobal instructions apply across workspaces. Workspace instructions apply within their named directory; deeper workspace instructions take precedence for files in their scope.\n\n` +
+      '<global_instructions path="/g/AGENTS.md">\nglobal\n</global_instructions>\n\n' +
+      '<workspace_instructions path="/w/AGENTS.md" directory="/w">\nparent\n</workspace_instructions>\n\n' +
+      '<workspace_instructions path="/w/n/AGENTS.md" directory="/w/n">\nnested\n</workspace_instructions>\n\n' +
+      "</instruction_context>\nCurrent working directory: /w/n",
+  );
+});
+
 test("an active SYSTEM.md custom prompt is left untouched", async () => {
   const result = await capturedHandler()({
     systemPrompt: STOCK_CORE + TAIL,
@@ -123,10 +144,52 @@ test("a non-stock prompt is left untouched", async () => {
   assert.equal(result, undefined);
 });
 
-test("a drifted core shape fails open", async () => {
-  const drifted = STOCK_CORE.replace("Guidelines:", "House rules:");
-  const result = await capturedHandler()({ systemPrompt: drifted + TAIL });
-  assert.equal(result, undefined);
+test("a core that differs from Pi's own construction fails open", async () => {
+  const handler = capturedHandler();
+  // Drifted prose (a Pi release changed the core).
+  assert.equal(
+    await handler({
+      systemPrompt: STOCK_CORE.replace("Guidelines:", "House rules:") + TAIL,
+    }),
+    undefined,
+  );
+  // An earlier extension inserted policy inside the core.
+  assert.equal(
+    await handler({
+      systemPrompt:
+        STOCK_CORE.replace(
+          "\n\nAvailable tools:",
+          "\n\nCRITICAL PRIOR POLICY\n\nAvailable tools:",
+        ) + TAIL,
+    }),
+    undefined,
+  );
+  // Inputs that disagree with the prompt (a different tool set).
+  assert.equal(
+    await handler({
+      systemPrompt: STOCK_CORE + TAIL,
+      systemPromptOptions: { selectedTools: ["read"] },
+    }),
+    undefined,
+  );
+});
+
+test("instruction files that disagree with the tail fail open", async () => {
+  const handler = capturedHandler();
+  assert.equal(
+    await handler({
+      systemPrompt: STOCK_CORE + TAIL,
+      systemPromptOptions: { contextFiles: [] },
+    }),
+    undefined,
+  );
+  assert.equal(
+    await handler({
+      systemPrompt: STOCK_CORE + "\nCurrent working directory: /tmp",
+      systemPromptOptions: { contextFiles: FILES },
+    }),
+    undefined,
+  );
 });
 
 test("renderTemplate replaces all three placeholders", () => {
@@ -153,6 +216,7 @@ test("renderTemplate fills {{PI_SCRATCHPAD}} from the given path, empty when uns
     renderTemplate(template, STOCK_CORE, ""),
     "Intro.\n\n## Scratchpad",
   );
+  assert.equal(scratchpadSection(undefined), "");
 });
 
 test("the handler passes process.env.PI_SCRATCHPAD into the render", async () => {
@@ -190,45 +254,25 @@ test("renderTemplate returns null on drifted shape", () => {
   );
 });
 
+const SKILLS_BLOCK =
+  "The following skills provide specialized instructions for specific tasks.\n" +
+  "Use the read tool to load a skill's file when the task matches its description.\n\n" +
+  "<available_skills>\n  <skill>\n    <name>harvest</name>\n  </skill>\n</available_skills>";
+
 test("{{SKILLS}} relocates pi's stock skills block into the template", async () => {
-  const block =
-    "The following skills provide specialized instructions for specific tasks.\n" +
-    "Use the read tool to load a skill's file when the task matches its description.\n\n" +
-    "<available_skills>\n  <skill>\n    <name>harvest</name>\n  </skill>\n</available_skills>";
-  const tail = CONTEXT + "\n\n" + block + "\nCurrent working directory: /w";
+  const tail =
+    CONTEXT + "\n" + SKILLS_BLOCK + "\nCurrent working directory: /w";
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sysprompt-skills-"));
   fs.writeFileSync(
     path.join(dir, "default.md"),
     "Intro.\n\n## Tools\n\n{{AVAILABLE_TOOLS}}\n\n## Skills\n\n{{SKILLS}}\n\n## Rules\n\n{{GUIDELINES}}\n\n{{PI_DOCS}}\n",
   );
-  let handler: any;
-  const state = sessionStub();
-  systemPromptExtension(
-    {
-      appendEntry: state.appendEntry,
-      on(name: string, fn: unknown) {
-        if (name === "before_agent_start")
-          handler = (event: unknown) =>
-            (fn as any)(
-              {
-                originalSystemPrompt: (event as any).systemPrompt,
-                ...(event as object),
-              },
-              state.context(),
-            );
-      },
-      registerCommand() {},
-    } as never,
-    { templatesDir: dir },
-  );
-  const result = await handler({
-    systemPrompt: STOCK_CORE + tail,
-    systemPromptOptions: { contextFiles: FILES },
-  });
+  const handler = capturedHandler(dir);
+  const result = await handler({ systemPrompt: STOCK_CORE + tail });
   assert.equal(
     result?.systemPrompt,
-    `Intro.\n\n## Tools\n\n${TOOLS}\n\n## Skills\n\n${block}\n\n## Rules\n\n${GUIDELINES}\n\n${DOCS}` +
-      CONTEXT +
+    `Intro.\n\n## Tools\n\n${TOOLS}\n\n## Skills\n\n${SKILLS_BLOCK}\n\n## Rules\n\n${GUIDELINES}\n\n${DOCS}` +
+      SCOPED_TAIL +
       "\nCurrent working directory: /w",
   );
   // No skills block in the tail: the placeholder renders empty.
@@ -243,41 +287,17 @@ test("{{SKILLS}} relocates pi's stock skills block into the template", async () 
 });
 
 test("{{SKILLS}} lifts the block when no project context precedes it", async () => {
-  const block =
-    "The following skills provide specialized instructions for specific tasks.\n" +
-    "Use the read tool to load a skill's file when the task matches its description.\n\n" +
-    "<available_skills>\n  <skill>\n    <name>harvest</name>\n  </skill>\n</available_skills>";
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sysprompt-skills-"));
   fs.writeFileSync(
     path.join(dir, "default.md"),
     "Intro.\n\n{{AVAILABLE_TOOLS}}\n\n{{SKILLS}}\n\n{{GUIDELINES}}\n\n{{PI_DOCS}}\n",
   );
-  let handler: any;
-  const state = sessionStub();
-  systemPromptExtension(
-    {
-      appendEntry: state.appendEntry,
-      on(name: string, fn: unknown) {
-        if (name === "before_agent_start")
-          handler = (event: unknown) =>
-            (fn as any)(
-              {
-                originalSystemPrompt: (event as any).systemPrompt,
-                ...(event as object),
-              },
-              state.context(),
-            );
-      },
-      registerCommand() {},
-    } as never,
-    { templatesDir: dir },
-  );
-  const result = await handler({
+  const result = await capturedHandler(dir)({
     systemPrompt:
-      STOCK_CORE + "\n\n" + block + "\nCurrent working directory: /w",
+      STOCK_CORE + "\n\n" + SKILLS_BLOCK + "\nCurrent working directory: /w",
   });
   assert.equal(
     result?.systemPrompt,
-    `Intro.\n\n${TOOLS}\n\n${block}\n\n${GUIDELINES}\n\n${DOCS}\nCurrent working directory: /w`,
+    `Intro.\n\n${TOOLS}\n\n${SKILLS_BLOCK}\n\n${GUIDELINES}\n\n${DOCS}\nCurrent working directory: /w`,
   );
 });

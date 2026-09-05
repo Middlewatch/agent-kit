@@ -27,8 +27,8 @@ export function instructionInventory(
 ): PromptEvidence["instructions"] {
   return files.map((file) => ({
     path: file.path,
-    scope: file.scope?.kind ?? "unspecified",
-    ...(file.scope?.kind === "workspace"
+    scope: file.scope.kind,
+    ...(file.scope.kind === "workspace"
       ? { directory: file.scope.directory }
       : {}),
     sha256: sha256(file.content),

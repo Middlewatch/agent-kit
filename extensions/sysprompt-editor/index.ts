@@ -4,6 +4,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import type {
+  BeforeAgentStartEvent,
   ExtensionAPI,
   ExtensionCommandContext,
   ExtensionContext,
@@ -32,12 +33,15 @@ import {
   sha256,
   type PromptEvidence,
 } from "./lib/evidence.ts";
-import {
-  coreSource,
-  onProviderRequest,
-  type ScopedStartEvent,
-} from "./lib/pi-contract.ts";
+import { coreSource, onFinalPayload } from "./lib/pi-contract.ts";
 import { splitTail, splicePrompt } from "./lib/splice.ts";
+import {
+  PINNED_PI_VERSION,
+  STOCK_FIRST_LINE,
+  scopeFiles,
+  stockCore,
+  type DocPaths,
+} from "./lib/stock-core.ts";
 import {
   listTemplates,
   readTemplate,
@@ -51,9 +55,6 @@ import {
   type Selection,
 } from "./lib/selection.ts";
 
-const STOCK_FIRST_LINE =
-  "You are an expert coding assistant operating inside pi, a coding agent harness.";
-
 const ACTIONS = ["switch", "new", "inspect", "test"] as const;
 type Action = (typeof ACTIONS)[number];
 const USAGE = "usage: /sysprompt [switch|new|inspect|test]";
@@ -61,12 +62,22 @@ const USAGE = "usage: /sysprompt [switch|new|inspect|test]";
 /**
  * Filesystem locations the extension works against. Pi calls the default
  * export with no paths and the URL-resolved defaults apply; tests pass temp
- * directories. This is the only injection mechanism.
+ * directories. This is the only injection mechanism. `agentDir` and
+ * `docPaths` default to the running Pi's own answers, read lazily so unit
+ * tests never load the Pi package.
  */
 export interface ExtensionPaths {
   templatesDir?: string;
   artifactsDir?: string;
   fixturePath?: string;
+  agentDir?: string;
+  docPaths?: DocPaths;
+}
+
+interface PiFacts {
+  agentDir: string;
+  docPaths: DocPaths;
+  version: string;
 }
 
 function resolvePath(spelling: string): string | null {
@@ -89,6 +100,29 @@ export default function systemPromptExtension(
   const artifactsDir = paths.artifactsDir ?? resolvePath("./artifacts/");
   const fixturePath =
     paths.fixturePath ?? resolvePath("./fixtures/output-test-document.md");
+
+  let facts: Promise<PiFacts> | null = null;
+  function piFacts(): Promise<PiFacts> {
+    facts ??= (async () => {
+      if (paths.agentDir !== undefined && paths.docPaths !== undefined)
+        return {
+          agentDir: paths.agentDir,
+          docPaths: paths.docPaths,
+          version: PINNED_PI_VERSION,
+        };
+      const pi = await import("@earendil-works/pi-coding-agent");
+      return {
+        agentDir: paths.agentDir ?? pi.getAgentDir(),
+        docPaths: paths.docPaths ?? {
+          readme: pi.getReadmePath(),
+          docs: pi.getDocsPath(),
+          examples: pi.getExamplesPath(),
+        },
+        version: pi.VERSION,
+      };
+    })();
+    return facts;
+  }
 
   let lastEvidence: PromptEvidence | null = null;
   const { armCapture, takeArmedCapture } = createCaptureState();
@@ -137,20 +171,21 @@ export default function systemPromptExtension(
     }
   }
 
-  pi.on("before_agent_start", async (event: ScopedStartEvent, ctx) => {
+  pi.on("before_agent_start", async (event: BeforeAgentStartEvent, ctx) => {
     const pin = selection(ctx);
+    const options = event.systemPromptOptions ?? { cwd: "" };
+    const { agentDir, docPaths, version } = await piFacts();
+    const files = scopeFiles(options.contextFiles ?? [], agentDir);
     lastEvidence = {
-      coreSource: coreSource(event.systemPromptOptions ?? {}),
+      coreSource: coreSource(options),
       selectedName: pin.kind === "selected" ? pin.name : null,
       renderedName: null,
       templateSha256: null,
       reason: null,
-      instructions: instructionInventory(
-        event.systemPromptOptions?.contextFiles,
-      ),
+      instructions: instructionInventory(files),
     };
     const prompt: string = event.systemPrompt ?? "";
-    if (event.systemPromptOptions?.customPrompt) {
+    if (options.customPrompt) {
       lastEvidence.reason = "custom system prompt bypass";
       lastWarning = null;
       return;
@@ -159,16 +194,16 @@ export default function systemPromptExtension(
       warn(ctx, "stock core boundary not recognized");
       return;
     }
-    if (event.originalSystemPrompt === undefined) {
-      warn(ctx, "original prompt provenance unavailable; patched Pi required");
-      return;
-    }
-    const append = event.systemPromptOptions?.appendSystemPrompt;
-    if (
-      splitTail(prompt, append)[0] !==
-      splitTail(event.originalSystemPrompt, append)[0]
-    ) {
-      warn(ctx, "stock core boundary not recognized (core was modified)");
+    // Stock Pi hands over the prompt as earlier extensions left it. The
+    // core is trusted only when it matches Pi's own construction from the
+    // same inputs; anything else (an insertion, or a Pi release that
+    // changed the prose) fails open.
+    const core = splitTail(prompt, options.appendSystemPrompt)[0];
+    if (core !== stockCore(options, docPaths)) {
+      warn(
+        ctx,
+        `stock core differs from Pi ${PINNED_PI_VERSION} as mirrored (running ${version}); core was modified or the mirror needs re-pinning`,
+      );
       return;
     }
     const active = activeTemplate(ctx);
@@ -182,7 +217,7 @@ export default function systemPromptExtension(
     const result = splicePrompt(
       active.content,
       prompt,
-      event.systemPromptOptions ?? {},
+      { appendSystemPrompt: options.appendSystemPrompt, contextFiles: files },
       process.env.PI_SCRATCHPAD,
     );
     if ("reason" in result) {
@@ -268,13 +303,14 @@ export default function systemPromptExtension(
     }
   }
 
-  onProviderRequest(pi, async (event, ctx) => {
+  onFinalPayload(pi, async (event, ctx) => {
     const system = extractSystemPromptFromPayload(event.payload);
     if (lastEvidence && system !== null)
       lastEvidence.providerSystemSha256 = sha256(system);
     if (pendingTest) {
-      pendingTest.provider = event.model.provider;
-      pendingTest.modelId = event.model.id;
+      const seen = modelLabel(event.model);
+      pendingTest.provider = seen.provider;
+      pendingTest.modelId = seen.modelId;
     }
     const stamp = takeArmedCapture() ?? pendingTest?.stamp ?? null;
     if (stamp === null) return;
@@ -465,6 +501,7 @@ export default function systemPromptExtension(
     let dump: string;
     try {
       const options = ctx.getSystemPromptOptions();
+      const { agentDir } = await piFacts();
       const pin = selection(ctx);
       const selected = pin.kind === "selected" ? pin.name : null;
       let templateSha256: string | null = null;
@@ -488,7 +525,9 @@ export default function systemPromptExtension(
           renderedName: null,
           templateSha256,
           reason,
-          instructions: instructionInventory(options.contextFiles),
+          instructions: instructionInventory(
+            scopeFiles(options.contextFiles ?? [], agentDir),
+          ),
         });
     } catch (err) {
       takeArmedCapture();
