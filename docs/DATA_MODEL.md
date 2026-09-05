@@ -18,11 +18,10 @@ An absent entry permits initialization from the default pointer.
 
 ## Loaded instruction file
 
-Pi owns `InstructionFile` in `packages/coding-agent/src/core/instruction-context.ts`.
-It carries `path`, verbatim `content`, and loader provenance in `scope`:
-`{ kind: "global" }` or `{ kind: "workspace", directory }`.
-Legacy SDK-provided context may omit scope. Pi then renders a neutral tag;
-the editor requires scope before it can relocate loaded files.
+Pi's loader reports each file as `{ path, content }`. The editor's
+`InstructionFile` in `~/.agents/kit/extensions/sysprompt-editor/lib/instructions.ts`
+adds `scope`, recovered from the directory holding the file: the agent directory
+is `{ kind: "global" }`, any other is `{ kind: "workspace", directory }`.
 
 The loader's array order preserves global then ancestor-to-descendant precedence.
 Inspection records each file's scope, directory where applicable, and content hash.
@@ -30,9 +29,12 @@ These are evidence about a capture, not another instruction store.
 
 ## Prompt provenance
 
-Pi's `coreSource` identifies a stock core, inline custom text, or the path of a
-custom-core file. `before_agent_start.originalSystemPrompt` preserves the baseline
-for checking chained edits. The `provider_request` event exposes isolated final
-payload snapshots plus request-time model identity. The editor's `PromptEvidence`
-type in `~/.agents/kit/extensions/sysprompt-editor/lib/evidence.ts` records those facts and content hashes for explicit
-captures and output tests.
+`CoreSource` is `stock` or `custom`; Pi does not tell extensions whether a custom
+core came from a file. The baseline for detecting chained core edits is the
+stock core rebuilt from `before_agent_start.systemPromptOptions` by
+`~/.agents/kit/extensions/sysprompt-editor/lib/stock-core.ts`. The
+`before_provider_request` event supplies the payload as it stands at this
+extension's load position, labelled with the session's model at request time.
+The editor's `PromptEvidence` type in
+`~/.agents/kit/extensions/sysprompt-editor/lib/evidence.ts` records those facts
+and content hashes for explicit captures and output tests.

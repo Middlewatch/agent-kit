@@ -8,12 +8,16 @@ the living docs and describe the product as built.
 ## Project gates and rules
 
 - `scripts/verify.sh` is the definition of green: install, format check,
-  typecheck, unit tests, and real-loader conformance against the patched Pi
-  source named by `PI_SOURCE_DIR`. Run it before any commit that touches this
+  typecheck, unit tests, and conformance against the published Pi package
+  pinned in `package.json`. Run it before any commit that touches this
   directory.
 - Fail open is doctrine. Any change to the splice keeps the property that an
   unrecognized condition returns the prompt exactly as Pi built it, and the
   unit suite proves each fail-open branch.
+- The extension runs on stock Pi. `lib/stock-core.ts` mirrors the pinned
+  release's core prose; a Pi upgrade that changes it fails
+  `conformance/mirror.test.ts`. Re-pin from the new source after reviewing
+  the diff, in the same commit as the `package.json` bump.
 - The extension loads through the kit's pi package, so edits here are live
   in new sessions. Run the gate before stepping away from an edit.
 - Templates are guidance prose that becomes the system prompt verbatim; they

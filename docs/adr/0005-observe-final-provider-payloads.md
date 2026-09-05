@@ -1,7 +1,7 @@
 # 0005: Observe provider payloads after all transforms
 
 Date: 2026-09-04
-Status: accepted
+Status: superseded by 0006 (the editor observes `before_provider_request` on stock Pi)
 
 ## Context
 

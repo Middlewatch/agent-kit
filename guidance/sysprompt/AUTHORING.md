@@ -59,9 +59,9 @@ once as well to keep the prompt readable. Unknown placeholder names remain liter
 
 The editor preserves `APPEND_SYSTEM.md` and programmatic append text independently
 of `{{PI_DOCS}}`. A custom `SYSTEM.md`, `--system-prompt`, or SDK custom core bypasses
-template rewriting without an error. Missing provenance, malformed saved state,
-failed selection persistence, and unrecognized boundaries preserve the incoming
-prompt. Ordinary turns warn through UI or stderr when the reason first occurs or
+template rewriting without an error. A core that differs from Pi's own
+construction, malformed saved state, failed selection persistence, and
+unrecognized boundaries preserve the incoming prompt. Ordinary turns warn through UI or stderr when the reason first occurs or
 changes; successful rendering clears that warning state.
 
 ## Examples and evidence
@@ -93,9 +93,10 @@ not proof that the example improves instruction following.
 Run `/sysprompt inspect`, then send a normal message. The immediate inventory names
 selected state and scoped input hashes at command time; it is not an assembled
 prompt. The provider `.md` records the selected and rendered names, template hash,
-fallback or bypass reason, core source (stock, inline, or file path), and each
-loaded file's scope and content hash. Capture runs after all payload-transform
-hooks, so a later transform cannot make the recorded text stale. The
+fallback or bypass reason, core source (stock or custom), and each loaded
+file's scope and content hash. Capture sees the payload at this extension's
+position in Pi's extension load order; the kit lists it after the extensions
+that edit prompts. The
 `.txt` contains extracted system text; multiple provider text blocks are joined
 with blank lines. The optional bridge wire capture can reveal downstream changes.
 
@@ -115,7 +116,8 @@ reproduction matters. The extension does not archive every turn.
 
 ## Runtime requirement
 
-Scoped placement and durable initialization require the companion Pi source
-changes based on v0.85.0, documented in the extension README. Build and test that
-source checkout before deploying through the normal Pi installation process.
-Editing installed JavaScript is not an installation procedure.
+The extension runs on stock Pi and pins one release in its `lib/stock-core.ts`.
+After a Pi upgrade that changes the core prose, templates fail open with a
+warning naming both versions until the extension is re-pinned; the extension
+README describes the check. A template switch made before the first reply in a
+session is held in memory until Pi writes the session file.

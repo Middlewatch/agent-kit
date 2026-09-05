@@ -186,3 +186,8 @@ tests, Pi's full check, and the kit's install/lint/checker gates. The single rev
 found core-prose loss and provenance gaps; the regressions and fixes are in
 `~/.agents/kit/extensions/sysprompt-editor/conformance/review.test.ts`.
 No live provider evaluation or runtime deployment was performed.
+
+2026-09-05: the patch requirement was retired. The extension now runs on stock
+Pi 0.85.1 by mirroring the pinned core builder and recovering scope from file
+location; `docs/adr/0006-stay-on-stock-pi.md` records the decision and the
+behaviors given up. The patch file remains as a record of the loader contract.

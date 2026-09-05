@@ -95,27 +95,27 @@ test("projectContext reproduces Pi's container bytes and is empty with no files"
 test("scopeFiles marks the agent-directory file global and every other file by its directory", () => {
   const scoped = scopeFiles(
     [
-      { path: "/home/u/.pi/agent/AGENTS.md", content: "g" },
-      { path: "/home/u/repo/AGENTS.md", content: "r" },
-      { path: "/home/u/repo/sub/CLAUDE.md", content: "s" },
+      { path: "/srv/u/.pi/agent/AGENTS.md", content: "g" },
+      { path: "/srv/u/repo/AGENTS.md", content: "r" },
+      { path: "/srv/u/repo/sub/CLAUDE.md", content: "s" },
     ],
-    "/home/u/.pi/agent/",
+    "/srv/u/.pi/agent/",
   );
   assert.deepEqual(scoped, [
     {
-      path: "/home/u/.pi/agent/AGENTS.md",
+      path: "/srv/u/.pi/agent/AGENTS.md",
       content: "g",
       scope: { kind: "global" },
     },
     {
-      path: "/home/u/repo/AGENTS.md",
+      path: "/srv/u/repo/AGENTS.md",
       content: "r",
-      scope: { kind: "workspace", directory: "/home/u/repo" },
+      scope: { kind: "workspace", directory: "/srv/u/repo" },
     },
     {
-      path: "/home/u/repo/sub/CLAUDE.md",
+      path: "/srv/u/repo/sub/CLAUDE.md",
       content: "s",
-      scope: { kind: "workspace", directory: "/home/u/repo/sub" },
+      scope: { kind: "workspace", directory: "/srv/u/repo/sub" },
     },
   ]);
 });
