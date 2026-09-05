@@ -1,4 +1,6 @@
+import assert from "node:assert/strict";
 import {
+  existsSync,
   mkdirSync,
   readFileSync,
   renameSync,
@@ -6,10 +8,10 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import { expect, test, vi } from "vitest";
+import { mock, test } from "node:test";
 import { SessionManager } from "@earendil-works/pi-coding-agent";
 import { SELECTION_TYPE, restoreSelection } from "../lib/selection.ts";
-import { fixture } from "./fixture.ts";
+import { capturingStderr, fixture } from "./fixture.ts";
 
 function pin(manager: SessionManager) {
   return restoreSelection(manager.getBranch());
@@ -18,34 +20,36 @@ function pin(manager: SessionManager) {
 test("independent session pins, durable initialization, model changes, and live shared contents", async () => {
   const a = await fixture({ template: "DEFAULT CORE" });
   writeFileSync(join(a.templatesDir, "voice.md"), "VOICE CORE");
-  expect(await a.prompt()).toMatch(/^DEFAULT CORE/);
-  expect(
+  assert.match(await a.prompt(), /^DEFAULT CORE/);
+  assert.ok(
     SessionManager.open(a.sessionManager.getSessionFile()!)
       .getBranch()
       .some((e) => e.type === "custom" && e.customType === SELECTION_TYPE),
-  ).toBe(true);
+  );
   writeFileSync(join(a.templatesDir, ".active"), "voice.md\n");
   const b = await fixture({ reuse: a });
-  expect(await b.prompt()).toMatch(/^VOICE CORE/);
-  expect(await a.prompt()).toMatch(/^DEFAULT CORE/);
+  assert.match(await b.prompt(), /^VOICE CORE/);
+  assert.match(await a.prompt(), /^DEFAULT CORE/);
   await a.session.prompt("/sysprompt switch voice.md");
-  expect(readFileSync(join(a.templatesDir, ".active"), "utf8")).toBe(
+  assert.equal(
+    readFileSync(join(a.templatesDir, ".active"), "utf8"),
     "voice.md\n",
   );
-  await a.session.setModel(a.models[1]);
-  expect(await a.prompt()).toMatch(/^VOICE CORE/);
+  await a.session.setModel(a.models[1]!);
+  assert.match(await a.prompt(), /^VOICE CORE/);
   writeFileSync(join(a.templatesDir, "voice.md"), "EDITED SHARED CORE");
-  expect(await a.prompt()).toMatch(/^EDITED SHARED CORE/);
-  expect(await b.prompt()).toMatch(/^EDITED SHARED CORE/);
+  assert.match(await a.prompt(), /^EDITED SHARED CORE/);
+  assert.match(await b.prompt(), /^EDITED SHARED CORE/);
   await a.session.prompt("/sysprompt switch default.md");
-  expect(await b.prompt()).toMatch(/^EDITED SHARED CORE/);
-  expect(await a.prompt()).toMatch(/^DEFAULT CORE/);
+  assert.match(await b.prompt(), /^EDITED SHARED CORE/);
+  assert.match(await a.prompt(), /^DEFAULT CORE/);
   for (const h of [a, b]) {
-    expect(
+    assert.equal(
       h.session.messages.some((m) =>
         JSON.stringify(m).includes(SELECTION_TYPE),
       ),
-    ).toBe(false);
+      false,
+    );
   }
 });
 
@@ -63,50 +67,68 @@ test("resume, tree navigation, and fork follow the branch-point selection", asyn
     reuse: h,
     sessionManager: SessionManager.open(file),
   });
-  expect(await resumed.prompt()).toMatch(/^BRANCH VOICE/);
+  assert.match(await resumed.prompt(), /^BRANCH VOICE/);
   await resumed.session.navigateTree(originalBranch);
-  expect(await resumed.prompt()).toMatch(/^ORIGINAL CORE/);
+  assert.match(await resumed.prompt(), /^ORIGINAL CORE/);
   await resumed.session.navigateTree(voiceBranch);
-  expect(await resumed.prompt()).toMatch(/^BRANCH VOICE/);
+  assert.match(await resumed.prompt(), /^BRANCH VOICE/);
   resumed.session.dispose();
   const forker = SessionManager.open(file);
   const forkFile = forker.createBranchedSession(originalBranch)!;
-  expect(forkFile).not.toBe(file);
+  assert.notEqual(forkFile, file);
   const fork = await fixture({
     reuse: h,
     sessionManager: SessionManager.open(forkFile),
   });
-  expect(await fork.prompt()).toMatch(/^ORIGINAL CORE/);
-  expect(pin(fork.sessionManager)).toEqual({
+  assert.match(await fork.prompt(), /^ORIGINAL CORE/);
+  assert.deepEqual(pin(fork.sessionManager), {
     kind: "selected",
     name: "default.md",
   });
 });
 
+test("a switch before the first reply is held in memory until the session file is written (stock Pi buffers custom entries)", async () => {
+  // Documented limitation: stock Pi writes custom entries with the first
+  // assistant message. Switching and then quitting before any reply leaves
+  // no file, so the next session starts from the active pointer again.
+  const h = await fixture({ template: "DEFAULT CORE" });
+  writeFileSync(join(h.templatesDir, "voice.md"), "VOICE CORE");
+  await h.session.prompt("/sysprompt switch voice.md");
+  assert.deepEqual(pin(h.sessionManager), {
+    kind: "selected",
+    name: "voice.md",
+  });
+  assert.equal(existsSync(h.sessionManager.getSessionFile()!), false);
+  assert.match(await h.prompt(), /^VOICE CORE/);
+  assert.ok(
+    SessionManager.open(h.sessionManager.getSessionFile()!)
+      .getBranch()
+      .some((e) => e.type === "custom" && e.customType === SELECTION_TYPE),
+  );
+});
+
 test("missing selected file fails open visibly once, retains its name, and recovers when restored", async () => {
   const h = await fixture({ template: "PINNED CORE" });
   await h.prompt();
-  const stderr = vi
-    .spyOn(process.stderr, "write")
-    .mockImplementation(() => true);
-  try {
-    rmSync(join(h.templatesDir, "default.md"));
-    expect(await h.prompt()).toMatch(/^You are an expert coding assistant/);
-    expect(await h.prompt()).toMatch(/^You are an expert coding assistant/);
-    expect(
-      stderr.mock.calls.filter(([text]) =>
-        String(text).includes("selected template default.md unavailable"),
-      ),
-    ).toHaveLength(1);
-    expect(pin(h.sessionManager)).toEqual({
-      kind: "selected",
-      name: "default.md",
-    });
-    writeFileSync(join(h.templatesDir, "default.md"), "RESTORED CORE");
-    expect(await h.prompt()).toMatch(/^RESTORED CORE/);
-  } finally {
-    stderr.mockRestore();
-  }
+  rmSync(join(h.templatesDir, "default.md"));
+  const { result, lines } = await capturingStderr(async () => [
+    await h.prompt(),
+    await h.prompt(),
+  ]);
+  for (const system of result)
+    assert.match(system, /^You are an expert coding assistant/);
+  assert.equal(
+    lines.filter((text) =>
+      text.includes("selected template default.md unavailable"),
+    ).length,
+    1,
+  );
+  assert.deepEqual(pin(h.sessionManager), {
+    kind: "selected",
+    name: "default.md",
+  });
+  writeFileSync(join(h.templatesDir, "default.md"), "RESTORED CORE");
+  assert.match(await h.prompt(), /^RESTORED CORE/);
 });
 
 test("malformed saved selection fails open instead of guessing the old selection", async () => {
@@ -116,100 +138,91 @@ test("malformed saved selection fails open instead of guessing the old selection
     version: 9,
     name: "default.md",
   });
-  const stderr = vi
-    .spyOn(process.stderr, "write")
-    .mockImplementation(() => true);
-  try {
-    expect(await h.prompt()).toMatch(/^You are an expert coding assistant/);
-    expect(
-      stderr.mock.calls.some(([text]) =>
-        String(text).includes("malformed saved template selection"),
-      ),
-    ).toBe(true);
-  } finally {
-    stderr.mockRestore();
-  }
+  const { result, lines } = await capturingStderr(() => h.prompt());
+  assert.match(result, /^You are an expert coding assistant/);
+  assert.ok(
+    lines.some((text) => text.includes("malformed saved template selection")),
+  );
 });
 
-test("failed switch writes retain the previous branch and template", async () => {
+test("a failed switch write is reported as memory-only, and the session file keeps the old pin", async () => {
+  // Stock Pi records the custom entry in memory before the write, so the
+  // extension cannot undo the pin; it says so instead.
   const h = await fixture({ template: "OLD CORE" });
   await h.prompt();
   writeFileSync(join(h.templatesDir, "voice.md"), "NEW CORE");
   const file = h.sessionManager.getSessionFile()!;
-  const leaf = h.sessionManager.getLeafId();
   renameSync(file, file + ".saved");
   mkdirSync(file);
-  const stderr = vi
-    .spyOn(process.stderr, "write")
-    .mockImplementation(() => true);
   try {
-    await h.session.prompt("/sysprompt switch voice.md");
-    expect(h.sessionManager.getLeafId()).toBe(leaf);
-    expect(pin(h.sessionManager)).toEqual({
+    const { lines } = await capturingStderr(() =>
+      h.session.prompt("/sysprompt switch voice.md"),
+    );
+    assert.deepEqual(pin(h.sessionManager), {
       kind: "selected",
-      name: "default.md",
+      name: "voice.md",
     });
-    expect(
-      stderr.mock.calls.some(([text]) =>
-        String(text).includes("template selection not changed"),
+    assert.ok(
+      lines.some((text) =>
+        text.includes("session template: voice.md in memory only"),
       ),
-    ).toBe(true);
+      lines.join(),
+    );
   } finally {
-    stderr.mockRestore();
     rmSync(file, { recursive: true });
     renameSync(file + ".saved", file);
   }
-  expect(await h.prompt()).toMatch(/^OLD CORE/);
+  assert.deepEqual(pin(SessionManager.open(file)), {
+    kind: "selected",
+    name: "default.md",
+  });
 });
 
 test("failed initial persistence preserves incoming prompt and reports the failure", async () => {
   const h = await fixture({ template: "UNSAVED CORE" });
-  const append = vi
-    .spyOn(h.sessionManager, "appendCustomEntry")
-    .mockImplementation(() => {
-      throw new Error("injected storage failure");
-    });
-  const stderr = vi
-    .spyOn(process.stderr, "write")
-    .mockImplementation(() => true);
+  const append = mock.method(h.sessionManager, "appendCustomEntry", () => {
+    throw new Error("injected storage failure");
+  });
   try {
-    expect(await h.prompt()).toMatch(/^You are an expert coding assistant/);
-    expect(pin(h.sessionManager)).toEqual({ kind: "none" });
-    expect(
-      stderr.mock.calls.some(([text]) =>
-        String(text).includes("initial selection could not be saved"),
+    const { result, lines } = await capturingStderr(() => h.prompt());
+    assert.match(result, /^You are an expert coding assistant/);
+    assert.deepEqual(pin(h.sessionManager), { kind: "none" });
+    assert.ok(
+      lines.some((text) =>
+        text.includes("initial selection could not be saved"),
       ),
-    ).toBe(true);
+    );
   } finally {
-    append.mockRestore();
-    stderr.mockRestore();
+    append.mock.restore();
   }
-  expect(await h.prompt()).toMatch(/^UNSAVED CORE/);
+  assert.match(await h.prompt(), /^UNSAVED CORE/);
 });
 
 test("interactive fallback warns on first occurrence and reason changes, then recovers", async () => {
-  const h = await fixture({ template: "CORE" });
   const notices: string[] = [];
-  await h.session.bindExtensions({
-    uiContext: { notify: (message: string) => notices.push(message) } as never,
+  const h = await fixture({
+    template: "CORE",
+    notify: (message) => notices.push(message),
   });
   await h.prompt();
   rmSync(join(h.templatesDir, "default.md"));
   await h.prompt();
   await h.prompt();
-  expect(
+  assert.equal(
     notices.filter((text) =>
       text.includes("selected template default.md unavailable"),
-    ),
-  ).toHaveLength(1);
+    ).length,
+    1,
+  );
   h.sessionManager.appendCustomEntry(SELECTION_TYPE, { version: 0 });
   await h.prompt();
-  expect(
+  assert.equal(
     notices.filter((text) =>
       text.includes("malformed saved template selection"),
-    ),
-  ).toHaveLength(1);
+    ).length,
+    1,
+  );
   writeFileSync(join(h.templatesDir, "default.md"), "RESTORED");
   await h.session.prompt("/sysprompt switch default.md");
-  expect(await h.prompt()).toMatch(/^RESTORED/);
+  assert.match(await h.prompt(), /^RESTORED/);
 });

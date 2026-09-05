@@ -262,7 +262,15 @@ export default function systemPromptExtension(
       readTemplate(templatesDir, chosen);
       saveSelection(chosen, (type, data) => pi.appendEntry(type, data));
     } catch (error) {
-      const message = `template selection not changed: ${error instanceof Error ? error.message : String(error)}`;
+      const detail = error instanceof Error ? error.message : String(error);
+      // Stock Pi records a custom entry in memory before writing it, so a
+      // failed write can leave this process pinned to a selection that the
+      // session file will never show.
+      const now = selection(ctx);
+      const message =
+        now.kind === "selected" && now.name === chosen
+          ? `session template: ${chosen} in memory only; the save failed (${detail}) so the selection is lost on resume`
+          : `template selection not changed: ${detail}`;
       if (ctx.hasUI) ctx.ui.notify(message, "error");
       else process.stderr.write(`${message}\n`);
       return;

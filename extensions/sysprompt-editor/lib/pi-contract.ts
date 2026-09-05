@@ -4,8 +4,11 @@ import type {
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 
-export type CoreSource =
-  { kind: "stock" } | { kind: "inline" } | { kind: "file"; path: string };
+/**
+ * Stock Pi reports a custom core only as `customPrompt`; whether it came
+ * from a SYSTEM.md file or a flag is not visible to extensions.
+ */
+export type CoreSource = { kind: "stock" } | { kind: "custom" };
 
 export interface FinalProviderEvent {
   payload: unknown;
@@ -32,11 +35,6 @@ export function onFinalPayload(
   });
 }
 
-export function coreSource(options: {
-  customPrompt?: string;
-  coreSource?: CoreSource;
-}): CoreSource {
-  return (
-    options.coreSource ?? { kind: options.customPrompt ? "inline" : "stock" }
-  );
+export function coreSource(options: { customPrompt?: string }): CoreSource {
+  return { kind: options.customPrompt ? "custom" : "stock" };
 }

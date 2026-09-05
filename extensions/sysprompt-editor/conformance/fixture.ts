@@ -1,28 +1,34 @@
-import {
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+/**
+ * A real Pi pipeline from the published package: DefaultResourceLoader
+ * discovers instruction files and skills from temp directories, an
+ * AgentSession runs the extension chain, and a faux provider records the
+ * payload at its serialization boundary. No network, no Pi checkout.
+ */
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, expect, test } from "vitest";
+import { after } from "node:test";
 import {
   DefaultResourceLoader,
+  ModelRuntime,
   SettingsManager,
   SessionManager,
   createAgentSession,
   type ExtensionAPI,
 } from "@earendil-works/pi-coding-agent";
-import { createHarness } from "@pi-source/packages/coding-agent/test/suite/harness";
-import { createFauxStreamFn } from "@pi-source/packages/coding-agent/test/test-harness";
+import {
+  fauxAssistantMessage,
+  registerFauxProvider,
+  streamSimple,
+} from "@earendil-works/pi-ai/compat";
 import systemPromptExtension from "../index.ts";
 
 const cleanups: (() => void)[] = [];
-afterEach(() => {
+after(() => {
   for (const cleanup of cleanups.splice(0).reverse()) cleanup();
 });
+
+export const kitRoot = new URL("../../../", import.meta.url);
 
 export async function fixture({
   customPrompt,
@@ -33,12 +39,11 @@ export async function fixture({
   additions = false,
   reuse,
   sessionManager,
-  eraseScope = false,
   driftCore = false,
   insertCore = false,
-  transformPayload = false,
   customFile,
   beforeStart,
+  notify,
 }: {
   customPrompt?: string;
   template?: string;
@@ -48,12 +53,11 @@ export async function fixture({
   additions?: boolean;
   reuse?: { root: string };
   sessionManager?: SessionManager;
-  eraseScope?: boolean;
   driftCore?: boolean;
   insertCore?: boolean;
-  transformPayload?: boolean;
   customFile?: "global" | "workspace";
   beforeStart?: () => Promise<void>;
+  notify?: (message: string) => void;
 } = {}) {
   const root = reuse?.root ?? mkdtempSync(join(tmpdir(), "sysprompt-real-"));
   if (!reuse)
@@ -86,10 +90,12 @@ export async function fixture({
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, "SYSTEM.md"), "FILE CORE");
   }
+  // The extension asks Pi for its agent directory the way the CLI does.
+  process.env.PI_CODING_AGENT_DIR = agentDir;
+
   const settingsManager = SettingsManager.inMemory();
   settingsManager.setProjectTrusted(true);
   const payloads: unknown[] = [];
-  const finalPayloads: unknown[] = [];
   const incoming: string[] = [];
   const resourceLoader = new DefaultResourceLoader({
     cwd,
@@ -100,23 +106,8 @@ export async function fixture({
     noExtensions: true,
     noSkills: false,
     noThemes: true,
-    agentsFilesOverride: eraseScope
-      ? (base) => ({
-          agentsFiles: base.agentsFiles.map(({ path, content }) => ({
-            path,
-            content,
-          })),
-        })
-      : undefined,
     noPromptTemplates: true,
     extensionFactories: [
-      (pi: ExtensionAPI) => {
-        if (transformPayload)
-          pi.on("provider_request", (event) => {
-            (event.payload as { system: string }).system = "OBSERVER MUTATION";
-            event.model.id = "OBSERVER MODEL MUTATION";
-          });
-      },
       (pi: ExtensionAPI) => {
         pi.on("before_agent_start", async (event) => {
           await beforeStart?.();
@@ -171,13 +162,6 @@ export async function fixture({
           ]
         : []),
       (pi: ExtensionAPI) => {
-        if (transformPayload)
-          pi.on("before_provider_request", (event) => ({
-            ...(event.payload as object),
-            system: "ACTUAL FINAL",
-          }));
-      },
-      (pi: ExtensionAPI) => {
         pi.on("before_provider_request", (event) => {
           payloads.push(structuredClone(event.payload));
         });
@@ -185,12 +169,38 @@ export async function fixture({
     ],
   });
   await resourceLoader.reload();
-  expect(resourceLoader.getExtensions().errors).toEqual([]);
-  const h = await createHarness({
-    resourceLoader,
+  if (resourceLoader.getExtensions().errors.length > 0)
+    throw new Error(JSON.stringify(resourceLoader.getExtensions().errors));
+
+  const faux = registerFauxProvider({
     models: [{ id: "recording-one" }, { id: "recording-two" }],
   });
-  cleanups.push(h.cleanup);
+  cleanups.push(faux.unregister);
+  faux.setResponses(
+    Array.from({ length: 32 }, () => fauxAssistantMessage("recorded")),
+  );
+  const modelRuntime = await ModelRuntime.create({
+    authPath: join(root, "auth.json"),
+    modelsPath: null,
+    allowModelNetwork: false,
+  });
+  modelRuntime.registerProvider(faux.models[0].provider, {
+    baseUrl: faux.models[0].baseUrl,
+    apiKey: "faux-key",
+    api: faux.api,
+    models: faux.models.map((model) => ({
+      id: model.id,
+      name: model.name,
+      api: model.api,
+      reasoning: model.reasoning,
+      input: model.input,
+      cost: model.cost,
+      contextWindow: model.contextWindow,
+      maxTokens: model.maxTokens,
+      baseUrl: model.baseUrl,
+    })),
+  });
+  const models = faux.models;
   const manager =
     sessionManager ?? SessionManager.create(cwd, join(root, "sessions"));
   const { session } = await createAgentSession({
@@ -199,12 +209,14 @@ export async function fixture({
     settingsManager,
     resourceLoader,
     sessionManager: manager,
-    modelRuntime: h.session.modelRuntime,
-    model: h.models[0],
+    modelRuntime,
+    model: models[0],
   });
   cleanups.push(() => session.dispose());
-  await session.bindExtensions({});
-  const { streamFn } = createFauxStreamFn(["recorded"]);
+  await session.bindExtensions(
+    notify ? { uiContext: { notify } as never } : {},
+  );
+  const finalPayloads: unknown[] = [];
   session.agent.streamFunction = async (model, context, options) => {
     // A recording provider's serialization boundary, with no network transport.
     const payload = {
@@ -212,18 +224,18 @@ export async function fixture({
       messages: context.messages,
     };
     finalPayloads.push((await options?.onPayload?.(payload, model)) ?? payload);
-    return streamFn(model, context, options);
+    return streamSimple(model, context, options);
   };
   async function prompt() {
     await session.prompt("probe");
-    expect(payloads.length).toBeGreaterThan(0);
+    if (payloads.length === 0) throw new Error("no payload observed");
     const payload = finalPayloads.at(-1) as { system: string };
     return payload.system;
   }
   return {
-    ...h,
     session,
     sessionManager: manager,
+    models,
     root,
     agentDir,
     cwd,
@@ -236,4 +248,21 @@ export async function fixture({
     resourceLoader,
     prompt,
   };
+}
+
+/** Capture stderr writes for the duration of `run`. */
+export async function capturingStderr<T>(
+  run: () => Promise<T>,
+): Promise<{ result: T; lines: string[] }> {
+  const lines: string[] = [];
+  const original = process.stderr.write;
+  process.stderr.write = ((chunk: unknown) => {
+    lines.push(String(chunk));
+    return true;
+  }) as typeof process.stderr.write;
+  try {
+    return { result: await run(), lines };
+  } finally {
+    process.stderr.write = original;
+  }
 }

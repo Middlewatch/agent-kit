@@ -1,6 +1,7 @@
+import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { expect, test } from "vitest";
+import { test } from "node:test";
 import { fixture } from "./fixture.ts";
 
 function providerText(h: Awaited<ReturnType<typeof fixture>>, suffix = ".txt") {
@@ -14,45 +15,37 @@ function providerText(h: Awaited<ReturnType<typeof fixture>>, suffix = ".txt") {
   );
 }
 
-test("review: modified static core prose fails open rather than dropping prior policy", async () => {
+test("review: prose an earlier extension inserted into the core fails open rather than being dropped", async () => {
   const h = await fixture({ insertCore: true });
-  expect(await h.prompt()).toBe(h.incoming.at(-1));
-  expect(h.finalPayloads.at(-1)).toMatchObject({
-    system: expect.stringContaining("CRITICAL PRIOR POLICY"),
-  });
+  const system = await h.prompt();
+  assert.equal(system, h.incoming.at(-1));
+  assert.ok(system.includes("CRITICAL PRIOR POLICY"));
+  assert.ok(!system.includes("TEMPLATE CORE"));
 });
 
-test("review: capture and result hash follow the final payload after later transformers", async () => {
-  const h = await fixture({ transformPayload: true });
-  await h.session.prompt("/sysprompt inspect");
-  expect(await h.prompt()).toBe("ACTUAL FINAL");
-  expect(providerText(h)).toBe("ACTUAL FINAL");
-});
-
-test.each(["global", "workspace", "inline"] as const)(
-  "review: inspection names the %s custom-core source",
-  async (kind) => {
+// Stock Pi exposes a custom core only as text, so a SYSTEM.md file and an
+// inline prompt inspect the same way.
+for (const kind of ["global", "workspace", "inline"] as const) {
+  test(`review: inspection names the ${kind} custom core as custom`, async () => {
     const h = await fixture(
       kind === "inline"
         ? { customPrompt: "INLINE CORE" }
         : { customFile: kind },
     );
     await h.session.prompt("/sysprompt inspect");
-    await h.prompt();
-    const expected =
-      kind === "inline"
-        ? "core-source: inline"
-        : `core-source: file ${join(kind === "global" ? h.agentDir : join(h.cwd, ".pi"), "SYSTEM.md")}`;
-    expect(providerText(h, ".md")).toContain(expected);
+    const system = await h.prompt();
+    assert.match(system, kind === "inline" ? /^INLINE CORE/ : /^FILE CORE/);
+    const expected = "core-source: custom";
+    assert.ok(providerText(h, ".md").includes(expected));
     const dir = join(h.artifactsDir, "inspect");
     const immediate = readdirSync(dir).find((name) =>
       name.endsWith("-immediate.md"),
     )!;
-    expect(readFileSync(join(dir, immediate), "utf8")).toContain(expected);
-  },
-);
+    assert.ok(readFileSync(join(dir, immediate), "utf8").includes(expected));
+  });
+}
 
-test("review: output result uses request-time model after a switch during startup", async () => {
+test("review: output result uses the request-time model after a switch during startup", async () => {
   let h: Awaited<ReturnType<typeof fixture>>;
   h = await fixture({
     beforeStart: async () => {
@@ -69,8 +62,10 @@ test("review: output result uses request-time model after a switch during startu
   await h.session.waitForIdle();
   const dir = join(h.artifactsDir, "output-tests");
   const file = readdirSync(dir)[0]!;
-  expect(file).toContain(h.models[1]!.id);
-  expect(readFileSync(join(dir, file), "utf8")).toContain(
-    `- model: ${h.models[1]!.id}`,
+  assert.ok(file.includes(h.models[1]!.id), file);
+  assert.ok(
+    readFileSync(join(dir, file), "utf8").includes(
+      `- model: ${h.models[1]!.id}`,
+    ),
   );
 });

@@ -38,7 +38,7 @@ export function instructionInventory(
 export function evidenceLines(evidence: PromptEvidence): string {
   return (
     [
-      `- core-source: ${evidence.coreSource.kind}${evidence.coreSource.kind === "file" ? ` ${evidence.coreSource.path}` : ""}`,
+      `- core-source: ${evidence.coreSource.kind}`,
       ...(evidence.providerCapture
         ? [`- provider-capture: ${evidence.providerCapture}`]
         : []),

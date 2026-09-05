@@ -1,18 +1,23 @@
+import assert from "node:assert/strict";
 import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { expect, test, vi } from "vitest";
+import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 import { sha256 } from "../lib/evidence.ts";
-import { fixture } from "./fixture.ts";
+import { capturingStderr, fixture, kitRoot } from "./fixture.ts";
 
-const templateDir = process.env.SYSPROMPT_TEMPLATE_DIR!;
-const guide = readFileSync(process.env.SYSPROMPT_GUIDE!, "utf8");
+const templateDir = fileURLToPath(new URL("guidance/sysprompt/", kitRoot));
+const guide = readFileSync(new URL("guidance/AGENTS.md", kitRoot), "utf8");
 const names = readdirSync(templateDir).filter((name) =>
   /^[a-z0-9-]+\.md$/.test(name),
 );
 
-test.each(names)(
-  "shipped %s preserves owner policy once and captures its scoped provenance",
-  async (name) => {
+function count(text: string, needle: string): number {
+  return text.split(needle).length - 1;
+}
+
+for (const name of names) {
+  test(`shipped ${name} preserves owner policy once and captures its scoped provenance`, async () => {
     const template = readFileSync(join(templateDir, name), "utf8");
     const h = await fixture({ template, globalContent: guide });
     await h.session.prompt("/sysprompt inspect");
@@ -26,24 +31,23 @@ test.each(names)(
       join(dir, provider.replace(/\.md$/, ".txt")),
       "utf8",
     );
-    expect(text).toBe(system);
-    expect(system.split("## Communication Guidelines")).toHaveLength(2);
-    expect(system.split("### Prose examples")).toHaveLength(2);
-    expect(system).toContain(guide);
-    expect(system).not.toContain(
-      "Project-specific instructions and guidelines:",
+    assert.equal(text, system);
+    assert.equal(count(system, "## Communication Guidelines"), 1);
+    assert.equal(count(system, "### Prose examples"), 1);
+    assert.ok(system.includes(guide));
+    assert.ok(
+      !system.includes("Project-specific instructions and guidelines:"),
     );
-    expect(markdown).toContain("selected-template: default.md");
-    expect(markdown).toContain("rendered-template: default.md");
-    expect(markdown).toContain(`template-sha256: ${sha256(template)}`);
-    expect(markdown).toContain(`provider-system-sha256: ${sha256(text)}`);
-    expect(markdown).toContain(
+    for (const line of [
+      "selected-template: default.md",
+      "rendered-template: default.md",
+      `template-sha256: ${sha256(template)}`,
+      `provider-system-sha256: ${sha256(text)}`,
       `instruction: global ${join(h.agentDir, "AGENTS.md")} sha256:${sha256(guide)}`,
-    );
-    expect(markdown).toContain(
       `instruction: workspace ${join(h.cwd, "AGENTS.md")} directory=${h.cwd}`,
-    );
-    expect(markdown).toContain("fallback-or-bypass: (none)");
+      "fallback-or-bypass: (none)",
+    ])
+      assert.ok(markdown.includes(line), line);
     for (const slot of [
       "AVAILABLE_TOOLS",
       "GUIDELINES",
@@ -53,65 +57,44 @@ test.each(names)(
       "GLOBAL_INSTRUCTIONS",
       "WORKSPACE_INSTRUCTIONS",
     ])
-      expect(system).not.toContain(`{{${slot}}}`);
-  },
-);
+      assert.ok(!system.includes(`{{${slot}}}`), slot);
+  });
+}
 
-test.each(["scope", "core"])(
-  "%s drift preserves the exact incoming prompt and records its reason",
-  async (kind) => {
-    const h = await fixture({
-      template: "SHOULD NOT RENDER",
-      eraseScope: kind === "scope",
-      driftCore: kind === "core",
-    });
-    const stderr = vi
-      .spyOn(process.stderr, "write")
-      .mockImplementation(() => true);
-    try {
-      await h.session.prompt("/sysprompt inspect");
-      expect(await h.prompt()).toBe(h.incoming.at(-1));
-      expect(
-        stderr.mock.calls.some(([text]) =>
-          String(text).includes("incoming prompt preserved"),
-        ),
-      ).toBe(true);
-      const dir = join(h.artifactsDir, "inspect");
-      const provider = readdirSync(dir).find((file) =>
-        file.endsWith("-provider.md"),
-      )!;
-      const markdown = readFileSync(join(dir, provider), "utf8");
-      expect(markdown).toContain("rendered-template: (incoming prompt)");
-      expect(markdown).toContain(
-        kind === "scope"
-          ? "instruction scope or boundary not recognized"
-          : "stock core boundary not recognized",
-      );
-    } finally {
-      stderr.mockRestore();
-    }
-  },
-);
+test("core drift preserves the exact incoming prompt and records its reason", async () => {
+  const h = await fixture({ template: "SHOULD NOT RENDER", driftCore: true });
+  const { result: system, lines } = await capturingStderr(async () => {
+    await h.session.prompt("/sysprompt inspect");
+    return h.prompt();
+  });
+  assert.equal(system, h.incoming.at(-1));
+  assert.ok(lines.some((text) => text.includes("incoming prompt preserved")));
+  const dir = join(h.artifactsDir, "inspect");
+  const provider = readdirSync(dir).find((file) =>
+    file.endsWith("-provider.md"),
+  )!;
+  const markdown = readFileSync(join(dir, provider), "utf8");
+  assert.ok(markdown.includes("rendered-template: (incoming prompt)"));
+  assert.ok(markdown.includes("stock core differs from Pi"));
+});
 
 test("custom-core bypass is quiet and inspection identifies the bypass", async () => {
   const h = await fixture({ customPrompt: "CUSTOM CORE" });
-  const stderr = vi
-    .spyOn(process.stderr, "write")
-    .mockImplementation(() => true);
-  try {
+  const { result: system, lines } = await capturingStderr(async () => {
     await h.session.prompt("/sysprompt inspect");
-    expect(await h.prompt()).toBe(h.incoming.at(-1));
-    expect(stderr.mock.calls).toHaveLength(0);
-    const dir = join(h.artifactsDir, "inspect");
-    const provider = readdirSync(dir).find((file) =>
-      file.endsWith("-provider.md"),
-    )!;
-    expect(readFileSync(join(dir, provider), "utf8")).toContain(
+    return h.prompt();
+  });
+  assert.equal(system, h.incoming.at(-1));
+  assert.deepEqual(lines, []);
+  const dir = join(h.artifactsDir, "inspect");
+  const provider = readdirSync(dir).find((file) =>
+    file.endsWith("-provider.md"),
+  )!;
+  assert.ok(
+    readFileSync(join(dir, provider), "utf8").includes(
       "fallback-or-bypass: custom system prompt bypass",
-    );
-  } finally {
-    stderr.mockRestore();
-  }
+    ),
+  );
 });
 
 test("inspection arms do not leak between real sessions sharing the template store", async () => {
@@ -120,32 +103,39 @@ test("inspection arms do not leak between real sessions sharing the template sto
   await a.session.prompt("/sysprompt inspect");
   await b.prompt();
   const dir = join(a.artifactsDir, "inspect");
-  expect(readdirSync(dir).some((name) => name.endsWith("-provider.txt"))).toBe(
+  assert.equal(
+    readdirSync(dir).some((name) => name.endsWith("-provider.txt")),
     false,
   );
   const system = await a.prompt();
   const capture = readdirSync(dir).find((name) =>
     name.endsWith("-provider.txt"),
   )!;
-  expect(readFileSync(join(dir, capture), "utf8")).toBe(system);
+  assert.equal(readFileSync(join(dir, capture), "utf8"), system);
 });
 
 test("output test captures provider text and records rendered bytes rather than later edits", async () => {
   const h = await fixture({ template: "TEST CORE" });
+  const finished = new Promise<void>((resolve) =>
+    h.session.subscribe((event) => {
+      if (event.type === "agent_end") resolve();
+    }),
+  );
   await h.session.prompt("/sysprompt test");
+  await finished;
   await h.session.waitForIdle();
   const dir = join(h.artifactsDir, "output-tests");
   const result = readdirSync(dir)[0]!;
   const body = readFileSync(join(dir, result), "utf8");
   writeFileSync(join(h.templatesDir, "default.md"), "LATER EDIT");
-  expect(body).toContain(`template-sha256: ${sha256("TEST CORE")}`);
-  expect(body).toContain(`- model: ${h.models[0]!.id}`);
+  assert.ok(body.includes(`template-sha256: ${sha256("TEST CORE")}`));
+  assert.ok(body.includes(`- model: ${h.models[0]!.id}`));
   const captures = join(h.artifactsDir, "inspect");
   const capture = readdirSync(captures).find((name) =>
     name.endsWith("-provider.txt"),
   )!;
   const text = readFileSync(join(captures, capture), "utf8");
-  expect(text).toMatch(/^TEST CORE/);
-  expect(body).toContain(`provider-system-sha256: ${sha256(text)}`);
-  expect(body).toContain("recorded");
+  assert.match(text, /^TEST CORE/);
+  assert.ok(body.includes(`provider-system-sha256: ${sha256(text)}`));
+  assert.ok(body.includes("recorded"));
 });

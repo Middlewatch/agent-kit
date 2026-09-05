@@ -11,7 +11,7 @@
   "scripts": {
     "format:check": "prettier --check \"**/*.{ts,json,md}\"",
     "typecheck": "tsc --noEmit",
-    "test:conformance": "node scripts/conformance.mjs",
+    "test:conformance": "node --experimental-strip-types --test conformance/*.test.ts",
     "test:unit": "node --experimental-strip-types --test tests/*.test.ts"
   },
   "pi": {
@@ -20,7 +20,8 @@
     ]
   },
   "devDependencies": {
-    "@earendil-works/pi-coding-agent": "0.85.0",
+    "@earendil-works/pi-ai": "0.85.1",
+    "@earendil-works/pi-coding-agent": "0.85.1",
     "@types/node": "22.20.1",
     "prettier": "3.9.6",
     "typescript": "7.0.2"
