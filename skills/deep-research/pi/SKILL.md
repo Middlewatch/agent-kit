@@ -17,10 +17,14 @@ message is one JSON object validated against the caller's schema.
 
 ## Pick the mode
 
-| mode | shape | reach for it when |
-|------|-------|-------------------|
-| **research** (default) | you drive the search; delegated typed children assist | most questions: a factual lookup, a comparison, a "how does X work", anything a focused reader settles with 5–15 sources |
-| **deep** | delegate fan-out: fresh-context typed researchers per sub-question, independent refuters per claim | the user says "deep research" / "comprehensive" / "collect everything", or the question needs many sources across source *types* (papers + vendor docs + practitioner reports), or it decomposes into 4+ independently-researchable sub-questions |
+- **research** (default): you drive the search; delegated typed children assist. Reach for it
+  on most questions: a factual lookup, a comparison, a "how does X work", anything a focused
+  reader settles with 5–15 sources.
+- **deep**: delegate fan-out, with fresh-context typed researchers per sub-question and
+  independent refuters per claim. Reach for it when the user says "deep research",
+  "comprehensive", or "collect everything", when the question needs many sources across
+  source *types* (papers, vendor docs, practitioner reports), or when it decomposes into 4+
+  independently researchable sub-questions.
 
 Explicit user wording wins. When in doubt, start in research mode. If scoping reveals the
 question is wider than it looked, say so and escalate to deep mode with the scoping work kept.
@@ -146,10 +150,14 @@ carries **[unverified]** inline. State inference as inference. Then the shared f
 Two live-research rows cost real searches, so run them after changing this skill or the
 delegate surface:
 
-| row | run | expect |
-|-----|-----|--------|
-| researcher | one `delegate` call, `agent: "researcher"`, `resultSchema` = the verbatim content of `references/findings.schema.json`, brief: "What is the current stable Node.js LTS major version? Answer with findings per the schema." | schema-valid JSON: a `findings` array with at least one finding whose `sourceUrl` is on nodejs.org |
-| refuter | one `delegate` call, `agent: "refuter"`, `resultSchema` = the verbatim content of `references/verdict.schema.json`, brief: "Attempt to refute this claim using independent sources: 'Node.js 24 is the current stable LTS major version.'" | schema-valid JSON: a `refuted` boolean and a `reason` |
+- **researcher**: one `delegate` call, `agent: "researcher"`, `resultSchema` = the verbatim
+  content of `references/findings.schema.json`, brief: "What is the current stable Node.js
+  LTS major version? Answer with findings per the schema." Expect schema-valid JSON: a
+  `findings` array with at least one finding whose `sourceUrl` is on nodejs.org.
+- **refuter**: one `delegate` call, `agent: "refuter"`, `resultSchema` = the verbatim content
+  of `references/verdict.schema.json`, brief: "Attempt to refute this claim using independent
+  sources: 'Node.js 24 is the current stable LTS major version.'" Expect schema-valid JSON: a
+  `refuted` boolean and a `reason`.
 
 Caller schemas must stay within the delegate surface's documented subset (`type`, `properties`,
 `required`, `items`, `enum`, `const`, `minimum`, `maximum`, `minLength`, `maxLength`,

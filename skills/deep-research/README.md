@@ -15,13 +15,16 @@ future agents).
 
 ## Layout
 
-| path | role |
-|------|------|
-| `SKILL.md` | Claude Code variant: research mode via Agent-tool subagents, deep mode via the Workflow tool (`references/workflow-template.js`) |
-| `pi/SKILL.md` | Pi variant: both modes on the agent-delegate extension (`delegate` tool, named `researcher`/`refuter` agents, per-child `resultSchema`), source `~/.agents/kit/extensions/agent-delegate` |
-| `references/report-spec.md` | the shared contract: report format, source standards, citation lint, wiki filing (existing-note check first), sources ledger |
-| `references/findings.schema.json`, `references/verdict.schema.json` | child output schemas |
-| `bin/citation-lint.py` | code gate: every inline `[n]` resolves to a real, URL-bearing source entry |
+- `SKILL.md`: Claude Code variant. Research mode via Agent-tool subagents, deep mode via the
+  Workflow tool (`references/workflow-template.js`).
+- `pi/SKILL.md`: Pi variant. Both modes on the agent-delegate extension (`delegate` tool,
+  named `researcher`/`refuter` agents, per-child `resultSchema`), source
+  `~/.agents/kit/extensions/agent-delegate`.
+- `references/report-spec.md`: the shared contract: report format, source standards,
+  citation lint, wiki filing (existing-note check first), sources ledger.
+- `references/findings.schema.json`, `references/verdict.schema.json`: child output schemas.
+- `bin/citation-lint.py`: code gate: every inline `[n]` resolves to a real, URL-bearing
+  source entry.
 
 Model routing for children differs by harness. On Pi the extension owns the child model
 route (the orchestrator does not route models per child). On Claude Code the harness's own

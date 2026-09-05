@@ -13,10 +13,14 @@ orchestrator in both modes and the sole writer/filer of the final report.
 
 ## Pick the mode
 
-| mode | shape | reach for it when |
-|------|-------|-------------------|
-| **research** (default) | you drive the search and subagents assist | most questions: a factual lookup, a comparison, a "how does X work", anything a focused reader settles with 5–15 sources |
-| **deep** | Workflow fan-out: fresh-context researchers per sub-question, independent refuters per claim | the user says "deep research" / "comprehensive" / "collect everything", or the question needs many sources across source *types* (papers + vendor docs + practitioner reports), or it decomposes into 4+ independently-researchable sub-questions |
+- **research** (default): you drive the search and subagents assist. Reach for it on most
+  questions: a factual lookup, a comparison, a "how does X work", anything a focused reader
+  settles with 5–15 sources.
+- **deep**: Workflow fan-out, with fresh-context researchers per sub-question and independent
+  refuters per claim. Reach for it when the user says "deep research", "comprehensive", or
+  "collect everything", when the question needs many sources across source *types* (papers,
+  vendor docs, practitioner reports), or when it decomposes into 4+ independently
+  researchable sub-questions.
 
 Explicit user wording wins. When in doubt, start in research mode. If scoping reveals the
 question is wider than it looked, say so and escalate to deep mode with the scoping work kept.
