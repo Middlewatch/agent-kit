@@ -1,0 +1,47 @@
+status = draft
+
+WORDS
+alpha beta gamma delta
+report.final.txt next_item
+
+CHARACTERS
+paint(red, green, blue)
+
+TEXT OBJECTS
+title = "Old project name"
+ship(crate, dock, morning)
+remove this unnecessary word
+
+REPEAT
+The slow build needs attention.
+The slow test needs attention.
+The slow export needs attention.
+
+LINES
+keep this line
+move this line below the next one
+keep this other line
+copy this line
+
+BLOCK
+name = alpha
+name = beta
+name = gamma
+
+MACRO
+bracket alpha
+bracket beta
+bracket gamma
+
+SEARCH
+TODO inspect the drawing
+TODO confirm the delivery
+TODO close the review
+
+FINAL CHALLENGE
+owner = "Unassigned person"
+The stale drawing needs review.
+The stale estimate needs review.
+The stale schedule needs review.
+keep the final report
+remove the temporary note
