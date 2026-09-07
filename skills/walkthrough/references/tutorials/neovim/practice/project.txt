@@ -1,0 +1,8 @@
+PROJECT: Workshop renovation
+
+The delivery window is Tuesday morning.
+The current review is in notes/review.txt.
+The editing exercises are in editing.txt.
+
+NEXT ACTION
+Confirm the delivery window with the site manager.
