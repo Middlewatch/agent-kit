@@ -91,11 +91,13 @@ test("browser scrolls with keys and wheel, changes sections, handles resize, and
   assert.doesNotMatch(plain(browser.render(80)), /LINE 49/);
   browser.handleInput("4");
   assert.match(plain(browser.render(80)), /PROBE/);
-  for (const width of [20, 40, 100]) {
-    height = 8;
-    const lines = browser.render(width);
-    assert.ok(lines.length <= height);
-    assert.ok(lines.every((line) => visibleWidth(line) <= width));
+  for (const rows of [1, 4, 8]) {
+    height = rows;
+    for (const width of [1, 20, 40, 100]) {
+      const lines = browser.render(width);
+      assert.ok(lines.length <= height);
+      assert.ok(lines.every((line) => visibleWidth(line) <= width));
+    }
   }
   browser.handleInput("h");
   browser.handleInput("p");

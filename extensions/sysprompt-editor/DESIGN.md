@@ -93,7 +93,10 @@ through Pi's custom-entry container. `/sysprompt view` supplies a bounded custom
 viewport with section selection and scrolling, plus a history picker. Neither
 surface sends messages. The current preview reconstructs Pi's loaded inputs using
 the pinned core mirror and public skill formatter, then applies the live selected
-template without initializing or changing selection state.
+template without initializing or changing selection state. A running version
+outside the pin disables preview reconstruction while keeping the loaded-source
+inventory available. Preview evidence records the selected and rendered names,
+current template hash, and any fallback or bypass reason.
 
 The persistence cost is one complete serialized request per observation, with
 no redaction or deduplication. Requests can contain sensitive context beyond the

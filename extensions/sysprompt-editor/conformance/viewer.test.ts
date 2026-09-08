@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { writeFileSync } from "node:fs";
+import { writeFileSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import {
@@ -13,6 +13,7 @@ import {
   streamSimple,
 } from "@earendil-works/pi-ai/compat";
 import { REQUEST_TYPE, parseRequest } from "../lib/viewer.ts";
+import { sha256 } from "../lib/evidence.ts";
 import { fixture } from "./fixture.ts";
 
 const themeModule = await import(
@@ -219,4 +220,69 @@ test("snapshot storage failure does not stop or replace the provider request", a
   assert.ok(prompt.startsWith("CAPTURE STORAGE PROBE"));
   assert.equal(h.finalPayloads.length, 1);
   assert.match(notices.join("\n"), /capture could not be saved/);
+});
+
+test("preview refuses an unpinned Pi reconstruction while leaving source inventory available", async () => {
+  const ui = viewerUI();
+  ui.setKeys(["2", "q"]);
+  const h = await fixture({
+    template: "UNVERIFIED CORE",
+    piVersion: "0.0.0-drift",
+    uiContext: ui.ui,
+  });
+  await h.session.prompt("/sysprompt view preview");
+  assert.ok(ui.screens[0]?.includes("Preview unavailable"));
+  assert.ok(!ui.screens[0]?.includes("UNVERIFIED CORE"));
+  assert.ok(ui.screens.some((screen) => screen.includes("AGENTS.md")));
+  assert.equal(h.finalPayloads.length, 0);
+});
+
+test("preview source evidence names and hashes the template it actually renders", async () => {
+  const ui = viewerUI();
+  ui.setKeys(["2", "q"]);
+  const h = await fixture({ template: "PROVEN PREVIEW", uiContext: ui.ui });
+  await h.session.prompt("/sysprompt view preview");
+  const sources = ui.screens.join("\n");
+  assert.ok(sources.includes("selected-template: default.md"));
+  assert.ok(sources.includes("rendered-template: default.md"));
+  assert.ok(sources.includes(`template-sha256: ${sha256("PROVEN PREVIEW")}`));
+});
+
+test("preview keeps a missing pin visible and reports the fallback", async () => {
+  const ui = viewerUI();
+  ui.setKeys(["2", "q"]);
+  const h = await fixture({ uiContext: ui.ui });
+  await h.prompt();
+  unlinkSync(join(h.templatesDir, "default.md"));
+  await h.session.prompt("/sysprompt view preview");
+  const screens = ui.screens.join("\n");
+  assert.ok(screens.includes("selected-template: default.md"));
+  assert.ok(screens.includes("rendered-template: (incoming prompt)"));
+  assert.ok(screens.includes("ENOENT"));
+  assert.equal(h.finalPayloads.length, 1);
+});
+
+test("preview reports malformed selection and custom-core bypass without claiming a template render", async () => {
+  for (const malformed of [false, true]) {
+    const ui = viewerUI();
+    ui.setKeys(["2", "q"]);
+    const h = await fixture({
+      customPrompt: "CUSTOM PREVIEW",
+      uiContext: ui.ui,
+    });
+    if (malformed)
+      h.sessionManager.appendCustomEntry("sysprompt-editor:selection", {
+        version: 999,
+      });
+    await h.session.prompt("/sysprompt view preview");
+    const screens = ui.screens.join("\n");
+    assert.ok(screens.includes("CUSTOM PREVIEW"));
+    assert.ok(screens.includes("rendered-template: (incoming prompt)"));
+    assert.ok(!screens.includes("fallback-or-bypass: (none)"));
+    if (!malformed) {
+      assert.ok(screens.includes("selected-template: default.md"));
+      assert.ok(screens.includes("custom Pi core bypasses the template"));
+    }
+    assert.equal(h.finalPayloads.length, 0);
+  }
 });

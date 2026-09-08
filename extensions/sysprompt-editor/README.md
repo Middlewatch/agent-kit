@@ -86,7 +86,8 @@ proof the server accepted it. A turn without an observation gets an explicit
 unavailable card. The current preview uses Pi's loaded inputs and the live
 selected template; it omits per-turn extension and provider changes. Reload Pi
 to refresh loaded instruction files. Preview never replaces a saved capture or
-persists a template selection.
+persists a template selection. On an unpinned Pi version, reconstruction is
+unavailable; the loaded-source inventory and saved captures remain viewable.
 
 Captures live in display-only session entries. They survive resume and follow the
 active branch through fork and tree navigation. They never enter model context.

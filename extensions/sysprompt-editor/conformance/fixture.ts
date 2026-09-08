@@ -46,6 +46,7 @@ export async function fixture({
   beforeStart,
   notify,
   uiContext,
+  piVersion,
 }: {
   customPrompt?: string;
   template?: string;
@@ -61,6 +62,7 @@ export async function fixture({
   beforeStart?: () => Promise<void>;
   notify?: (message: string) => void;
   uiContext?: ExtensionUIContext;
+  piVersion?: string;
 } = {}) {
   const root = reuse?.root ?? mkdtempSync(join(tmpdir(), "sysprompt-real-"));
   if (!reuse)
@@ -152,7 +154,11 @@ export async function fixture({
       ...(editor
         ? [
             (pi: ExtensionAPI) =>
-              systemPromptExtension(pi, { templatesDir, artifactsDir }),
+              systemPromptExtension(pi, {
+                templatesDir,
+                artifactsDir,
+                piVersion,
+              }),
           ]
         : []),
       ...(additions

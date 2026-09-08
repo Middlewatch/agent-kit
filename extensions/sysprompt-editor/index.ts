@@ -91,6 +91,7 @@ export interface ExtensionPaths {
   fixturePath?: string;
   agentDir?: string;
   docPaths?: DocPaths;
+  piVersion?: string;
 }
 
 interface PiFacts {
@@ -132,7 +133,7 @@ export default function systemPromptExtension(
           return {
             agentDir: paths.agentDir,
             docPaths: paths.docPaths,
-            version: PINNED_PI_VERSION,
+            version: paths.piVersion ?? PINNED_PI_VERSION,
           };
         const pi = await import("@earendil-works/pi-coding-agent");
         return {
@@ -142,7 +143,7 @@ export default function systemPromptExtension(
             docs: pi.getDocsPath(),
             examples: pi.getExamplesPath(),
           },
-          version: pi.VERSION,
+          version: paths.piVersion ?? pi.VERSION,
         };
       })();
       facts.catch(() => {
@@ -675,7 +676,24 @@ export default function systemPromptExtension(
     const options = ctx.getSystemPromptOptions();
     const { formatSkillsForPrompt } =
       await import("@earendil-works/pi-coding-agent");
-    const { agentDir, docPaths } = await piFacts();
+    const { agentDir, docPaths, version } = await piFacts();
+    const pin = selection(ctx);
+    const files = scopeFiles(options.contextFiles ?? [], agentDir);
+    const evidence: PromptEvidence = {
+      coreSource: coreSource(options),
+      selectedName: pin.kind === "selected" ? pin.name : null,
+      renderedName: null,
+      templateSha256: null,
+      reason: "No template configured.",
+      instructions: instructionInventory(files),
+    };
+    if (version !== PINNED_PI_VERSION) {
+      return {
+        kind: "preview",
+        instructions: `Preview unavailable: reconstruction is pinned to Pi ${PINNED_PI_VERSION}; this process runs ${version}. Sources lists the loaded inputs. Captured requests remain viewable.`,
+        sources: `${PREVIEW_BOUNDARY}\n\n${renderImmediateDump(options)}`,
+      };
+    }
     const tools = options.selectedTools ?? ["read", "bash", "edit", "write"];
     const skillTool = (["read", "bash"] as const).find((tool) =>
       tools.includes(tool),
@@ -688,10 +706,7 @@ export default function systemPromptExtension(
         ? formatSkillsForPrompt(options.skills ?? [], skillTool)
         : "") +
       `\nCurrent working directory: ${options.cwd.replace(/\\/g, "/")}${options.customPrompt ? "\n" : ""}`;
-    const pin = selection(ctx);
     let instructions = incoming;
-    let note = "Incoming Pi prompt; no template rendered.";
-    let templateName: string | null = null;
     try {
       if (pin.kind === "invalid") throw new Error(pin.reason);
       const active =
@@ -700,30 +715,36 @@ export default function systemPromptExtension(
           : pin.kind === "selected"
             ? readTemplate(templatesDir, pin.name)
             : readActiveTemplate(templatesDir);
-      if (active && !options.customPrompt) {
-        templateName = active.name;
+      if (active) {
+        evidence.selectedName = active.name;
+        evidence.templateSha256 = sha256(active.content);
+      }
+      if (options.customPrompt)
+        evidence.reason = "custom Pi core bypasses the template";
+      else if (active) {
         const result = splicePrompt(
           active.content,
           incoming,
           {
             appendSystemPrompt: options.appendSystemPrompt,
-            contextFiles: scopeFiles(options.contextFiles ?? [], agentDir),
+            contextFiles: files,
           },
           process.env.PI_SCRATCHPAD,
         );
-        if ("reason" in result) note = result.reason;
+        if ("reason" in result) evidence.reason = result.reason;
         else {
           instructions = result.prompt;
-          note = `Template: ${active.name} (current file contents).`;
+          evidence.renderedName = active.name;
+          evidence.reason = null;
         }
       }
     } catch (error) {
-      note = String(error);
+      evidence.reason = String(error);
     }
     return {
       kind: "preview",
       instructions,
-      sources: `${PREVIEW_BOUNDARY}\n\n${note}\n\n${renderImmediateDump(options)}\n${evidenceLines({ coreSource: coreSource(options), selectedName: templateName, renderedName: null, templateSha256: null, reason: "preview only", instructions: instructionInventory(scopeFiles(options.contextFiles ?? [], agentDir)) })}`,
+      sources: `${PREVIEW_BOUNDARY}\n\nPreview rendering:\n${evidenceLines(evidence)}\n${renderImmediateDump(options)}`,
     };
   }
 
