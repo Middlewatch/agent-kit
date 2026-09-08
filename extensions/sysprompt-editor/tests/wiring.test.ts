@@ -61,7 +61,6 @@ function harness(paths: Partial<ExtensionPaths> = {}): Harness {
       assert.equal(name, "sysprompt");
       command = (args, ctx) => options.handler(args, state.context(ctx));
     },
-    registerEntryRenderer() {},
     sendUserMessage(content: string) {
       sent.push(content);
     },
@@ -193,8 +192,7 @@ test("wiring: unknown argument notifies usage and does nothing", async () => {
   assert.deepEqual(ui.inputs, []);
   assert.deepEqual(ui.notices, [
     {
-      message:
-        "usage: /sysprompt [switch|new|view [history|preview]|inspect|test]",
+      message: "usage: /sysprompt [switch|new|view|inspect|test]",
       type: "warning",
     },
   ]);

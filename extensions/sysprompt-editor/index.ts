@@ -58,26 +58,14 @@ import {
 } from "./lib/selection.ts";
 
 import {
-  CAPTURE_BOUNDARY,
   PREVIEW_BOUNDARY,
-  REQUEST_TYPE,
-  REQUEST_CARD_TYPE,
-  captureRequest,
-  parseRequest,
-  requestTitle,
-  type RequestRecord,
-  type ViewRecord,
-} from "./lib/viewer.ts";
-import {
-  RequestBrowser,
-  RequestCard,
-  type ViewerAction,
+  PromptViewer,
+  type PromptPreview,
 } from "./lib/viewer-ui.ts";
 
 const ACTIONS = ["switch", "new", "view", "inspect", "test"] as const;
 type Action = (typeof ACTIONS)[number];
-const USAGE =
-  "usage: /sysprompt [switch|new|view [history|preview]|inspect|test]";
+const USAGE = "usage: /sysprompt [switch|new|view|inspect|test]";
 
 /**
  * Filesystem locations the extension works against. Pi calls the default
@@ -157,54 +145,6 @@ export default function systemPromptExtension(
 
   let lastEvidence: PromptEvidence | null = null;
   const { armCapture, takeArmedCapture } = createCaptureState();
-  let awaitingRequest = false;
-  const cards = new WeakMap<object, RequestCard>();
-  pi.registerEntryRenderer(REQUEST_CARD_TYPE, (entry, { expanded }, theme) => {
-    let card = cards.get(entry);
-    if (card) {
-      card.sync(expanded, theme);
-      return card;
-    }
-    const record = parseRequest(entry.data) ?? invalidRequest(entry.timestamp);
-    card = new RequestCard(record, expanded, theme);
-    cards.set(entry, card);
-    return card;
-  });
-
-  function invalidRequest(at: string): RequestRecord {
-    return {
-      version: 1,
-      kind: "unavailable",
-      at,
-      provider: "unknown",
-      modelId: "unknown",
-      sources: "",
-      reason:
-        "Saved request entry is malformed or uses an unsupported version.",
-    };
-  }
-  function sources(): string {
-    return `${CAPTURE_BOUNDARY}\n\nLoaded-source inventory (not attribution of every payload byte):\n${lastEvidence ? evidenceLines(lastEvidence) : "(unavailable)\n"}\nText without an identified source, including extension additions, is unattributed. Inspect Instructions and Raw to audit it.`;
-  }
-  function saveRequest(record: RequestRecord, ctx: ExtensionContext): void {
-    try {
-      const hasCard = ctx.sessionManager
-        .getBranch()
-        .some(
-          (entry) =>
-            entry.type === "custom" && entry.customType === REQUEST_CARD_TYPE,
-        );
-      pi.appendEntry(hasCard ? REQUEST_TYPE : REQUEST_CARD_TYPE, record);
-    } catch (error) {
-      const message = `sysprompt: request capture could not be saved and may remain memory-only: ${String(error)}`;
-      if (ctx.hasUI) ctx.ui.notify(message, "warning");
-      else process.stderr.write(`${message}\n`);
-    }
-  }
-  pi.on("turn_start", () => {
-    awaitingRequest = true;
-  });
-
   // Output test awaiting its turn_end.
   let pendingTest: {
     stamp: string;
@@ -419,8 +359,6 @@ export default function systemPromptExtension(
     const system = extractSystemPromptFromPayload(event.payload);
     if (lastEvidence && system !== null)
       lastEvidence.providerSystemSha256 = sha256(system);
-    awaitingRequest = false;
-    saveRequest(captureRequest(event.payload, event.model, sources()), ctx);
     if (pendingTest) {
       const seen = modelLabel(event.model);
       pendingTest.provider = seen.provider;
@@ -510,21 +448,6 @@ export default function systemPromptExtension(
   });
 
   pi.on("turn_end", async (event: any, ctx: any) => {
-    if (awaitingRequest) {
-      awaitingRequest = false;
-      saveRequest(
-        {
-          version: 1,
-          kind: "unavailable",
-          at: new Date().toISOString(),
-          ...modelLabel(ctx.model),
-          sources: sources(),
-          reason:
-            "No provider payload was observed for this turn. The provider may not call options.onPayload, or the request may have failed before capture.",
-        },
-        ctx,
-      );
-    }
     // Fail-safe for providers that never emit before_provider_request: a
     // capture still armed when the turn ends can never fire for the message
     // that was meant to trigger it, so disarm rather than let it attach to
@@ -679,7 +602,7 @@ export default function systemPromptExtension(
     );
   }
 
-  async function preview(ctx: ExtensionCommandContext): Promise<ViewRecord> {
+  async function preview(ctx: ExtensionCommandContext): Promise<PromptPreview> {
     const options = ctx.getSystemPromptOptions();
     const { formatSkillsForPrompt } =
       await import("@earendil-works/pi-coding-agent");
@@ -696,8 +619,7 @@ export default function systemPromptExtension(
     };
     if (version !== PINNED_PI_VERSION) {
       return {
-        kind: "preview",
-        instructions: `Preview unavailable: reconstruction is pinned to Pi ${PINNED_PI_VERSION}; this process runs ${version}. Sources lists the loaded inputs. Captured requests remain viewable.`,
+        instructions: `Preview unavailable: reconstruction is pinned to Pi ${PINNED_PI_VERSION}; this process runs ${version}. Sources lists the loaded inputs.`,
         sources: `${PREVIEW_BOUNDARY}\n\n${renderImmediateDump(options)}`,
       };
     }
@@ -749,77 +671,32 @@ export default function systemPromptExtension(
       evidence.reason = String(error);
     }
     return {
-      kind: "preview",
       instructions,
       sources: `${PREVIEW_BOUNDARY}\n\nPreview rendering:\n${evidenceLines(evidence)}\n${renderImmediateDump(options)}`,
     };
   }
 
-  async function actionView(
-    ctx: ExtensionCommandContext,
-    initial: "latest" | "history" | "preview" = "latest",
-  ): Promise<void> {
+  async function actionView(ctx: ExtensionCommandContext): Promise<void> {
     if (ctx.mode !== "tui") {
-      ctx.ui.notify(
-        "sysprompt view requires the interactive TUI; inspect writes capture artifacts in headless mode.",
-        "warning",
-      );
+      ctx.ui.notify("sysprompt view requires the interactive TUI.", "warning");
       return;
     }
     const sessionId = ctx.sessionManager.getSessionId();
-    const history = ctx.sessionManager.getBranch().flatMap((entry) =>
-      entry.type === "custom" &&
-      [REQUEST_TYPE, REQUEST_CARD_TYPE].includes(entry.customType)
-        ? [
-            {
-              id: entry.id,
-              record:
-                parseRequest(entry.data) ?? invalidRequest(entry.timestamp),
-            },
-          ]
-        : [],
+    const current = await preview(ctx);
+    if (ctx.sessionManager.getSessionId() !== sessionId) return;
+    await ctx.ui.custom<void>(
+      (tui, theme, _keys, done) =>
+        new PromptViewer(
+          current,
+          theme,
+          () => Math.max(1, tui.terminal.rows - 2),
+          () => done(),
+        ),
+      { overlay: true, overlayOptions: { width: "100%", maxHeight: "100%" } },
     );
-    let record: ViewRecord = history.at(-1)?.record ?? (await preview(ctx));
-    let next: ViewerAction | "latest" =
-      initial === "latest" ? "latest" : initial;
-    do {
-      if (next === "preview") record = await preview(ctx);
-      if (next === "history") {
-        const labels = history
-          .map(
-            (item, i) => `${i + 1}. ${requestTitle(item.record)} [${item.id}]`,
-          )
-          .reverse();
-        const choice = await ctx.ui.select(
-          "Model input history (active branch)",
-          ["Current preview (not sent)", ...labels],
-        );
-        if (choice === undefined) return;
-        if (choice === "Current preview (not sent)")
-          record = await preview(ctx);
-        else {
-          const index = labels.indexOf(choice);
-          const item = history[history.length - 1 - index];
-          if (!item) return;
-          record = item.record;
-        }
-      }
-      if (ctx.sessionManager.getSessionId() !== sessionId) return;
-      next = await ctx.ui.custom<ViewerAction>(
-        (tui, theme, _keys, done) =>
-          new RequestBrowser(
-            record,
-            theme,
-            () => Math.max(1, tui.terminal.rows - 2),
-            done,
-          ),
-        { overlay: true, overlayOptions: { width: "100%", maxHeight: "100%" } },
-      );
-    } while (next !== "close");
   }
 
   const resetSession = async () => {
-    awaitingRequest = false;
     lastEvidence = null;
     lastWarning = null;
     pendingTest = null;
@@ -850,8 +727,6 @@ export default function systemPromptExtension(
     description: "Manage system prompt templates",
     handler: async (args, ctx) => {
       const arg = args.trim();
-      if (arg === "view history") return actionView(ctx, "history");
-      if (arg === "view preview") return actionView(ctx, "preview");
       if (arg.startsWith("switch "))
         return actionSwitch(ctx, arg.slice(7).trim());
       let action: Action;

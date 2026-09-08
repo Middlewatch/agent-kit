@@ -9,106 +9,41 @@ import {
   type TuiMouseEvent,
   type TuiMouseEventResult,
 } from "@earendil-works/pi-tui";
-import {
-  CAPTURE_BOUNDARY,
-  PREVIEW_BOUNDARY,
-  SECTIONS,
-  requestSections,
-  requestTitle,
-  type Section,
-  type ViewRecord,
-} from "./viewer.ts";
+export interface PromptPreview {
+  instructions: string;
+  sources: string;
+}
+const SECTIONS = ["instructions", "sources"] as const;
+export const PREVIEW_BOUNDARY =
+  "Current preview, not a captured request. Uses Pi's currently loaded inputs and the live selected template. Per-turn extension and provider changes are absent. Reload Pi to refresh loaded instruction files.";
 
-// Payloads are untrusted terminal content. Saved JSON remains untouched.
+// Instruction files may contain terminal control sequences.
 function terminalText(text: string): string {
   return stripTerminalSequences(text).replace(/[\x00-\x08\x0b-\x1f\x7f]/g, "");
 }
 
-export class RequestCard implements Component {
-  private record: ViewRecord;
-  private theme: Theme;
-  private expanded: boolean;
-  private globalExpanded: boolean;
-  private cache: { width: number; lines: string[] } | null = null;
-
-  constructor(record: ViewRecord, expanded: boolean, theme: Theme) {
-    this.record = record;
-    this.theme = theme;
-    this.expanded = this.globalExpanded = expanded;
-  }
-
-  sync(expanded: boolean, theme: Theme): void {
-    this.theme = theme;
-    if (expanded !== this.globalExpanded) {
-      this.globalExpanded = expanded;
-      this.expanded = expanded;
-    }
-    this.invalidate();
-  }
-
-  invalidate(): void {
-    this.cache = null;
-  }
-
-  handleMouse(event: TuiMouseEvent): TuiMouseEventResult | undefined {
-    if (event.type !== "click" || event.button !== "left" || event.y !== 0)
-      return;
-    this.expanded = !this.expanded;
-    this.invalidate();
-    return { handled: true };
-  }
-
-  render(width: number): string[] {
-    if (this.cache?.width === width) return this.cache.lines;
-    const title = `${this.expanded ? "▾" : "▸"} ${requestTitle(this.record)}`;
-    const lines = [
-      this.theme.fg("accent", truncateToWidth(terminalText(title), width)),
-    ];
-    if (this.expanded) {
-      const sections = requestSections(this.record);
-      const boundary =
-        this.record.kind === "preview" ? PREVIEW_BOUNDARY : CAPTURE_BOUNDARY;
-      lines.push(
-        ...new Text(
-          terminalText(
-            `${boundary}\n\n${sections.instructions}\n\n/sysprompt view opens sources, messages, tools and raw payload. The header collapses this card.`,
-          ),
-          1,
-          0,
-        ).render(width),
-      );
-    }
-    this.cache = { width, lines };
-    return lines;
-  }
-}
-
-export type ViewerAction = "close" | "history" | "preview";
-
 /** A bounded viewport works in both regular and fullscreen custom overlays. */
-export class RequestBrowser implements Component {
-  private record: ViewRecord;
+export class PromptViewer implements Component {
   private theme: Theme;
   private height: () => number;
-  private done: (action: ViewerAction) => void;
-  private section: Section = "instructions";
-  private sections: Record<Section, string>;
+  private done: () => void;
+  private section: keyof PromptPreview = "instructions";
+  private sections: PromptPreview;
   private offset = 0;
   private body: { width: number; lines: string[] } | null = null;
   private pageHeight = 1;
   private maxOffset = 0;
 
   constructor(
-    record: ViewRecord,
+    preview: PromptPreview,
     theme: Theme,
     height: () => number,
-    done: (action: ViewerAction) => void,
+    done: () => void,
   ) {
-    this.record = record;
     this.theme = theme;
     this.height = height;
     this.done = done;
-    this.sections = requestSections(record);
+    this.sections = preview;
   }
 
   invalidate(): void {
@@ -120,11 +55,9 @@ export class RequestBrowser implements Component {
   }
 
   handleInput(data: string): void {
-    if (matchesKey(data, Key.escape) || data === "q") return this.done("close");
-    if (data === "h") return this.done("history");
-    if (data === "p") return this.done("preview");
+    if (matchesKey(data, Key.escape) || data === "q") return this.done();
     const index = SECTIONS.indexOf(this.section);
-    const chosen = /^[1-5]$/.test(data)
+    const chosen = /^[1-2]$/.test(data)
       ? Number(data) - 1
       : matchesKey(data, Key.tab) || matchesKey(data, Key.right)
         ? (index + 1) % SECTIONS.length
@@ -161,14 +94,10 @@ export class RequestBrowser implements Component {
     this.maxOffset = Math.max(0, body.length - this.pageHeight);
     this.offset = Math.min(this.offset, this.maxOffset);
     const clip = (text: string) => truncateToWidth(terminalText(text), width);
-    const title = this.theme.fg("accent", clip(requestTitle(this.record)));
+    const title = this.theme.fg("accent", clip("Current preview (not sent)"));
     const boundary = this.theme.fg(
       "dim",
-      clip(
-        this.record.kind === "preview"
-          ? "PREVIEW · not sent · loaded Pi inputs + live template"
-          : "OBSERVATION · inspection hook, not a wire receipt",
-      ),
+      clip("PREVIEW · not sent · loaded Pi inputs + live template"),
     );
     const tabs = SECTIONS.map(
       (name, i) => `${i + 1} ${name === this.section ? `[${name}]` : name}`,
@@ -184,7 +113,7 @@ export class RequestBrowser implements Component {
       this.theme.fg(
         "dim",
         clip(
-          `↑↓/PgUp/PgDn scroll · Tab section · h history · p preview · Esc close · ${this.offset + 1}/${body.length}`,
+          `↑↓/PgUp/PgDn scroll · Tab section · Esc close · ${this.offset + 1}/${body.length}`,
         ),
       ),
     );

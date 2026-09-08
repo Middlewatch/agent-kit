@@ -1,7 +1,7 @@
 # sysprompt-editor
 
 A Pi extension for editable system-prompt cores, scoped instruction placement,
-and request inspection in the transcript.
+and disposable instruction inspection.
 The harness supplies live data; templates supply prose and layout. See the scoped
 slot contract below. The authoring guide and model-family examples are at
 `~/.agents/kit/guidance/sysprompt/AUTHORING.md`. The extension runs on stock Pi;
@@ -38,9 +38,9 @@ straight to one. Cancelling any picker ends the command with no write.
 - `switch`: pick the session template, or use `/sysprompt switch name.md` headlessly.
 - `new`: name a template (`[a-z0-9-]+`) and create it as a byte copy of the
   currently active one; existing files are never overwritten.
-- `view`: opens the latest captured request, or a current preview before the
-  first capture. `/sysprompt view history` picks an earlier request on the active
-  branch; `/sysprompt view preview` rebuilds the preview. Viewing sends no message.
+- `view`: opens a disposable preview of the loaded instructions and selected
+  template, including before the first message. Viewing sends no message and
+  saves no files or session entries.
 - `inspect`: writes a command-time inventory, then captures the next provider
   system text as readable `.md` and extracted `.txt` in `artifacts/inspect/`.
   Multiple provider text blocks are joined with blank lines. The metadata records
@@ -62,41 +62,27 @@ by a later extension is not in the capture; the kit's manifest order puts this
 extension after the ones that edit prompts. The model label is the session's
 model at request time.
 
-## Request viewer
+## Disposable prompt viewer
 
-The first observation adds one collapsed transcript card per active branch.
-Later requests, including tool continuations, are saved silently. Resume and fork
-inherit the card; `/sysprompt view history` retains every capture. Click the card's
-header in fullscreen mode to expand or collapse that first observation; Pi's
-tool-expansion keybinding (default Ctrl+O) also controls it. `/sysprompt view`
-opens the latest observation in either TUI mode:
+Open `/sysprompt` and choose `view`, or run `/sysprompt view` directly. The
+scrollable preview works in regular and fullscreen TUI modes:
 
-- `1`–`5` or Tab select Instructions, Sources, Messages, Tools, and Raw.
+- `1`, `2`, or Tab switch between Instructions and Sources.
 - Arrow keys, `j`/`k`, Page Up/Down, Home/End, or the mouse wheel scroll.
-- `h` opens history, `p` builds a current preview, and Escape closes the viewer.
+- Escape or `q` closes the viewer and discards the preview.
 
-Instructions extracts recognized system/developer fields. Messages retains all
-recognized message arrays, including user and tool content that can carry
-instructions. Raw shows the complete observed JSON payload, including unfamiliar
-fields. Sources lists loaded file paths and hashes; it is an inventory, not
-attribution of every payload byte. Extension additions and unmatched text remain
-unattributed. Terminal control sequences are removed for display; saved JSON is
-unchanged.
+The preview uses Pi's loaded inputs and the live selected template. It has not
+been sent and omits per-turn extension and provider changes. Sources lists loaded
+file paths, template and instruction hashes, and any rendering fallback. Reload
+Pi to refresh loaded instruction files. On an unpinned Pi version, reconstruction
+is unavailable; the loaded-source inventory remains viewable. Terminal control
+sequences are removed for display.
 
-A capture is an observation at this extension's hook, not a transport receipt or
-proof the server accepted it. A turn without an observation gets an explicit
-unavailable record in the viewer. The current preview uses Pi's loaded inputs and the live
-selected template; it omits per-turn extension and provider changes. Reload Pi
-to refresh loaded instruction files. Preview never replaces a saved capture or
-persists a template selection. On an unpinned Pi version, reconstruction is
-unavailable; the loaded-source inventory and saved captures remain viewable.
-
-Captures live in display-only session entries. They survive resume and follow the
-active branch through fork and tree navigation. They never enter model context.
-Pi's first-reply persistence rule above also applies to captures. Session files
-now contain full request copies, potentially including sensitive messages,
-images, and tool results. There is no redaction or deduplication, so long sessions
-use more disk space. Treat session exports and sharing accordingly.
+Opening the viewer never initializes a template selection, adds a transcript
+notice, or captures a request. Ordinary turns and tool continuations create no
+inspection archive. Existing request captures in old session files remain
+untouched but are no longer rendered or read by the viewer. The separate
+`inspect` and `test` commands still create diagnostic files when explicitly run.
 
 ## Layout
 
@@ -109,8 +95,7 @@ use more disk space. Treat session exports and sharing accordingly.
 - `lib/selection.ts`: versioned selection parsing and branch restoration.
 - `lib/inspect.ts`: immediate dump, payload extraction, armed capture,
   artifact naming. Capture arms belong to one extension instance.
-- `lib/viewer.ts`: versioned request observations and provider-field views.
-- `lib/viewer-ui.ts`: transcript cards and the on-demand viewport.
+- `lib/viewer-ui.ts`: disposable instruction and source viewport.
 - `lib/evidence.ts`: scoped input inventories and content hashes.
 - `lib/output-test.ts`: output-test prompt, result naming and format.
 - `fixtures/golden/`: input/expected pairs that pin the artifact formats
