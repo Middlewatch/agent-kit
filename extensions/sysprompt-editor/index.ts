@@ -61,6 +61,7 @@ import {
   CAPTURE_BOUNDARY,
   PREVIEW_BOUNDARY,
   REQUEST_TYPE,
+  REQUEST_CARD_TYPE,
   captureRequest,
   parseRequest,
   requestTitle,
@@ -158,7 +159,7 @@ export default function systemPromptExtension(
   const { armCapture, takeArmedCapture } = createCaptureState();
   let awaitingRequest = false;
   const cards = new WeakMap<object, RequestCard>();
-  pi.registerEntryRenderer(REQUEST_TYPE, (entry, { expanded }, theme) => {
+  pi.registerEntryRenderer(REQUEST_CARD_TYPE, (entry, { expanded }, theme) => {
     let card = cards.get(entry);
     if (card) {
       card.sync(expanded, theme);
@@ -187,7 +188,13 @@ export default function systemPromptExtension(
   }
   function saveRequest(record: RequestRecord, ctx: ExtensionContext): void {
     try {
-      pi.appendEntry(REQUEST_TYPE, record);
+      const hasCard = ctx.sessionManager
+        .getBranch()
+        .some(
+          (entry) =>
+            entry.type === "custom" && entry.customType === REQUEST_CARD_TYPE,
+        );
+      pi.appendEntry(hasCard ? REQUEST_TYPE : REQUEST_CARD_TYPE, record);
     } catch (error) {
       const message = `sysprompt: request capture could not be saved and may remain memory-only: ${String(error)}`;
       if (ctx.hasUI) ctx.ui.notify(message, "warning");
@@ -761,7 +768,8 @@ export default function systemPromptExtension(
     }
     const sessionId = ctx.sessionManager.getSessionId();
     const history = ctx.sessionManager.getBranch().flatMap((entry) =>
-      entry.type === "custom" && entry.customType === REQUEST_TYPE
+      entry.type === "custom" &&
+      [REQUEST_TYPE, REQUEST_CARD_TYPE].includes(entry.customType)
         ? [
             {
               id: entry.id,

@@ -47,8 +47,11 @@ is a version-1 discriminated union: `captured` carries a serialized JSON payload
 and a source inventory frozen at capture time. The session entry ID identifies
 an observation; identical payloads remain separate request observations.
 
-**Owner and lifetime.** The extension appends `sysprompt-editor:request` custom
-entries. Pi owns their storage and branch relationships. The active branch is
+**Owner and lifetime.** The extension appends `sysprompt-editor:request-card`
+for the first observation on the active branch and `sysprompt-editor:request`
+for subsequent observations. Both carry the same record; only `request-card`
+has a transcript renderer. Legacy `request` entries remain readable history.
+Pi owns their storage and branch relationships. The active branch is
 the history index, so resume and fork need no second archive or lifecycle cache.
 Entries never become model-facing messages. Pi persists them with the first
 assistant reply; earlier observations may remain memory-only.

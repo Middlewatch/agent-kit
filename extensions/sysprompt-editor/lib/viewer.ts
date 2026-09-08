@@ -1,6 +1,7 @@
 import { modelLabel } from "./inspect.ts";
 
 export const REQUEST_TYPE = "sysprompt-editor:request";
+export const REQUEST_CARD_TYPE = "sysprompt-editor:request-card";
 
 interface RequestHeader {
   version: 1;

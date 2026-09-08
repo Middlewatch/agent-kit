@@ -74,8 +74,9 @@ replacement or tree navigation.
 
 ## Request observations
 
-`sysprompt-editor:request` is a versioned display-only custom entry for each
-`before_provider_request` observation. `RequestRecord` distinguishes captured
+Each `before_provider_request` observation is a versioned custom entry.
+`sysprompt-editor:request-card` stores the first observation on the active branch;
+`sysprompt-editor:request` stores subsequent observations silently. `RequestRecord` distinguishes captured
 JSON from an unavailable observation; `PreviewRecord` is transient. JSON
 serialization detaches saved data before later handlers can mutate it. A
 `turn_start`/`turn_end` pair without an observation records the gap. Capture or
@@ -87,7 +88,10 @@ inventories are saved alongside the payload so a later template edit cannot
 relabel an earlier request. Unknown payload shapes retain their complete JSON.
 The extracted sections are convenience views, with Raw as the audit fallback.
 
-`registerEntryRenderer` renders a collapsed card. Its component owns local
+Only the `request-card` type has an entry renderer. The branch itself records
+whether a card exists, so resume, fork, and tree navigation need no display flag.
+Legacy `request` entries remain in history without rendering repeated notices.
+`registerEntryRenderer` renders the first observation as a collapsed card. Its component owns local
 expansion; Pi's global expansion changes override that state. Header clicks route
 through Pi's custom-entry container. `/sysprompt view` supplies a bounded custom
 viewport with section selection and scrolling, plus a history picker. Neither

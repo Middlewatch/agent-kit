@@ -64,10 +64,12 @@ model at request time.
 
 ## Request viewer
 
-Each observed provider request adds a collapsed transcript card, including tool
-continuations. Click its header in fullscreen mode to expand or collapse the
-instruction text; Pi's tool-expansion keybinding (default Ctrl+O) also controls
-cards. `/sysprompt view` opens the scrollable viewer in either TUI mode:
+The first observation adds one collapsed transcript card per active branch.
+Later requests, including tool continuations, are saved silently. Resume and fork
+inherit the card; `/sysprompt view history` retains every capture. Click the card's
+header in fullscreen mode to expand or collapse that first observation; Pi's
+tool-expansion keybinding (default Ctrl+O) also controls it. `/sysprompt view`
+opens the latest observation in either TUI mode:
 
 - `1`–`5` or Tab select Instructions, Sources, Messages, Tools, and Raw.
 - Arrow keys, `j`/`k`, Page Up/Down, Home/End, or the mouse wheel scroll.
@@ -83,7 +85,7 @@ unchanged.
 
 A capture is an observation at this extension's hook, not a transport receipt or
 proof the server accepted it. A turn without an observation gets an explicit
-unavailable card. The current preview uses Pi's loaded inputs and the live
+unavailable record in the viewer. The current preview uses Pi's loaded inputs and the live
 selected template; it omits per-turn extension and provider changes. Reload Pi
 to refresh loaded instruction files. Preview never replaces a saved capture or
 persists a template selection. On an unpinned Pi version, reconstruction is
