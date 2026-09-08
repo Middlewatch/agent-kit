@@ -113,7 +113,11 @@ test("preview refuses an unpinned Pi reconstruction while leaving source invento
   await h.session.prompt("/sysprompt view");
   assert.ok(ui.screens[0]?.includes("Preview unavailable"));
   assert.ok(!ui.screens[0]?.includes("UNVERIFIED CORE"));
-  assert.ok(ui.screens.some((screen) => screen.includes("AGENTS.md")));
+  const sources = ui.screens.join("\n");
+  assert.ok(sources.includes("AGENTS.md"));
+  assert.ok(sources.includes("fallback-or-bypass: Preview unavailable"));
+  assert.ok(sources.includes("core-source: stock"));
+  assert.ok(sources.includes(`sha256:${sha256("GLOBAL OPAQUE\n")}`));
   assert.equal(h.finalPayloads.length, 0);
 });
 

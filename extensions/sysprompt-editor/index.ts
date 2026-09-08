@@ -618,9 +618,11 @@ export default function systemPromptExtension(
       instructions: instructionInventory(files),
     };
     if (version !== PINNED_PI_VERSION) {
+      const reason = `Preview unavailable: reconstruction is pinned to Pi ${PINNED_PI_VERSION}; this process runs ${version}`;
+      evidence.reason = reason;
       return {
-        instructions: `Preview unavailable: reconstruction is pinned to Pi ${PINNED_PI_VERSION}; this process runs ${version}. Sources lists the loaded inputs.`,
-        sources: `${PREVIEW_BOUNDARY}\n\n${renderImmediateDump(options)}`,
+        instructions: `${reason}. Sources lists the loaded inputs.`,
+        sources: `${PREVIEW_BOUNDARY}\n\n${evidenceLines(evidence)}\n${renderImmediateDump(options)}`,
       };
     }
     const tools = options.selectedTools ?? ["read", "bash", "edit", "write"];
