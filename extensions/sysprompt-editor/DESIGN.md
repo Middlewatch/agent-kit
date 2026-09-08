@@ -72,6 +72,34 @@ the result. Model labels come from that request; without an observation the
 result says `unobserved`. Capture state is instance-local and clears on session
 replacement or tree navigation.
 
+## Request observations
+
+`sysprompt-editor:request` is a versioned display-only custom entry for each
+`before_provider_request` observation. `RequestRecord` distinguishes captured
+JSON from an unavailable observation; `PreviewRecord` is transient. JSON
+serialization detaches saved data before later handlers can mutate it. A
+`turn_start`/`turn_end` pair without an observation records the gap. Capture or
+storage failure leaves the request pipeline running.
+
+The entry ID is the history identity. Pi owns persistence and branch traversal;
+the viewer reads the active branch rather than keeping a second history. Source
+inventories are saved alongside the payload so a later template edit cannot
+relabel an earlier request. Unknown payload shapes retain their complete JSON.
+The extracted sections are convenience views, with Raw as the audit fallback.
+
+`registerEntryRenderer` renders a collapsed card. Its component owns local
+expansion; Pi's global expansion changes override that state. Header clicks route
+through Pi's custom-entry container. `/sysprompt view` supplies a bounded custom
+viewport with section selection and scrolling, plus a history picker. Neither
+surface sends messages. The current preview reconstructs Pi's loaded inputs using
+the pinned core mirror and public skill formatter, then applies the live selected
+template without initializing or changing selection state.
+
+The persistence cost is one complete serialized request per observation, with
+no redaction or deduplication. Requests can contain sensitive context beyond the
+system prompt. The UI identifies the observation boundary and does not claim
+transport-level fidelity or complete source attribution.
+
 ## Verification
 
 `scripts/verify.sh` checks formatting, types, unit tests with artifact goldens,

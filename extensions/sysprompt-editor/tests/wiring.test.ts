@@ -61,6 +61,7 @@ function harness(paths: Partial<ExtensionPaths> = {}): Harness {
       assert.equal(name, "sysprompt");
       command = (args, ctx) => options.handler(args, state.context(ctx));
     },
+    registerEntryRenderer() {},
     sendUserMessage(content: string) {
       sent.push(content);
     },
@@ -149,6 +150,7 @@ test("wiring: switch action writes session state without changing the default po
   assert.deepEqual(menu.selects[0]?.options, [
     "switch",
     "new",
+    "view",
     "inspect",
     "test",
   ]);
@@ -190,7 +192,11 @@ test("wiring: unknown argument notifies usage and does nothing", async () => {
   assert.deepEqual(ui.selects, []);
   assert.deepEqual(ui.inputs, []);
   assert.deepEqual(ui.notices, [
-    { message: "usage: /sysprompt [switch|new|inspect|test]", type: "warning" },
+    {
+      message:
+        "usage: /sysprompt [switch|new|view [history|preview]|inspect|test]",
+      type: "warning",
+    },
   ]);
   assert.equal(fs.existsSync(path.join(h.templatesDir, ".active")), false);
   assert.deepEqual(fs.readdirSync(h.artifactsDir), []);

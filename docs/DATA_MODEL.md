@@ -38,3 +38,27 @@ extension's load position, labelled with the session's model at request time.
 The editor's `PromptEvidence` type in
 `~/.agents/kit/extensions/sysprompt-editor/lib/evidence.ts` records those facts
 and content hashes for explicit captures and output tests.
+
+## Request observation
+
+`RequestRecord` in `~/.agents/kit/extensions/sysprompt-editor/lib/viewer.ts`
+is a version-1 discriminated union: `captured` carries a serialized JSON payload;
+`unavailable` carries a reason. Both carry observation time, provider/model ID,
+and a source inventory frozen at capture time. The session entry ID identifies
+an observation; identical payloads remain separate request observations.
+
+**Owner and lifetime.** The extension appends `sysprompt-editor:request` custom
+entries. Pi owns their storage and branch relationships. The active branch is
+the history index, so resume and fork need no second archive or lifecycle cache.
+Entries never become model-facing messages. Pi persists them with the first
+assistant reply; earlier observations may remain memory-only.
+
+**Boundaries.** Serialize the payload at observation to detach it from downstream
+mutation. Parse saved entries by version and variant; malformed entries appear
+as unavailable. Capture failure leaves the provider request unchanged. The
+complete JSON is retained without redaction or deduplication, including any
+sensitive context present in the request.
+
+**Preview.** `PreviewRecord` carries reconstructed instruction text and current
+source inventory. It has a distinct `preview` variant, no session entry, and no
+claim that the inputs have been sent. Both variants feed the same viewport.

@@ -1,6 +1,7 @@
 # sysprompt-editor
 
-A Pi extension for editable system-prompt cores and scoped instruction placement.
+A Pi extension for editable system-prompt cores, scoped instruction placement,
+and request inspection in the transcript.
 The harness supplies live data; templates supply prose and layout. See the scoped
 slot contract below. The authoring guide and model-family examples are at
 `~/.agents/kit/guidance/sysprompt/AUTHORING.md`. The extension runs on stock Pi;
@@ -31,12 +32,15 @@ as memory-only for the same reason.
 
 ## The `/sysprompt` command
 
-`/sysprompt` opens a menu of four actions; `/sysprompt <action>` jumps
+`/sysprompt` opens a menu of five actions; `/sysprompt <action>` jumps
 straight to one. Cancelling any picker ends the command with no write.
 
 - `switch`: pick the session template, or use `/sysprompt switch name.md` headlessly.
 - `new`: name a template (`[a-z0-9-]+`) and create it as a byte copy of the
   currently active one; existing files are never overwritten.
+- `view`: opens the latest captured request, or a current preview before the
+  first capture. `/sysprompt view history` picks an earlier request on the active
+  branch; `/sysprompt view preview` rebuilds the preview. Viewing sends no message.
 - `inspect`: writes a command-time inventory, then captures the next provider
   system text as readable `.md` and extracted `.txt` in `artifacts/inspect/`.
   Multiple provider text blocks are joined with blank lines. The metadata records
@@ -58,6 +62,39 @@ by a later extension is not in the capture; the kit's manifest order puts this
 extension after the ones that edit prompts. The model label is the session's
 model at request time.
 
+## Request viewer
+
+Each observed provider request adds a collapsed transcript card, including tool
+continuations. Click its header in fullscreen mode to expand or collapse the
+instruction text; Pi's tool-expansion keybinding (default Ctrl+O) also controls
+cards. `/sysprompt view` opens the scrollable viewer in either TUI mode:
+
+- `1`–`5` or Tab select Instructions, Sources, Messages, Tools, and Raw.
+- Arrow keys, `j`/`k`, Page Up/Down, Home/End, or the mouse wheel scroll.
+- `h` opens history, `p` builds a current preview, and Escape closes the viewer.
+
+Instructions extracts recognized system/developer fields. Messages retains all
+recognized message arrays, including user and tool content that can carry
+instructions. Raw shows the complete observed JSON payload, including unfamiliar
+fields. Sources lists loaded file paths and hashes; it is an inventory, not
+attribution of every payload byte. Extension additions and unmatched text remain
+unattributed. Terminal control sequences are removed for display; saved JSON is
+unchanged.
+
+A capture is an observation at this extension's hook, not a transport receipt or
+proof the server accepted it. A turn without an observation gets an explicit
+unavailable card. The current preview uses Pi's loaded inputs and the live
+selected template; it omits per-turn extension and provider changes. Reload Pi
+to refresh loaded instruction files. Preview never replaces a saved capture or
+persists a template selection.
+
+Captures live in display-only session entries. They survive resume and follow the
+active branch through fork and tree navigation. They never enter model context.
+Pi's first-reply persistence rule above also applies to captures. Session files
+now contain full request copies, potentially including sensitive messages,
+images, and tool results. There is no redaction or deduplication, so long sessions
+use more disk space. Treat session exports and sharing accordingly.
+
 ## Layout
 
 - `index.ts`: hook and command registration; logic lives in `lib/`.
@@ -69,6 +106,8 @@ model at request time.
 - `lib/selection.ts`: versioned selection parsing and branch restoration.
 - `lib/inspect.ts`: immediate dump, payload extraction, armed capture,
   artifact naming. Capture arms belong to one extension instance.
+- `lib/viewer.ts`: versioned request observations and provider-field views.
+- `lib/viewer-ui.ts`: transcript cards and the on-demand viewport.
 - `lib/evidence.ts`: scoped input inventories and content hashes.
 - `lib/output-test.ts`: output-test prompt, result naming and format.
 - `fixtures/golden/`: input/expected pairs that pin the artifact formats
@@ -79,7 +118,7 @@ model at request time.
 
 `DESIGN.md` is the design basis. `scripts/verify.sh` is the definition of
 green (Node 22.6+, `npm ci`, prettier, tsc, unit tests, conformance). Captures
-remain local; no per-turn archive or model-compliance score is produced.
+remain local; no model-compliance score is produced.
 
 ## Stock compatibility
 
@@ -117,6 +156,6 @@ tail, in loader order. Repeating either slot fails open. Expansion is single-pas
 so placeholder text inside a file or generated section stays literal. The splice
 separates `APPEND_SYSTEM.md` from the core and preserves it even when `{{PI_DOCS}}`
 is absent. Unrecognized boundaries leave the incoming prompt unchanged and produce
-a warning. Inspection captures the resulting provider bytes. Output tests capture
+a warning. Inspection captures provider system text at the inspection hook. Output tests capture
 each provider request explicitly and link the final request's artifact from the
 result. Without a provider observation, the model label is `unobserved`.

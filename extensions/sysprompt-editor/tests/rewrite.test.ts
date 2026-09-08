@@ -62,6 +62,7 @@ function capturedHandler(templatesDir = TEMPLATES_DIR): Handler {
         handler = (event: unknown) => (fn as any)(event, state.context());
     },
     registerCommand() {},
+    registerEntryRenderer() {},
   };
   systemPromptExtension(stub as never, {
     templatesDir,

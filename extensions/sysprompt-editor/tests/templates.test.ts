@@ -48,6 +48,7 @@ function capturedHandler(
           );
     },
     registerCommand() {},
+    registerEntryRenderer() {},
   };
   systemPromptExtension(stub as never, {
     templatesDir,

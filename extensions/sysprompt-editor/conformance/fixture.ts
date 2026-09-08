@@ -15,6 +15,7 @@ import {
   SessionManager,
   createAgentSession,
   type ExtensionAPI,
+  type ExtensionUIContext,
 } from "@earendil-works/pi-coding-agent";
 import {
   fauxAssistantMessage,
@@ -44,6 +45,7 @@ export async function fixture({
   customFile,
   beforeStart,
   notify,
+  uiContext,
 }: {
   customPrompt?: string;
   template?: string;
@@ -58,6 +60,7 @@ export async function fixture({
   customFile?: "global" | "workspace";
   beforeStart?: () => Promise<void>;
   notify?: (message: string) => void;
+  uiContext?: ExtensionUIContext;
 } = {}) {
   const root = reuse?.root ?? mkdtempSync(join(tmpdir(), "sysprompt-real-"));
   if (!reuse)
@@ -214,7 +217,11 @@ export async function fixture({
   });
   cleanups.push(() => session.dispose());
   await session.bindExtensions(
-    notify ? { uiContext: { notify } as never } : {},
+    uiContext
+      ? { uiContext, mode: "tui" }
+      : notify
+        ? { uiContext: { notify } as never }
+        : {},
   );
   const finalPayloads: unknown[] = [];
   session.agent.streamFunction = async (model, context, options) => {
@@ -246,6 +253,7 @@ export async function fixture({
     finalPayloads,
     incoming,
     resourceLoader,
+    faux,
     prompt,
   };
 }
