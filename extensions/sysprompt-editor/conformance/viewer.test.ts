@@ -12,7 +12,9 @@ import {
   fauxToolCall,
   streamSimple,
 } from "@earendil-works/pi-ai/compat";
-import { REQUEST_TYPE, parseRequest } from "../lib/viewer.ts";
+import { REQUEST_TYPE, captureRequest, parseRequest } from "../lib/viewer.ts";
+
+const REQUEST_CARD_TYPE = "sysprompt-editor:request-card";
 import { sha256 } from "../lib/evidence.ts";
 import { fixture } from "./fixture.ts";
 
@@ -23,12 +25,33 @@ const themeModule = await import(
   ).href
 );
 themeModule.initTheme("dark", false);
+const { CustomEntryComponent } = await import(
+  new URL(
+    "modes/interactive/components/custom-entry.js",
+    import.meta.resolve("@earendil-works/pi-coding-agent"),
+  ).href
+);
+
+function visibleCaptures(h: Awaited<ReturnType<typeof fixture>>): string[] {
+  return h.sessionManager.getBranch().flatMap((entry) => {
+    if (entry.type !== "custom") return [];
+    const renderer = h.session.extensionRunner.getEntryRenderer(
+      entry.customType,
+    );
+    if (!renderer) return [];
+    const component = new CustomEntryComponent(entry, renderer);
+    return component.hasContent()
+      ? [stripTerminalSequences(component.render(100).join("\n"))]
+      : [];
+  });
+}
 
 function requests(manager: SessionManager) {
   return manager
     .getBranch()
     .flatMap((entry) =>
-      entry.type === "custom" && entry.customType === REQUEST_TYPE
+      entry.type === "custom" &&
+      [REQUEST_TYPE, REQUEST_CARD_TYPE].includes(entry.customType)
         ? [parseRequest(entry.data)]
         : [],
     );
@@ -213,7 +236,8 @@ test("snapshot storage failure does not stop or replace the provider request", a
   });
   const append = h.sessionManager.appendCustomEntry.bind(h.sessionManager);
   h.sessionManager.appendCustomEntry = (type, data) => {
-    if (type === REQUEST_TYPE) throw new Error("disk failure");
+    if ([REQUEST_TYPE, REQUEST_CARD_TYPE].includes(type))
+      throw new Error("disk failure");
     return append(type, data);
   };
   const prompt = await h.prompt();
@@ -285,4 +309,71 @@ test("preview reports malformed selection and custom-core bypass without claimin
     }
     assert.equal(h.finalPayloads.length, 0);
   }
+});
+
+test("one transcript card covers repeated captures and its UI text never reaches the provider", async () => {
+  const h = await fixture();
+  await h.prompt();
+  const firstLeaf = h.sessionManager.getLeafId()!;
+  await h.prompt();
+  await h.prompt();
+  const cards = visibleCaptures(h);
+  assert.equal(
+    cards.length,
+    1,
+    "the actual Pi transcript renderer must produce one card, not one per request",
+  );
+  assert.equal(
+    requests(h.sessionManager).length,
+    3,
+    "quiet capture retains every request",
+  );
+  for (const payload of h.finalPayloads) {
+    const json = JSON.stringify(payload);
+    assert.ok(!json.includes("Captured request ·"));
+    assert.ok(!json.includes("Loaded-source inventory"));
+    assert.ok(!json.includes("sysprompt-editor:request"));
+  }
+  const file = h.sessionManager.getSessionFile()!;
+  h.session.dispose();
+  const resumed = await fixture({
+    reuse: h,
+    sessionManager: SessionManager.open(file),
+  });
+  assert.equal(visibleCaptures(resumed).length, 1);
+  await resumed.prompt();
+  assert.equal(visibleCaptures(resumed).length, 1);
+  assert.equal(requests(resumed.sessionManager).length, 4);
+  const forkFile = resumed.sessionManager.createBranchedSession(firstLeaf)!;
+  const forked = await fixture({
+    reuse: h,
+    sessionManager: SessionManager.open(forkFile),
+  });
+  await forked.prompt();
+  assert.equal(visibleCaptures(forked).length, 1);
+  assert.equal(requests(forked.sessionManager).length, 2);
+});
+
+test("legacy captures become quiet but remain available in on-demand history", async () => {
+  const ui = viewerUI();
+  const h = await fixture({ uiContext: ui.ui });
+  h.sessionManager.appendCustomEntry(
+    REQUEST_TYPE,
+    captureRequest(
+      { system: "LEGACY SAVED REQUEST" },
+      undefined,
+      "",
+      "before-upgrade",
+    ),
+  );
+  assert.equal(visibleCaptures(h).length, 0);
+  await h.prompt();
+  await h.prompt();
+  assert.equal(visibleCaptures(h).length, 1);
+  assert.equal(requests(h.sessionManager).length, 3);
+  await h.session.prompt("/sysprompt view history");
+  assert.ok(
+    ui.screens.some((screen) => screen.includes("LEGACY SAVED REQUEST")),
+  );
+  assert.equal(h.finalPayloads.length, 2);
 });
