@@ -1,45 +1,15 @@
 ## Owner Introduction
 
-I'm Jake, and you are my Agent. We will be working together quite often, so I
-figured introductions were in order. I am a hobbyist software dev and technology
-enthusiast. My primary field of expertise is construction project management,
-but I also have a degree in Electrical Engineering and I love hyperfixating on
-new topics and really understanding them at a foundational level.
+I'm Jake, and you are my agent. I'm a hobbyist software developer and technology
+enthusiast. I work primarily in construction project management and have a degree
+in Electrical Engineering. I love hyperfixating on new topics until I understand
+them at a foundational level.
 
-I love to build. I love taking complex problems and finding the simplest
-possible solutions to them and also finding ways to reduce complexity of
-known solutions to existing problems.
+I love to build, find simple solutions to complex problems, and reduce complexity
+in existing solutions. The guidance below sets out how I want us to work together.
 
-I wanted to take the time to share some of my preferences and define some
-commonly used terms and align expectations so that we can understand each other
-better as we work together.
-
-Throughout the estate documentation you will see references to `Owner` or `User`
-as general references. Within the estate those mean me (Jake), but I try to avoid
-publishing my name in any public repo or guidance documentation. These are the
-acceptable terms for generalizing identity for any human user who might borrow
-or use our documentation.
-
-## Estate layout
-
-`~/.agents/` holds the named locations agents work from (`kit`, `wiki`,
-`inbox`, `journals`, `reference`, `projects`, plus any added locally). Each is a symlink to wherever
-that lives on this machine. `~/.agents/kit/guidance/LOCATIONS.md` defines the
-required locations and what may be written where; read it before writing
-outside the current repo. Machine facts (hostname, hardware, local services,
-and other roots such as reference checkouts, day-job work, research,
-experiments, archives, and model stores) live in the untracked
-`~/.agents/MACHINE.md`; read it when a task depends on this machine's layout.
-
-Inside a lane, git is an ordinary tool. Use it for progress and status tracking,
-and try to make the commit messages useful for a human reader. I'm not super
-great at using git, but I am trying to learn how to use it effectively. You may
-checkpoint, branch, or hand work between agents with it whenever that helps,
-and skip it when it doesn't.
-
-The kit's `bin/install` owns global deployment: it links the guide and skills
-into each client and the kit's tools into `~/.local/bin`. Workspace-scoped
-assets live in the workspace's own dotdirs.
+In estate documentation, `Owner` and `User` refer to me. Use those terms when
+generalizing identity for public repositories and guidance that others may reuse.
 
 ## Owner gates
 
@@ -127,6 +97,27 @@ towards the test suite itself first.
 Clean, performant, open source and understandable software is our goal when
 undertaking coding projects. Clean, precise, easy to read, well studied and well
 sourced is our goal when doing knowledge work or research.
+
+## Estate layout
+
+`~/.agents/` holds the named locations agents work from (`kit`, `wiki`,
+`inbox`, `journals`, `reference`, `projects`, plus any added locally). Each is a symlink to wherever
+that lives on this machine. `~/.agents/kit/guidance/LOCATIONS.md` defines the
+required locations and what may be written where; read it before writing
+outside the current repo. Machine facts (hostname, hardware, local services,
+and other roots such as reference checkouts, day-job work, research,
+experiments, archives, and model stores) live in the untracked
+`~/.agents/MACHINE.md`; read it when a task depends on this machine's layout.
+
+Inside a lane, git is an ordinary tool. Use it for progress and status tracking,
+and try to make the commit messages useful for a human reader. I'm not super
+great at using git, but I am trying to learn how to use it effectively. You may
+checkpoint, branch, or hand work between agents with it whenever that helps,
+and skip it when it doesn't.
+
+The kit's `bin/install` owns global deployment: it links the guide and skills
+into each client and the kit's tools into `~/.local/bin`. Workspace-scoped
+assets live in the workspace's own dotdirs.
 
 ## Journals, wiki, and inbox
 
