@@ -157,14 +157,22 @@ recording the payload at its serialization boundary. A Pi upgrade whose core
 prose changed goes red there; re-pin `lib/stock-core.ts` from the new source
 after reviewing the diff, and the runtime resumes rendering.
 
-## Scoped slots
+## Placement slots
 
 `{{GLOBAL_INSTRUCTIONS}}` and `{{WORKSPACE_INSTRUCTIONS}}` place the loaded files
 verbatim, tagged with path and scope. An omitted slot leaves that scope in the
 tail, in loader order. Repeating either slot fails open. Expansion is single-pass,
-so placeholder text inside a file or generated section stays literal. The splice
-separates `APPEND_SYSTEM.md` from the core and preserves it even when `{{PI_DOCS}}`
-is absent. Unrecognized boundaries leave the incoming prompt unchanged and produce
-a warning. Inspection captures provider system text at the inspection hook. Output tests capture
+so placeholder text inside a file or generated section stays literal.
+
+`{{APPENDED_INSTRUCTIONS}}` places Pi's explicit append text in a labeled block.
+`{{SESSION_CONTEXT}}` places its working-directory line, validated against the
+loaded `cwd`. Omitted slots leave the original text in the tail; repeated slots
+or unrecognized boundaries preserve the incoming prompt with a warning. Unclassified
+extension additions remain outside the template, unchanged.
+
+The owner, default, and starter templates use role, global instructions, runtime,
+optional append text, workspace instructions, then session context. The authoring
+guide defines the layout and each slot's fallback. Reload Pi to pick up editor
+code changes before inspecting a template that uses new slots. Inspection captures provider system text at the inspection hook. Output tests capture
 each provider request explicitly and link the final request's artifact from the
 result. Without a provider observation, the model label is `unobserved`.

@@ -102,6 +102,33 @@ test("view before the first request is a live-template preview with no selection
   assert.equal(h.finalPayloads.length, 0);
 });
 
+test("preview and provider rendering both place explicit append and session context", async () => {
+  const ui = viewerUI();
+  ui.setKeys(["q"]);
+  const h = await fixture({
+    template:
+      "<role>PREVIEW ROLE</role>\n{{APPENDED_INSTRUCTIONS}}\n<session_context>\n{{SESSION_CONTEXT}}\n</session_context>",
+    appendSystemPrompt: "APPEND PREVIEW",
+    uiContext: ui.ui,
+  });
+  await h.session.prompt("/sysprompt view");
+  assert.equal(h.finalPayloads.length, 0);
+  const screen = ui.screens[0]!;
+  const sent = await h.prompt();
+  for (const text of [
+    "<role>PREVIEW ROLE</role>",
+    "<appended_instructions>",
+    "APPEND PREVIEW",
+    "</appended_instructions>",
+    "<session_context>",
+    `Current working directory: ${h.cwd}`,
+    "</session_context>",
+  ]) {
+    assert.ok(screen.includes(text), `preview: ${text}`);
+    assert.ok(sent.includes(text), `provider: ${text}`);
+  }
+});
+
 test("preview refuses an unpinned Pi reconstruction while leaving source inventory available", async () => {
   const ui = viewerUI();
   ui.setKeys(["2", "q"]);

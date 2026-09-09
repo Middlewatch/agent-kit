@@ -48,6 +48,19 @@ export function liftSkillsBlock(tail: string): [block: string, rest: string] {
   return [block, before + tail.slice(end)];
 }
 
+/** Consume only the footer Pi built from cwd, leaving extension additions opaque. */
+function takeSessionContext(
+  tail: string,
+  cwd: string | undefined,
+): { context: string; rest: string } | null {
+  if (cwd === undefined) return null;
+  const footer = `\nCurrent working directory: ${cwd.replace(/\\/g, "/")}`;
+  if (!tail.startsWith(footer)) return null;
+  const rest = tail.slice(footer.length);
+  if (rest !== "" && !rest.startsWith("\n")) return null;
+  return { context: footer.slice(1), rest };
+}
+
 /** Return the text between two anchors in the core, or null if absent. */
 export function extract(
   core: string,
@@ -92,6 +105,7 @@ export function renderTemplate(
   scratchpad?: string,
   skills = "",
   instructions = { global: "", workspace: "" },
+  tailSections = { session: "", append: "" },
 ): string | null {
   const tools = extract(
     core,
@@ -111,10 +125,12 @@ export function renderTemplate(
     SKILLS: skills,
     GLOBAL_INSTRUCTIONS: instructions.global,
     WORKSPACE_INSTRUCTIONS: instructions.workspace,
+    SESSION_CONTEXT: tailSections.session,
+    APPENDED_INSTRUCTIONS: tailSections.append,
   };
   return template
     .replace(
-      /{{(AVAILABLE_TOOLS|GUIDELINES|PI_DOCS|PI_SCRATCHPAD|SKILLS|GLOBAL_INSTRUCTIONS|WORKSPACE_INSTRUCTIONS)}}/g,
+      /{{(AVAILABLE_TOOLS|GUIDELINES|PI_DOCS|PI_SCRATCHPAD|SKILLS|GLOBAL_INSTRUCTIONS|WORKSPACE_INSTRUCTIONS|SESSION_CONTEXT|APPENDED_INSTRUCTIONS)}}/g,
       (_match, name: string) => slots[name]!,
     )
     .trimEnd();
@@ -123,9 +139,17 @@ export function renderTemplate(
 export function splicePrompt(
   template: string,
   prompt: string,
-  options: { appendSystemPrompt?: string; contextFiles?: InstructionFile[] },
+  options: {
+    cwd?: string;
+    appendSystemPrompt?: string;
+    contextFiles?: InstructionFile[];
+  },
   scratchpad?: string,
 ): { prompt: string } | { reason: string } {
+  for (const slot of ["SESSION_CONTEXT", "APPENDED_INSTRUCTIONS"]) {
+    if (template.split(`{{${slot}}}`).length > 2)
+      return { reason: `repeated ${slot} slot` };
+  }
   const [core, rawTail] = splitTail(prompt, options.appendSystemPrompt);
   const append = options.appendSystemPrompt
     ? `\n\n${options.appendSystemPrompt}`
@@ -142,17 +166,48 @@ export function splicePrompt(
       reason:
         "instruction scope or boundary not recognized (or repeated instruction slot)",
     };
-  const [skills, rest] = template.includes("{{SKILLS}}")
-    ? liftSkillsBlock(instructions.rest)
-    : ["", instructions.rest];
+  const placeSkills = template.includes("{{SKILLS}}");
+  const placeSession = template.includes("{{SESSION_CONTEXT}}");
+  const placeAppend = template.includes("{{APPENDED_INSTRUCTIONS}}");
+  // With a session slot, only Pi's leading catalog precedes the footer.
+  // Skills-like text after the footer belongs to an extension and stays there.
+  const leadingSkills = instructions.rest.trimStart().startsWith(SKILLS_START);
+  const [skills, afterSkills] =
+    (placeSkills || placeSession) && (!placeSession || leadingSkills)
+      ? liftSkillsBlock(instructions.rest)
+      : ["", instructions.rest];
+  let rest = placeSkills ? afterSkills : instructions.rest;
+  let session = "";
+  if (placeSession) {
+    const taken = takeSessionContext(afterSkills, options.cwd);
+    if (!taken) return { reason: "session context boundary not recognized" };
+    session = taken.context;
+    // Without a skills slot, keep the original skills prefix in the tail.
+    const prefix = placeSkills
+      ? ""
+      : instructions.rest.slice(
+          0,
+          instructions.rest.length - afterSkills.length,
+        );
+    rest = prefix + taken.rest;
+  }
   const rendered = renderTemplate(
     template,
     core,
     scratchpad,
-    skills,
+    placeSkills ? skills : "",
     instructions,
+    {
+      session,
+      append: options.appendSystemPrompt
+        ? `<appended_instructions>\n${options.appendSystemPrompt}\n</appended_instructions>`
+        : "",
+    },
   );
   if (rendered === null)
     return { reason: "stock core boundary not recognized" };
-  return { prompt: rendered + append + instructions.fallback + rest };
+  return {
+    prompt:
+      rendered + (placeAppend ? "" : append) + instructions.fallback + rest,
+  };
 }

@@ -254,7 +254,11 @@ export default function systemPromptExtension(
     const result = splicePrompt(
       active.content,
       prompt,
-      { appendSystemPrompt: options.appendSystemPrompt, contextFiles: files },
+      {
+        cwd: options.cwd,
+        appendSystemPrompt: options.appendSystemPrompt,
+        contextFiles: files,
+      },
       process.env.PI_SCRATCHPAD,
     );
     if ("reason" in result) {
@@ -657,6 +661,7 @@ export default function systemPromptExtension(
           active.content,
           incoming,
           {
+            cwd: options.cwd,
             appendSystemPrompt: options.appendSystemPrompt,
             contextFiles: files,
           },

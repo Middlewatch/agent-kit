@@ -1,7 +1,5 @@
 # sysprompt-editor design
 
-Status: as built 2026-09-05.
-
 ## Ownership
 
 Pi's loader decides which instruction files apply. The editor reads each file's
@@ -25,8 +23,18 @@ files in the tail, in loader order, inside an `<instruction_context>` container.
 Repeating either instruction slot fails open. Expansion makes one pass over
 template source so generated content cannot expand a slot.
 
-`APPEND_SYSTEM.md`, working directory, and unrelated extension additions remain
-in the prompt. Custom system cores bypass rewriting. Unknown boundaries or a
+`APPENDED_INSTRUCTIONS` places Pi's explicit append text in a labeled block;
+`SESSION_CONTEXT` places the working-directory line after matching its bytes
+against the event's normalized `cwd`. Both slots are optional, and omission leaves
+their original bytes in the tail. Repetition fails open. For a session slot, only
+a leading skill catalog can precede the footer; skills-like extension additions
+after it stay untouched. The preview and live render use the same splice inputs.
+
+The baseline templates put role and global instructions first, then runtime
+capabilities and guidance, optional append text, workspace instructions, and
+session context. Scratchpad guidance is inside session context. Provider examples
+remain alternative layouts. Unclassified extension additions keep their original
+order outside the template. Custom system cores bypass rewriting. Unknown boundaries or a
 core that differs from the mirror preserve the incoming prompt. Normal-turn
 warnings are deduplicated by session and reason and reset after recovery. The
 warning goes to UI or stderr.

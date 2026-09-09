@@ -12,7 +12,7 @@ The implementation and verification commands are in
 | Owner preferences, approval gates, communication, and prose policy | Global `~/.agents/kit/guidance/AGENTS.md`, loaded by Pi through the installed global guide. |
 | Workspace rules | That workspace's instruction files, discovered by Pi's loader. |
 | Model-specific phrasing and section order | The chosen template in this directory. |
-| Tools, skills, runtime guidelines, Pi documentation, scratchpad location | Generated slots below. |
+| Tools, skills, runtime guidelines, Pi documentation, working directory, scratchpad location | Generated slots below. |
 
 Keep owner policy in the global guide and place it with `{{GLOBAL_INSTRUCTIONS}}`.
 The template chooses placement; the loader decides authority. Generated global
@@ -52,10 +52,13 @@ preserves instruction-file contents, including whitespace and Markdown fences.
 | `{{SKILLS}}` | Pi's generated skills instructions and catalog. | Skills stay in the tail. |
 | `{{PI_DOCS}}` | Pi's installed documentation pointers. | Documentation pointers omitted. |
 | `{{PI_SCRATCHPAD}}` | Session scratchpad guidance; empty if unset. | Scratchpad prose omitted. |
+| `{{SESSION_CONTEXT}}` | Pi's working-directory line, matched against its `cwd` input. | The original line stays in the tail. |
+| `{{APPENDED_INSTRUCTIONS}}` | Pi's explicit append text inside `<appended_instructions>`; empty if unset. | The original append stays in the tail. |
 
-Place each instruction slot at most once. Repeating either is an error that
-preserves the incoming prompt and reports a warning. Use other generated slots
-once as well to keep the prompt readable. Unknown placeholder names remain literal.
+Place global, workspace, session-context, and appended-instruction slots at most
+once. Repeating one preserves the incoming prompt and reports a warning. Use other
+generated slots once as well to keep the prompt readable. Unknown placeholder
+names remain literal.
 
 The editor preserves `APPEND_SYSTEM.md` and programmatic append text independently
 of `{{PI_DOCS}}`. A custom `SYSTEM.md`, `--system-prompt`, or SDK custom core bypasses
@@ -64,15 +67,33 @@ construction, malformed saved state, failed selection persistence, and
 unrecognized boundaries preserve the incoming prompt. Ordinary turns warn through UI or stderr when the reason first occurs or
 changes; successful rendering clears that warning state.
 
+## Baseline layout
+
+`owner.md`, `default.md`, and `starter.md` use the same XML boundaries:
+role, global instructions, runtime, optional appended instructions, workspace
+instructions, then session context. Their role prose differs.
+
+Runtime groups tool summaries with their guidelines, followed by Pi's intact
+skill catalog and documentation pointers. Session context holds the working
+directory and scratchpad guidance. Each loaded instruction file keeps its source
+path and scope tags; its Markdown remains verbatim. These are descriptive
+boundaries, not a requirement that embedded source text be XML-escaped.
+
+A placed session footer must match Pi's `cwd` input after its leading skill
+catalog. A missing or unfamiliar footer preserves the incoming prompt. Unclassified
+extension additions stay outside the template in their original order and bytes.
+Reload Pi after an editor code change; template-only edits take effect next turn.
+
 ## Examples and evidence
 
 These layouts are editable examples. Their order has not been measured against
 this repository's tasks. Provider advice is evidence for trying a structure,
 not proof that the example improves instruction following.
 
-- [default.md](default.md) and [starter.md](starter.md) use a neutral Markdown
-  layout. [owner.md](owner.md) keeps the owner's broad programming/research role
-  and places the shared policy early.
+- [owner.md](owner.md), [default.md](default.md), and [starter.md](starter.md)
+  use the baseline layout above. General instructions precede capability catalogs;
+  workspace and session-specific text come later. This is an evaluation baseline,
+  not a measured instruction-following improvement.
 - [claude-example.md](claude-example.md) uses descriptive XML sections. Anthropic's
   [Prompting best practices](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices),
   accessed 2026-09-04, recommends clear instructions and XML tags to separate mixed

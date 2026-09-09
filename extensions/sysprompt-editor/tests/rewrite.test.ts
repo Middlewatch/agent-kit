@@ -89,20 +89,39 @@ test("stock prompt is rebuilt with scoped instructions moved and other tail byte
   assert.ok(!result.systemPrompt.includes("<project_context>"));
   assert.ok(
     result.systemPrompt.indexOf("stub") <
-      result.systemPrompt.indexOf("Available tools:"),
+      result.systemPrompt.indexOf("<available_tools>"),
   );
-  assert.ok(result.systemPrompt.endsWith("\nCurrent working directory: /tmp"));
+  assert.ok(
+    result.systemPrompt.includes(
+      "<session_context>\nCurrent working directory: /tmp",
+    ),
+  );
+  assert.ok(result.systemPrompt.endsWith("</session_context>"));
   assert.ok(!result.systemPrompt.includes("{{GLOBAL_INSTRUCTIONS}}"));
-  // With no instruction files, these other tail shapes stay byte-for-byte intact.
-  const rendered = (await capturedHandler()({ systemPrompt: STOCK_CORE }))!
-    .systemPrompt;
+});
+
+test("a legacy template retains opaque tail bytes when the new slots are omitted", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sysprompt-legacy-"));
+  fs.writeFileSync(
+    path.join(dir, "default.md"),
+    "LEGACY\n{{AVAILABLE_TOOLS}}\n{{GUIDELINES}}\n{{PI_DOCS}}",
+  );
+  const handler = capturedHandler(dir);
+  const rendered = (await handler({ systemPrompt: STOCK_CORE }))!.systemPrompt;
   for (const tail of [
     "\n<available_skills>\n  <skill>x</skill>\n</available_skills>\nCurrent working directory: /tmp",
     "\nCurrent working directory: /tmp",
   ]) {
-    const r = await capturedHandler()({ systemPrompt: STOCK_CORE + tail });
+    const r = await handler({ systemPrompt: STOCK_CORE + tail });
     assert.equal(r?.systemPrompt, rendered + tail);
   }
+});
+
+test("the default layout preserves the incoming prompt when its session footer is missing", async () => {
+  assert.equal(
+    await capturedHandler()({ systemPrompt: STOCK_CORE }),
+    undefined,
+  );
 });
 
 test("a template without instruction slots keeps the files in the tail, scoped, in loader order", async () => {
