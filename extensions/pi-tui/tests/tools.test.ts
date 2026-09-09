@@ -1,6 +1,70 @@
+import {
+	createBashToolDefinition,
+	createEditToolDefinition,
+	createFindToolDefinition,
+	createGrepToolDefinition,
+	createLsToolDefinition,
+	createReadToolDefinition,
+	createWriteToolDefinition,
+	type ExtensionAPI,
+	type ExtensionContext,
+	type ToolDefinition,
+} from "@earendil-works/pi-coding-agent";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { Style } from "../src/gutter.ts";
-import { resultLines, SPECS, type GutterToolSpec, type ResultView } from "../src/tools.ts";
+import { registerGutterTools, resultLines, SPECS, type GutterToolSpec, type ResultView } from "../src/tools.ts";
+
+const builtinDefinitions = [
+	createBashToolDefinition,
+	createReadToolDefinition,
+	createEditToolDefinition,
+	createWriteToolDefinition,
+	createGrepToolDefinition,
+	createFindToolDefinition,
+	createLsToolDefinition,
+];
+
+function registeredTools(): Map<string, ToolDefinition> {
+	const tools = new Map<string, ToolDefinition>();
+	registerGutterTools({ registerTool: (tool: ToolDefinition) => tools.set(tool.name, tool) } as unknown as ExtensionAPI);
+	return tools;
+}
+
+describe("gutter registration preserves builtin instructions", () => {
+	it("executes write, edit, and read in the session cwd", async () => {
+		const cwd = mkdtempSync(join(tmpdir(), "pi-gutter-tools-"));
+		const ctx = { cwd } as ExtensionContext;
+		const tools = registeredTools();
+		const run = (name: string, args: unknown) => tools.get(name)!.execute("probe", args, undefined, undefined, ctx);
+		try {
+			await run("write", { path: "note.txt", content: "before\n" });
+			await run("edit", { path: "note.txt", edits: [{ oldText: "before", newText: "after" }] });
+			const result = await run("read", { path: "note.txt" });
+			expect(result.content).toEqual([{ type: "text", text: "after\n" }]);
+			expect(readFileSync(join(cwd, "note.txt"), "utf8")).toBe("after\n");
+		} finally {
+			rmSync(cwd, { recursive: true, force: true });
+		}
+	});
+
+	for (const create of builtinDefinitions) {
+		const original = create(process.cwd());
+		it(`keeps ${original.name}'s prompt metadata and tool contract`, () => {
+			const tool = registeredTools().get(original.name)!;
+			expect(original.promptSnippet).toBeTruthy();
+			expect(tool.promptSnippet).toBe(original.promptSnippet);
+			expect(tool.promptGuidelines).toEqual(original.promptGuidelines);
+			expect(tool.description).toBe(original.description);
+			expect(tool.parameters).toEqual(original.parameters);
+			expect(tool.constrainedSampling).toEqual(original.constrainedSampling);
+			expect(tool.executionMode).toBe(original.executionMode);
+			expect(typeof tool.prepareArguments).toBe(typeof original.prepareArguments);
+		});
+	}
+});
 
 const style: Style = {
 	fg: (color, text) => `<${color}>${text}</>`,

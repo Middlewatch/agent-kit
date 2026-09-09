@@ -26,8 +26,11 @@ is asserted with `visibleWidth`. The `Style` type is a structural
 - **Every override supplies its own `execute`.** pi resolves *render*
   slots per slot (an override without `renderCall` keeps the built-in's),
   but `execute` is required on every registered tool. Each override
-  delegates to a per-call `createXTool(ctx.cwd)` instance, the same
-  built-in implementation, so behavior is unchanged.
+  delegates to a per-call `createXToolDefinition(ctx.cwd)` instance.
+  Spreading that definition preserves Pi's prompt metadata and argument
+  shims; the executable `createXTool` wrappers omit prompt metadata for
+  most tools. Registration tests compare all seven overrides with Pi's
+  definitions, and an execute test checks file operations in the session cwd.
 - **`renderShell: "self"` answers the background question.** In
   self-shell mode ToolExecutionComponent composes the tool's components
   in a plain Container and never applies the background Box, so no

@@ -7,13 +7,13 @@
  */
 import type { AgentToolResult, ExtensionAPI, Theme, ToolRenderResultOptions } from "@earendil-works/pi-coding-agent";
 import {
-	createBashTool,
-	createEditTool,
-	createFindTool,
-	createGrepTool,
-	createLsTool,
-	createReadTool,
-	createWriteTool,
+	createBashToolDefinition,
+	createEditToolDefinition,
+	createFindToolDefinition,
+	createGrepToolDefinition,
+	createLsToolDefinition,
+	createReadToolDefinition,
+	createWriteToolDefinition,
 } from "@earendil-works/pi-coding-agent";
 import {
 	closingLine,
@@ -77,7 +77,7 @@ function firstLine(text: string): string {
 const SPECS: GutterToolSpec[] = [
 	{
 		name: "bash",
-		create: createBashTool,
+		create: createBashToolDefinition,
 		collapsed: 6,
 		keep: "tail",
 		summary: (args, style) =>
@@ -85,7 +85,7 @@ const SPECS: GutterToolSpec[] = [
 	},
 	{
 		name: "read",
-		create: createReadTool,
+		create: createReadToolDefinition,
 		collapsed: 0,
 		keep: "head",
 		summary: (args, style) => {
@@ -102,7 +102,7 @@ const SPECS: GutterToolSpec[] = [
 	},
 	{
 		name: "edit",
-		create: createEditTool,
+		create: createEditToolDefinition,
 		collapsed: 8,
 		keep: "head",
 		summary: (args, style) => {
@@ -128,7 +128,7 @@ const SPECS: GutterToolSpec[] = [
 	},
 	{
 		name: "write",
-		create: createWriteTool,
+		create: createWriteToolDefinition,
 		collapsed: 0,
 		keep: "head",
 		summary: (args, style) => {
@@ -138,7 +138,7 @@ const SPECS: GutterToolSpec[] = [
 	},
 	{
 		name: "grep",
-		create: createGrepTool,
+		create: createGrepToolDefinition,
 		collapsed: 6,
 		keep: "head",
 		summary: (args, style) => {
@@ -148,14 +148,14 @@ const SPECS: GutterToolSpec[] = [
 	},
 	{
 		name: "find",
-		create: createFindTool,
+		create: createFindToolDefinition,
 		collapsed: 6,
 		keep: "head",
 		summary: (args, style) => String(args.pattern ?? "") + (args.path ? ` ${dim(style, `(in ${args.path})`)}` : ""),
 	},
 	{
 		name: "ls",
-		create: createLsTool,
+		create: createLsToolDefinition,
 		collapsed: 6,
 		keep: "head",
 		summary: (args, _style) => String(args.path ?? "."),

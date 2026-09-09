@@ -15,6 +15,7 @@ import {
   SessionManager,
   createAgentSession,
   type ExtensionAPI,
+  type ExtensionFactory,
   type ExtensionUIContext,
 } from "@earendil-works/pi-coding-agent";
 import {
@@ -47,6 +48,9 @@ export async function fixture({
   notify,
   uiContext,
   piVersion,
+  extensionPaths = [],
+  beforeEditor = [],
+  afterEditor = [],
 }: {
   customPrompt?: string;
   template?: string;
@@ -63,6 +67,9 @@ export async function fixture({
   notify?: (message: string) => void;
   uiContext?: ExtensionUIContext;
   piVersion?: string;
+  extensionPaths?: string[];
+  beforeEditor?: ExtensionFactory[];
+  afterEditor?: ExtensionFactory[];
 } = {}) {
   const root = reuse?.root ?? mkdtempSync(join(tmpdir(), "sysprompt-real-"));
   if (!reuse)
@@ -109,10 +116,12 @@ export async function fixture({
     systemPrompt: customPrompt,
     appendSystemPrompt: appendSystemPrompt ? [appendSystemPrompt] : [],
     noExtensions: true,
+    additionalExtensionPaths: extensionPaths,
     noSkills: false,
     noThemes: true,
     noPromptTemplates: true,
     extensionFactories: [
+      ...beforeEditor,
       (pi: ExtensionAPI) => {
         pi.on("before_agent_start", async (event) => {
           await beforeStart?.();
@@ -161,6 +170,7 @@ export async function fixture({
               }),
           ]
         : []),
+      ...afterEditor,
       ...(additions
         ? [
             (pi: ExtensionAPI) => {
@@ -235,6 +245,11 @@ export async function fixture({
     const payload = {
       system: context.systemPrompt,
       messages: context.messages,
+      tools: context.tools?.map(({ name, description, parameters }) => ({
+        name,
+        description,
+        parameters,
+      })),
     };
     finalPayloads.push((await options?.onPayload?.(payload, model)) ?? payload);
     return streamSimple(model, context, options);

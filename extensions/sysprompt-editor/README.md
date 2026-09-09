@@ -4,7 +4,15 @@ A Pi extension for editable system-prompt cores, scoped instruction placement,
 and disposable instruction inspection.
 The harness supplies live data; templates supply prose and layout. See the scoped
 slot contract below. The authoring guide and model-family examples are at
-`~/.agents/kit/guidance/sysprompt/AUTHORING.md`. The extension runs on stock Pi;
+`~/.agents/kit/guidance/sysprompt/AUTHORING.md`. Tool summaries and runtime
+guidelines come from active registrations' `promptSnippet` and
+`promptGuidelines`. A tool without a snippet remains available through its
+full API description and schema, but Pi omits it from the prose tool list.
+Conformance tests load the kit's actual gutter overrides and verify their
+metadata through every shipped template, alongside custom-tool load order
+and active-tool changes between turns.
+
+The extension runs on stock Pi;
 the pinned release is named in `lib/stock-core.ts`.
 
 ## Templates and session selection
@@ -29,6 +37,19 @@ message. A switch made before any reply is held in memory until then and says
 so ("saved with the first reply"); quitting first loses it, and the next session
 starts from the `.active` pointer again. A switch whose write fails is reported
 as memory-only for the same reason.
+
+## Tool-activation timing
+
+Pi 0.85.1 snapshots prompt inputs before running `before_agent_start` handlers.
+If a handler changes active tools during that event, the tool schemas update
+but a rewritten prompt can retain the old summaries and guidelines until the
+next turn. This applies even when the tool-changing handler runs before the
+editor, since the event still carries the original snapshot.
+
+Set initial availability in `session_start`, or change it between turns.
+The question-tool integration uses the early hook for startup and retains its
+per-turn UI check; mid-turn or startup-hook changes still have the limitation
+above. The editor leaves Pi and provider payload formats unchanged.
 
 ## The `/sysprompt` command
 
