@@ -10,6 +10,7 @@ import { appendFileSync, mkdirSync, readFileSync, readdirSync, rmSync } from "no
 import { join } from "node:path";
 import { truncateUtf8 } from "./protocol.ts";
 import type { ScanFinding } from "./scan.ts";
+import type { ThinkingLevel } from "./tiers.ts";
 
 export const PARTIAL_OUTPUT_CAP_BYTES = 8 * 1024;
 
@@ -38,6 +39,7 @@ export interface DelegationRecord {
   profile: "explore" | "review" | "research";
   agent?: string;
   tier?: "scout" | "analyst" | "judge";
+  thinking?: ThinkingLevel; // absent from records written before reasoning was persisted
   model: string;
   scope?: string; // first scope, kept for older record readers
   scopes?: string[]; // full delegated read-scope list in resolution order

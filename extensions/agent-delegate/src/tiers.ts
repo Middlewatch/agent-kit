@@ -10,7 +10,7 @@ import { readFileSync } from "node:fs";
 export const TIER_NAMES = ["scout", "analyst", "judge"] as const;
 export type TierName = (typeof TIER_NAMES)[number];
 
-export const THINKING_LEVELS = ["low", "medium", "high"] as const;
+export const THINKING_LEVELS = ["low", "medium", "high", "xhigh"] as const;
 export type ThinkingLevel = (typeof THINKING_LEVELS)[number];
 
 export interface TierRoute {

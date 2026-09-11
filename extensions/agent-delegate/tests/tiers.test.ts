@@ -6,13 +6,13 @@ import { resolveDelegateProfile } from "../src/profile.ts";
 
 const TIERS = loadTiers(resolve(import.meta.dirname, "..", "tiers.json"));
 
-test("tiers.json ships scout, analyst, and judge with fixed slugs", () => {
+test("tiers.json routes every tier to Astra, with xhigh reserved as the judge default", () => {
   assert.deepEqual(TIER_NAMES, ["scout", "analyst", "judge"]);
-  assert.deepEqual(THINKING_LEVELS, ["low", "medium", "high"]);
+  assert.deepEqual(THINKING_LEVELS, ["low", "medium", "high", "xhigh"]);
   assert.deepEqual(TIERS, {
-    scout: { model: "openai-codex/gpt-5.6-terra", thinking: "low" },
-    analyst: { model: "openai-codex/gpt-5.6-sol", thinking: "medium" },
-    judge: { model: "openai-codex/gpt-5.6-sol", thinking: "high" },
+    scout: { model: "openai-codex/gpt-6-astra", thinking: "low" },
+    analyst: { model: "openai-codex/gpt-6-astra", thinking: "low" },
+    judge: { model: "openai-codex/gpt-6-astra", thinking: "xhigh" },
   });
 });
 
@@ -25,35 +25,49 @@ test("profiles default explore to scout, review and research to analyst", () => 
 test("default route follows the profile tier", () => {
   assert.deepEqual(resolveRoute(TIERS, "scout", undefined, undefined), {
     tier: "scout",
-    model: "openai-codex/gpt-5.6-terra",
+    model: "openai-codex/gpt-6-astra",
     thinking: "low",
   });
   assert.deepEqual(resolveRoute(TIERS, "analyst", undefined, undefined), {
     tier: "analyst",
-    model: "openai-codex/gpt-5.6-sol",
-    thinking: "medium",
+    model: "openai-codex/gpt-6-astra",
+    thinking: "low",
   });
 });
 
-test("tier param reroutes model class and inherits the tier's thinking", () => {
+test("judge override selects the deep reasoning route", () => {
   assert.deepEqual(resolveRoute(TIERS, "scout", "judge", undefined), {
     tier: "judge",
-    model: "openai-codex/gpt-5.6-sol",
-    thinking: "high",
+    model: "openai-codex/gpt-6-astra",
+    thinking: "xhigh",
   });
 });
 
 test("thinking param adjusts reasoning without changing the model", () => {
   assert.deepEqual(resolveRoute(TIERS, "analyst", undefined, "high"), {
     tier: "analyst",
-    model: "openai-codex/gpt-5.6-sol",
+    model: "openai-codex/gpt-6-astra",
     thinking: "high",
   });
   assert.deepEqual(resolveRoute(TIERS, "scout", "judge", "low"), {
     tier: "judge",
-    model: "openai-codex/gpt-5.6-sol",
+    model: "openai-codex/gpt-6-astra",
     thinking: "low",
   });
+});
+
+test("xhigh is accepted as a per-call override and in a tier table", () => {
+  assert.deepEqual(resolveRoute(TIERS, "analyst", undefined, "xhigh"), {
+    tier: "analyst",
+    model: "openai-codex/gpt-6-astra",
+    thinking: "xhigh",
+  });
+  const table = parseTiers(JSON.stringify({
+    scout: { model: "example/model", thinking: "low" },
+    analyst: { model: "example/model", thinking: "medium" },
+    judge: { model: "example/model", thinking: "xhigh" },
+  }));
+  assert.equal(table.judge.thinking, "xhigh");
 });
 
 test("unknown tier and thinking params fail closed", () => {

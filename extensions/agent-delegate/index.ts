@@ -449,7 +449,7 @@ export default function agentDelegate(pi: ExtensionAPI): void {
       // what a call needs.
       "Launch one depth-one child with fresh context for bounded independent evidence gathering.",
       "Profiles: explore (default) for read-heavy discovery and tracing, review for adversarial critique, research for web-backed answers returning one JSON object validated against resultSchema. Explore and review may also request a schema-validated return.",
-      "Optional tier (scout, analyst, judge) and thinking (low, medium, high) escalate the profile's default routing when the task warrants it.",
+      "Optional tier and thinking select the routing preset and reasoning depth independently of the profile's tools.",
       "The child has four bounded file inspection tools and shell-free git status/diff; no AGENTS.md, built-in tools, edits, memory, delegation, or network outside research's web tools. Writable agents (seeded: editor) edit in their own git worktree and return the branch and diffstat for the root to review and merge.",
       "Returned URL and path:line citations are checked against the child's provenance ledger; unmatched ones surface in details, and requireMatchedCitations fails the call on any.",
       "Give a complete brief with one question, exact scope, expected evidence, exclusions, and a concise return format. The root verifies claims and owns the final answer.",
@@ -471,10 +471,10 @@ export default function agentDelegate(pi: ExtensionAPI): void {
         description: "Named agent definition supplying a role prompt and defaults on top of its base profile (seeded: explorer, critic, researcher, refuter, comment-sicko, editor). Mutually exclusive with profile; tier and thinking params still apply.",
       })),
       tier: Type.Optional(StringEnum(TIER_NAMES, {
-        description: "Model tier override when the profile default is insufficient: scout (fast, cheap), analyst (strong), judge (strong, deepest reasoning). Defaults: explore scout; review and research analyst.",
+        description: `Routing preset: scout for extraction (${TIERS.scout.model}, ${TIERS.scout.thinking}); analyst for general analysis (${TIERS.analyst.model}, ${TIERS.analyst.thinking}); judge for difficult diagnosis, security review, or consequential refutation (${TIERS.judge.model}, ${TIERS.judge.thinking}). Choose judge upfront when depth matters. Defaults: explore scout; review and research analyst.`,
       })),
       thinking: Type.Optional(StringEnum(THINKING_LEVELS, {
-        description: "Reasoning-level override applied to the resolved tier's model; defaults to the tier's own level",
+        description: "Reasoning override without changing the model: low for routine work, medium for multi-step tracing, high for competing explanations or cross-system constraints, xhigh for the deepest analysis. Omit to inherit the role's thinking or the tier default.",
       })),
       label: Type.String({ minLength: 1, maxLength: 48, description: "Short workstream label shown in the TUI" }),
       scope: Type.Optional(Type.String({ minLength: 1, maxLength: 1000, description: "Existing directory beneath the home directory or beneath Pi's current working directory; explore and review require scope or scopes, research may go scopeless" })),
@@ -782,6 +782,7 @@ export default function agentDelegate(pi: ExtensionAPI): void {
           profile: profile.name,
           agent: definition?.name,
           tier: route.tier,
+          thinking: route.thinking,
           model: route.model,
           scope: scopePaths[0],
           scopes: scopePaths.length ? scopePaths : undefined,

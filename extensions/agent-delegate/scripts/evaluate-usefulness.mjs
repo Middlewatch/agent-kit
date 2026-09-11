@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { scoreUsefulness } from "../src/usefulness-eval.ts";
+import { loadTiers } from "../src/tiers.ts";
 
 if (process.env.AGENT_DELEGATE_RUN_LIVE_EVAL !== "1") {
   console.error("This opt-in evaluation makes paid model calls. Re-run with AGENT_DELEGATE_RUN_LIVE_EVAL=1 after approving that cost.");
@@ -12,6 +13,8 @@ if (process.env.AGENT_DELEGATE_RUN_LIVE_EVAL !== "1") {
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..");
 const fixture = join(root, "tests/fixtures/usefulness-repo");
+const route = loadTiers(join(root, "tiers.json")).analyst;
+const modelArgs = ["--model", route.model, "--thinking", route.thinking];
 const oracle = [
   { id: "AUTH_ASSIGNMENT", path: "src/auth.ts", line: 2 },
   { id: "CACHE_TENANT", path: "src/cache.ts", line: 4 },
@@ -58,11 +61,12 @@ function run(name, args) {
   return { name, durationMs: Date.now() - started, reportedCost: rootCost + childCost, findings, score: scoreUsefulness(findings, oracle) };
 }
 
-const inline = run("inline", ["--no-extensions", "--no-session", "--mode", "json", "--model", "openai-codex/gpt-5.6-sol", "--thinking", "medium", "--tools", "read,grep,find,ls", contract]);
+const inline = run("inline", ["--no-extensions", "--no-session", "--mode", "json", ...modelArgs, "--tools", "read,grep,find,ls", contract]);
 const delegatedPrompt = `Use delegate exactly once with profile review, scope ${fixture}, requireMatchedCitations true, resultSchema ${JSON.stringify(resultSchema)}, and a complete brief containing this task. Return the child's JSON unchanged. ${contract}`;
-const delegated = run("delegated", ["--no-extensions", "-e", join(root, "index.ts"), "--no-session", "--mode", "json", "--model", "openai-codex/gpt-5.6-sol", "--thinking", "medium", "--tools", "delegate", delegatedPrompt]);
+const delegated = run("delegated", ["--no-extensions", "-e", join(root, "index.ts"), "--no-session", "--mode", "json", ...modelArgs, "--tools", "delegate", delegatedPrompt]);
 
 console.log(JSON.stringify({
+  route,
   fixture,
   oracle,
   inline,

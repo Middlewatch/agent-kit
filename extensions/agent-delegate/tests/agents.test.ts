@@ -28,14 +28,14 @@ test("seed agents load with their documented bases", () => {
 
 test("frontmatter parses the full field set", () => {
   const parsed = parseAgentDefinition("sampler", definition(
-    "profile: review\ntier: judge\nthinking: high\ntools: inspect_read, inspect_grep\nwritable: false\nturnCap: 12",
+    "profile: review\ntier: judge\nthinking: xhigh\ntools: inspect_read, inspect_grep\nwritable: false\nturnCap: 12",
     "Hunt for counterexamples and report the strongest one.",
   ));
   assert.deepEqual(parsed, {
     name: "sampler",
     profile: "review",
     tier: "judge",
-    thinking: "high",
+    thinking: "xhigh",
     tools: ["inspect_read", "inspect_grep"],
     writable: false,
     turnCap: 12,

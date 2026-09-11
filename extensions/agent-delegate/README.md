@@ -14,13 +14,55 @@ framework.
 
 ## Model tiers
 
-`tiers.json` beside the extension owns every model slug and each tier's
-default reasoning level: `scout` (fast, cheap), `analyst` (strong), `judge`
-(strong, deepest reasoning). The optional `tier` and `thinking` call params
-escalate routing by model class and reasoning when a task's complexity
-warrants it. Both fail closed outside their fixed vocabularies, and the root
-can never supply a model slug. A malformed tier table fails the extension at
-load. This keeps spend and capability policy in the trusted extension.
+Every tier uses `openai-codex/gpt-6-astra`. `tiers.json` owns the model
+slugs and default reasoning levels:
+
+| tier | thinking | use case |
+|---|---|---|
+| `scout` | `low` | Bounded lookup, inventories, and mechanical extraction |
+| `analyst` | `low` | General exploration, code review, research synthesis, and bounded editing |
+| `judge` | `xhigh` | Difficult diagnosis, security review, and refutation of consequential claims |
+
+Scout and analyst currently have the same route. Their names preserve existing
+calls and describe task intent; choosing scout does not reduce model capability.
+The owner selected Astra across all tiers to favor quality and token
+efficiency. This is routing policy, not a benchmark result from this extension.
+
+Choose the profile for its tools and return contract, then choose reasoning
+for the difficulty of the question. The optional `thinking` parameter accepts
+`low`, `medium`, `high`, and `xhigh` on any tier. Use `medium` for multi-step
+tracing and `high` when several plausible explanations or cross-system
+constraints need comparison. Select `judge` upfront when a missed defect or
+weak inference could change a consequential decision. A large corpus alone
+calls for a bounded search, not deeper reasoning.
+
+A shallow answer can justify another call with a sharper brief and greater
+reasoning depth. Missing evidence calls for better sources or scope; reasoning
+cannot supply facts the child cannot inspect. The root owns final decisions
+and verification even when a child supplies recommendations.
+
+Tier precedence is call parameter, agent definition, then profile default.
+Thinking precedence is call parameter, agent definition, then resolved tier
+default. Both parameters fail closed outside their fixed vocabularies, and
+callers cannot supply a model slug. A malformed tier table fails at load.
+
+### Where the delegation standards live
+
+| source | responsibility |
+|---|---|
+| This README, "When delegation repays" | When independent work is worth the coordination cost |
+| `src/profile.ts` | Profile defaults, tools policy flags, and pool limits |
+| `tiers.json` and `src/tiers.ts` | Model routes and accepted tier/thinking values |
+| `agents/*.agent.md` and `src/agents.ts` | Named roles, defaults, and allowed capabilities |
+| `index.ts` | Model-visible selection guidance, override precedence, and child CLI arguments |
+| `child-contract.md` and `child-scope.ts` | Child instructions and enforced tool boundaries |
+
+Workflow skills select work for this surface. The
+[build skill](~/.agents/kit/skills/build/SKILL.md) requests a fresh review,
+[deep review](~/.agents/kit/skills/deep-review/SKILL.md) uses judge-tier refuters,
+and [Pi deep research](~/.agents/kit/skills/deep-research/pi/SKILL.md) controls
+research fan-out. These callers inherit the central routes rather than owning
+model slugs. Claude Code's separate subagent routing is outside this tool.
 
 ## Agent definitions
 
@@ -29,9 +71,8 @@ invokes by name (`agent` param, mutually exclusive with `profile`) but can
 never define or modify per call. Frontmatter sets the base profile plus
 optional tier, thinking, tools subset, writable flag, and turnCap; the
 markdown body is a role prompt appended to the child contract under
-`## Role`. Unknown keys, values, or tool names fail the whole load. Per-call
-`tier`/`thinking` outrank definition defaults, while `tools` and `writable`
-have no per-call override. Seeds: `explorer` (explore/scout), `critic` (review),
+`## Role`. Unknown keys, values, or tool names fail the whole load. `tools`
+and `writable` have no per-call override. Seeds: `explorer` (explore/scout), `critic` (review),
 `comment-sicko` (review, comment-audit lens),
 `researcher` (research), `refuter` (research/judge), `editor` (review,
 writable).
@@ -155,7 +196,7 @@ UTC start date, pruned past 90 days at session start). Records carry:
 
 - the globally unique id and label
 - the brief verbatim
-- profile, model, and resolved capability set
+- profile, tier, resolved model and reasoning level, and resolved capability set
 - token and wall-clock accounting
 - validation outcome
 - loop-halt and scan findings
@@ -298,18 +339,24 @@ prompt guideline contain the small amount of model guidance required, and a
 global skill would duplicate always-visible surface without adding a
 capability.
 
+After changing routing or tool parameters, use `/reload` or start a new Pi
+session. The running extension holds its loaded tier table. The child runtime
+must have the configured model in its catalog and support its reasoning levels;
+`pi --list-models gpt-6-astra` checks catalog availability. The extension does
+not validate provider capabilities or confirm the provider's effective effort.
+
 ## Verification
 
 ```bash
 npm test
-# opt-in paid comparison against an inline baseline; not part of npm test:
+# opt-in paid comparison using the analyst route for both roots; not part of npm test:
 AGENT_DELEGATE_RUN_LIVE_EVAL=1 npm run eval:live
-# prose child (existing behaviour):
-pi --no-extensions -e ./index.ts --no-session --model openai-codex/gpt-5.6-sol \
+# prose child:
+pi --no-extensions -e ./index.ts --no-session --model openai-codex/gpt-6-astra \
   --thinking low --tools delegate -p \
   'Use delegate with profile explore, scope src, for one bounded inspection.'
 # typed research child:
-pi --no-extensions -e ./index.ts --no-session --model openai-codex/gpt-5.6-sol \
+pi --no-extensions -e ./index.ts --no-session --model openai-codex/gpt-6-astra \
   --thinking low --tools delegate -p \
   'Use delegate with profile research and a resultSchema requiring {finding, sourceUrl} to answer: what is the current stable Node.js LTS major version?'
 ```

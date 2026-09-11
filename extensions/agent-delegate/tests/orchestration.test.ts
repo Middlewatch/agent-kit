@@ -379,7 +379,8 @@ test("record written on failure path with brief verbatim", async () => {
     assert.ok(record.failureCause, "failure cause set on the failure path");
     assert.deepEqual(record.capabilitySet, ["web_search", "web_fetch"]);
     assert.equal(record.profile, "research");
-    assert.equal(record.model, "openai-codex/gpt-5.6-sol");
+    assert.equal(record.model, "openai-codex/gpt-6-astra");
+    assert.equal(record.thinking, "low", "failed calls also retain the resolved reasoning level");
     assert.ok(record.startedAt && record.endedAt && record.durationMs >= 0);
   } finally {
     env.restore();
@@ -393,15 +394,71 @@ test("tier and thinking overrides route the child argv and land in the record", 
   try {
     const result = await callDelegate({ profile: "research", label: "routed-child", tier: "judge", thinking: "low", resultSchema: TINY_SCHEMA });
     assert.equal(result.details.tier, "judge");
-    assert.equal(result.details.model, "openai-codex/gpt-5.6-sol");
+    assert.equal(result.details.model, "openai-codex/gpt-6-astra");
     assert.equal(result.details.thinking, "low");
     const argv = JSON.parse(readFileSync(argvFile, "utf8").trim().split("\n")[0]);
     const argAfter = (flag: string) => argv[argv.indexOf(flag) + 1];
-    assert.equal(argAfter("--model"), "openai-codex/gpt-5.6-sol", "the resolved tier slug reaches the child argv");
+    assert.equal(argAfter("--model"), "openai-codex/gpt-6-astra", "the resolved tier slug reaches the child argv");
     assert.equal(argAfter("--thinking"), "low", "the thinking override reaches the child argv");
     const record = readRecords(env.recordsDir).at(-1);
     assert.equal(record.tier, "judge");
-    assert.equal(record.model, "openai-codex/gpt-5.6-sol");
+    assert.equal(record.model, "openai-codex/gpt-6-astra");
+    assert.equal(record.thinking, "low");
+  } finally {
+    env.restore();
+  }
+});
+
+test("tool schema exposes xhigh and use-case routing guidance", () => {
+  assert.deepEqual(delegateTool.parameters.properties.thinking.enum, ["low", "medium", "high", "xhigh"]);
+  assert.equal("model" in delegateTool.parameters.properties, false, "model slugs remain extension-owned");
+  assert.match(delegateTool.parameters.properties.tier.description, /gpt-6-astra/);
+  assert.match(delegateTool.parameters.properties.thinking.description, /competing explanations/);
+});
+
+test("profile and role defaults reach child argv, result details, and durable records", async () => {
+  const env = stubEnv("ok-typed");
+  const argvFile = join(mkdtempSync(join(tmpdir(), "agent-delegate-routes-")), "argv.jsonl");
+  process.env.AGENT_DELEGATE_STUB_ARGV_FILE = argvFile;
+  const cases: Array<{ params: Record<string, unknown>; tier: string; thinking: string }> = [
+    { params: {}, tier: "scout", thinking: "low" },
+    { params: { profile: "review" }, tier: "analyst", thinking: "low" },
+    { params: { profile: "research" }, tier: "analyst", thinking: "low" },
+    { params: { agent: "explorer" }, tier: "scout", thinking: "low" },
+    { params: { agent: "critic" }, tier: "analyst", thinking: "low" },
+    { params: { agent: "comment-sicko" }, tier: "analyst", thinking: "low" },
+    { params: { agent: "researcher" }, tier: "analyst", thinking: "low" },
+    { params: { agent: "refuter" }, tier: "judge", thinking: "xhigh" },
+    { params: { profile: "review", tier: "judge" }, tier: "judge", thinking: "xhigh" },
+    { params: { profile: "review", thinking: "xhigh" }, tier: "analyst", thinking: "xhigh" },
+    { params: { profile: "review", thinking: "high" }, tier: "analyst", thinking: "high" },
+    { params: { tier: "scout", thinking: "medium" }, tier: "scout", thinking: "medium" },
+  ];
+  try {
+    for (const { params, tier, thinking } of cases) {
+      const result = await callDelegate({ ...params, scope: ".", resultSchema: TINY_SCHEMA });
+      const argv = JSON.parse(readFileSync(argvFile, "utf8").trim().split("\n").at(-1)!);
+      assert.equal(argv[argv.indexOf("--model") + 1], "openai-codex/gpt-6-astra");
+      assert.equal(argv[argv.indexOf("--thinking") + 1], thinking);
+      for (const actual of [result.details, readRecords(env.recordsDir).at(-1)]) {
+        assert.equal(actual.model, "openai-codex/gpt-6-astra");
+        assert.equal(actual.tier, tier);
+        assert.equal(actual.thinking, thinking);
+      }
+    }
+  } finally {
+    env.restore();
+  }
+});
+
+test("unsupported reasoning is rejected before a child spawns", async () => {
+  const env = stubEnv("ok-typed");
+  const argvFile = join(mkdtempSync(join(tmpdir(), "agent-delegate-invalid-route-")), "argv.jsonl");
+  process.env.AGENT_DELEGATE_STUB_ARGV_FILE = argvFile;
+  try {
+    await assert.rejects(callDelegate({ scope: ".", thinking: "max" }), /unsupported thinking level: max/);
+    assert.equal(existsSync(argvFile), false);
+    assert.deepEqual(readRecords(env.recordsDir), []);
   } finally {
     env.restore();
   }
@@ -434,8 +491,8 @@ test("the refuter escalates to judge by default and call params still override",
     const result = await callDelegate({ agent: "refuter", label: "refuter-child", resultSchema: TINY_SCHEMA });
     assert.equal(result.details.profile, "research", "the refuter rides the research profile");
     assert.equal(result.details.tier, "judge");
-    assert.equal(result.details.model, "openai-codex/gpt-5.6-sol");
-    assert.equal(result.details.thinking, "high");
+    assert.equal(result.details.model, "openai-codex/gpt-6-astra");
+    assert.equal(result.details.thinking, "xhigh");
     const overridden = await callDelegate({ agent: "refuter", label: "refuter-low", resultSchema: TINY_SCHEMA, thinking: "medium" });
     assert.equal(overridden.details.thinking, "medium", "the call's thinking wins over the definition default");
   } finally {
@@ -505,6 +562,8 @@ test("a writable agent works on a delegate branch worktree and reports it", asyn
     assert.notEqual(writer.worktreePath, fixture.repo, "the child worked in the worktree, not the scope repo");
     const record = readRecords(env.recordsDir).at(-1);
     assert.equal(record.writer.branch, writer.branch);
+    assert.equal(record.model, "openai-codex/gpt-6-astra");
+    assert.equal(record.thinking, "low");
     assert.deepEqual(
       record.capabilitySet,
       ["inspect_read", "inspect_grep", "inspect_find", "inspect_ls", "inspect_git_status", "inspect_git_diff", "write_file", "edit_file", "git_commit"],
