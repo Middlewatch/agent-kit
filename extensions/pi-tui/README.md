@@ -18,7 +18,8 @@ fade-glyph header with estate facts, a glanceable todo widget, and
   extension key, and a status naming its own extension sheds the prefix).
 - **Header.** A centered pi glyph (solid roof, legs dissolving through
   shade blocks) over the workspace, branch, and estate counts (skills,
-  extensions, inbox notes) read from `~/.agents`.
+  extensions, inbox notes). Filesystem counts refresh asynchronously every
+  30 seconds; the header shows cached values while a read is pending.
 - **Todo widget.** It rides the todo tool's result details and shows a
   settled-count summary plus up to four open items above the editor.
 - **Working indicator.** The glyph's shade blocks breathe in accent.
@@ -56,7 +57,7 @@ scratch file, resume).
 ## Tests
 
 ```bash
-npm test            # vitest over the pure line builders and discovery
+npm test            # line builders, discovery, and delayed header refresh
 npm run typecheck
 ```
 
