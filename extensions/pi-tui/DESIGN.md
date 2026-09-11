@@ -15,7 +15,7 @@ is asserted with `visibleWidth`. The `Style` type is a structural
 | `tools.ts` | `resultLines`, per-tool `SPECS` | `registerGutterTools` |
 | `footer.ts` | three line builders, `stripSelfName` | `chrome.ts` |
 | `header.ts` | glyph, centering, fact lines | `chrome.ts` |
-| `estate.ts` | fixture-testable fs counts | none |
+| `estate.ts` | none | async filesystem counts, tested against fixtures |
 | `todo-widget.ts` | `buildTodoWidgetLines` | event wiring in-file |
 | `edit-targets.ts` | `discoverEditRoots`, `scanMarkdown`, `filterTargets` | none |
 | `edit-command.ts` | none | two-level picker + command wiring |
@@ -80,6 +80,12 @@ one arrives.
 
 Facts collection guards every filesystem and git read (missing
 locations degrade to omitted facts), and render paths never touch the
-filesystem. The extension registers everything at load and only touches
-the TUI inside `ctx.mode === "tui"` guards, so print/RPC/JSON modes see
-the built-in behavior plus unchanged tool execution.
+filesystem. Estate bindings can resolve to network mounts, so every count
+uses asynchronous filesystem APIs. The header starts a refresh at creation
+and checks every 30 seconds, with at most one refresh pending. It renders
+cached counts and requests a redraw only when the snapshot changes.
+Disposal or session shutdown stops the timer and ignores late results.
+
+The extension registers everything at load and only touches the TUI inside
+`ctx.mode === "tui"` guards, so print/RPC/JSON modes see the built-in behavior
+plus unchanged tool execution.

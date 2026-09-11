@@ -1,11 +1,11 @@
 /**
- * Cheap estate facts for the header, refreshed on a TTL. The extension
+ * Asynchronous estate counts for the cached header snapshot. The extension
  * count mirrors pi's documented auto-discovery inputs (extensions.md
  * "Extension Locations", packages.md) because pi 0.84 exposes no
  * loaded-extension list to extensions. Every count degrades to
  * undefined when its source is missing, so the header simply omits it.
  */
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { readFile, readdir, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -26,9 +26,9 @@ export interface EstateSources {
 }
 
 /** Inbox: markdown notes awaiting triage, README excluded. */
-export function countInboxNotes(agentsDir: string): number | undefined {
+export async function countInboxNotes(agentsDir: string): Promise<number | undefined> {
 	try {
-		return readdirSync(join(agentsDir, "inbox"), { withFileTypes: true }).filter(
+		return (await readdir(join(agentsDir, "inbox"), { withFileTypes: true })).filter(
 			(entry) => entry.isFile() && entry.name.endsWith(".md") && entry.name !== "README.md",
 		).length;
 	} catch {
@@ -36,17 +36,17 @@ export function countInboxNotes(agentsDir: string): number | undefined {
 	}
 }
 
-const isDir = (path: string): boolean => {
+const isDir = async (path: string): Promise<boolean> => {
 	try {
-		return statSync(path).isDirectory();
+		return (await stat(path)).isDirectory();
 	} catch {
 		return false;
 	}
 };
 
-const isFile = (path: string): boolean => {
+const isFile = async (path: string): Promise<boolean> => {
 	try {
-		return statSync(path).isFile();
+		return (await stat(path)).isFile();
 	} catch {
 		return false;
 	}
@@ -54,21 +54,21 @@ const isFile = (path: string): boolean => {
 
 const expandHome = (path: string): string => (path.startsWith("~") ? join(homedir(), path.slice(1)) : path);
 
-const readJson = (path: string): any => {
+const readJson = async (path: string): Promise<any> => {
 	try {
-		return JSON.parse(readFileSync(path, "utf-8"));
+		return JSON.parse(await readFile(path, "utf-8"));
 	} catch {
 		return undefined;
 	}
 };
 
 /** Auto-discovery dirs load <dir>/*.ts plus <dir>/<sub>/index.ts. */
-function countAutoDiscoveryDir(dir: string): number {
+async function countAutoDiscoveryDir(dir: string): Promise<number> {
 	try {
 		let count = 0;
-		for (const entry of readdirSync(dir, { withFileTypes: true })) {
+		for (const entry of await readdir(dir, { withFileTypes: true })) {
 			if (entry.isFile() && entry.name.endsWith(".ts")) count++;
-			else if (entry.isDirectory() && isFile(join(dir, entry.name, "index.ts"))) count++;
+			else if (entry.isDirectory() && (await isFile(join(dir, entry.name, "index.ts")))) count++;
 		}
 		return count;
 	} catch {
@@ -77,9 +77,9 @@ function countAutoDiscoveryDir(dir: string): number {
 }
 
 /** Package extension dirs (manifest or convention) load .ts and .js files. */
-function countPackageDir(dir: string): number {
+async function countPackageDir(dir: string): Promise<number> {
 	try {
-		return readdirSync(dir, { withFileTypes: true }).filter(
+		return (await readdir(dir, { withFileTypes: true })).filter(
 			(entry) => entry.isFile() && (entry.name.endsWith(".ts") || entry.name.endsWith(".js")),
 		).length;
 	} catch {
@@ -88,23 +88,25 @@ function countPackageDir(dir: string): number {
 }
 
 /** One manifest entry is a file (one extension) or a dir of them. */
-function countManifestEntry(root: string, entry: string): number {
+async function countManifestEntry(root: string, entry: string): Promise<number> {
 	const path = resolve(root, entry);
-	if (isFile(path)) return 1;
-	if (isDir(path)) return countPackageDir(path);
+	if (await isFile(path)) return 1;
+	if (await isDir(path)) return countPackageDir(path);
 	return 0;
 }
 
 /** Extensions one package contributes: pi.extensions manifest, else the extensions/ convention dir. */
-export function countPackageExtensions(root: string): number {
-	const manifest = readJson(join(root, "package.json"));
+export async function countPackageExtensions(root: string): Promise<number> {
+	const manifest = await readJson(join(root, "package.json"));
 	const pi = manifest?.pi;
 	if (pi !== undefined) {
 		const entries = pi.extensions;
 		if (!Array.isArray(entries)) return 0;
-		return entries.reduce((sum: number, entry: unknown) => {
-			return typeof entry === "string" ? sum + countManifestEntry(root, entry) : sum;
-		}, 0);
+		let count = 0;
+		for (const entry of entries) {
+			if (typeof entry === "string") count += await countManifestEntry(root, entry);
+		}
+		return count;
 	}
 	return countPackageDir(join(root, "extensions"));
 }
@@ -169,16 +171,16 @@ export function resolvePackageRef(entry: unknown, scopeDir: string, cwd: string)
  * entries shadow user entries by identity). undefined when the pi agent
  * dir itself is missing.
  */
-export function countExtensions(sources: EstateSources): number | undefined {
+export async function countExtensions(sources: EstateSources): Promise<number | undefined> {
 	const { piAgentDir, cwd, projectTrusted } = sources;
-	if (!isDir(piAgentDir)) return undefined;
+	if (!(await isDir(piAgentDir))) return undefined;
 	try {
-		let count = countAutoDiscoveryDir(join(piAgentDir, "extensions"));
-		if (projectTrusted) count += countAutoDiscoveryDir(join(cwd, ".pi", "extensions"));
+		let count = await countAutoDiscoveryDir(join(piAgentDir, "extensions"));
+		if (projectTrusted) count += await countAutoDiscoveryDir(join(cwd, ".pi", "extensions"));
 
 		const settingsFiles = [
-			{ settings: readJson(join(piAgentDir, "settings.json")), scopeDir: piAgentDir },
-			...(projectTrusted ? [{ settings: readJson(join(cwd, ".pi", "settings.json")), scopeDir: join(cwd, ".pi") }] : []),
+			{ settings: await readJson(join(piAgentDir, "settings.json")), scopeDir: piAgentDir },
+			...(projectTrusted ? [{ settings: await readJson(join(cwd, ".pi", "settings.json")), scopeDir: join(cwd, ".pi") }] : []),
 		];
 
 		const packages = new Map<string, PackageRef>();
@@ -186,7 +188,7 @@ export function countExtensions(sources: EstateSources): number | undefined {
 			for (const entry of Array.isArray(settings?.extensions) ? settings.extensions : []) {
 				if (typeof entry !== "string") continue;
 				const path = resolve(cwd, expandHome(entry));
-				count += isFile(path) ? 1 : isDir(path) ? countPackageDir(path) : 0;
+				count += (await isFile(path)) ? 1 : (await isDir(path)) ? await countPackageDir(path) : 0;
 			}
 			for (const entry of Array.isArray(settings?.packages) ? settings.packages : []) {
 				const ref = resolvePackageRef(entry, scopeDir, cwd);
@@ -194,7 +196,7 @@ export function countExtensions(sources: EstateSources): number | undefined {
 			}
 		}
 		for (const ref of packages.values()) {
-			if (!ref.disabled) count += countPackageExtensions(ref.root);
+			if (!ref.disabled) count += await countPackageExtensions(ref.root);
 		}
 		return count;
 	} catch {
@@ -202,9 +204,10 @@ export function countExtensions(sources: EstateSources): number | undefined {
 	}
 }
 
-export function countEstate(sources: EstateSources): EstateCounts {
-	return {
-		extensions: countExtensions(sources),
-		inboxNotes: countInboxNotes(sources.agentsDir),
-	};
+export async function countEstate(sources: EstateSources): Promise<EstateCounts> {
+	const [extensions, inboxNotes] = await Promise.all([
+		countExtensions(sources),
+		countInboxNotes(sources.agentsDir),
+	]);
+	return { extensions, inboxNotes };
 }

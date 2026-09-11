@@ -2,7 +2,7 @@
 import { homedir } from "node:os";
 import { basename, join } from "node:path";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { countEstate, type EstateSources } from "./estate.ts";
+import { countEstate, type EstateCounts, type EstateSources } from "./estate.ts";
 import { buildFooterLines, type FooterFacts } from "./footer.ts";
 import { buildHeaderLines, type HeaderFacts } from "./header.ts";
 
@@ -58,11 +58,12 @@ export function collectFooterFacts(pi: ExtensionAPI, ctx: ExtensionContext, foot
 }
 
 export function registerChrome(pi: ExtensionAPI): void {
+	let disposeHeader = () => {};
+	pi.on("session_shutdown", () => disposeHeader());
 	pi.on("session_start", async (_event, ctx) => {
 		if (ctx.mode !== "tui") return;
 
-		// Header facts stay live cheaply: estate counts refresh on a TTL,
-		// the branch rides the footer's cached git watcher via shared state.
+		// The branch rides the footer's cached git watcher via shared state.
 		const shared: { branch?: string } = {
 			branch: await pi
 				.exec("git", ["rev-parse", "--abbrev-ref", "HEAD"], { timeout: 2000 })
@@ -82,21 +83,48 @@ export function registerChrome(pi: ExtensionAPI): void {
 			const loaded = pi.getCommands().filter((command) => command.source === "skill").length;
 			return loaded > 0 ? loaded : undefined;
 		};
-		let counts = { skills: countSkills(), ...countEstate(sources) };
-		let countedAt = Date.now();
-		const ESTATE_TTL_MS = 30_000;
+		const ESTATE_REFRESH_MS = 30_000;
 
-		ctx.ui.setHeader((_tui, theme) => ({
-			invalidate() {},
-			render(width: number): string[] {
-				if (Date.now() - countedAt > ESTATE_TTL_MS) {
-					counts = { skills: countSkills(), ...countEstate(sources) };
-					countedAt = Date.now();
+		ctx.ui.setHeader((tui, theme) => {
+			let counts: EstateCounts & { skills?: number } = { skills: countSkills() };
+			let disposed = false;
+			let refreshing = false;
+			const refresh = async () => {
+				if (disposed || refreshing) return;
+				refreshing = true;
+				try {
+					// Bindings may point at network mounts. Keep their I/O off the render path.
+					const estate = await countEstate(sources);
+					if (disposed) return;
+					const next = { skills: countSkills(), ...estate };
+					const changed =
+						next.skills !== counts.skills ||
+						next.extensions !== counts.extensions ||
+						next.inboxNotes !== counts.inboxNotes;
+					counts = next;
+					if (changed) tui.requestRender();
+				} catch {
+					// Counts are optional; retain the snapshot and retry next interval.
+				} finally {
+					refreshing = false;
 				}
-				const facts: HeaderFacts = { workspace: basename(ctx.cwd), branch: shared.branch, ...counts };
-				return buildHeaderLines(facts, theme, width);
-			},
-		}));
+			};
+			const timer = setInterval(() => void refresh(), ESTATE_REFRESH_MS);
+			timer.unref();
+			disposeHeader = () => {
+				disposed = true;
+				clearInterval(timer);
+			};
+			void refresh();
+			return {
+				dispose: disposeHeader,
+				invalidate() {},
+				render(width: number): string[] {
+					const facts: HeaderFacts = { workspace: basename(ctx.cwd), branch: shared.branch, ...counts };
+					return buildHeaderLines(facts, theme, width);
+				},
+			};
+		});
 
 		ctx.ui.setFooter((tui, theme, footerData) => ({
 			dispose: footerData.onBranchChange(() => tui.requestRender()),

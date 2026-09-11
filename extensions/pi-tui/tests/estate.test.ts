@@ -92,43 +92,43 @@ function fixture(): { sources: EstateSources; dir: string } {
 describe("extension discovery mirror", () => {
 	const { sources } = fixture();
 
-	it("sums every discovery source when the project is trusted", () => {
-		expect(countExtensions(sources)).toBe(9);
+	it("sums every discovery source when the project is trusted", async () => {
+		expect(await countExtensions(sources)).toBe(9);
 	});
 
-	it("skips project-local dirs and settings when untrusted", () => {
-		expect(countExtensions({ ...sources, projectTrusted: false })).toBe(8);
+	it("skips project-local dirs and settings when untrusted", async () => {
+		expect(await countExtensions({ ...sources, projectTrusted: false })).toBe(8);
 	});
 
-	it("returns undefined when the pi agent dir is missing", () => {
-		expect(countExtensions({ ...sources, piAgentDir: join(sources.piAgentDir, "nope") })).toBeUndefined();
+	it("returns undefined when the pi agent dir is missing", async () => {
+		expect(await countExtensions({ ...sources, piAgentDir: join(sources.piAgentDir, "nope") })).toBeUndefined();
 	});
 });
 
 describe("package extension counts", () => {
-	it("counts manifest file and directory entries", () => {
+	it("counts manifest file and directory entries", async () => {
 		const root = mkdtempSync(join(tmpdir(), "pitui-pkg-"));
 		mkdirSync(join(root, "more"));
 		writeFileSync(join(root, "one.ts"), "");
 		writeFileSync(join(root, "more", "two.ts"), "");
 		writeFileSync(join(root, "more", "three.js"), "");
 		writeFileSync(join(root, "package.json"), JSON.stringify({ pi: { extensions: ["./one.ts", "./more"] } }));
-		expect(countPackageExtensions(root)).toBe(3);
+		expect(await countPackageExtensions(root)).toBe(3);
 	});
 
-	it("uses the extensions/ convention only without a pi manifest", () => {
+	it("uses the extensions/ convention only without a pi manifest", async () => {
 		const root = mkdtempSync(join(tmpdir(), "pitui-pkg-"));
 		mkdirSync(join(root, "extensions"));
 		writeFileSync(join(root, "extensions", "conv.ts"), "");
 		writeFileSync(join(root, "package.json"), JSON.stringify({ name: "plain" }));
-		expect(countPackageExtensions(root)).toBe(1);
+		expect(await countPackageExtensions(root)).toBe(1);
 		writeFileSync(join(root, "package.json"), JSON.stringify({ name: "plain", pi: { skills: ["skills"] } }));
-		expect(countPackageExtensions(root)).toBe(0);
+		expect(await countPackageExtensions(root)).toBe(0);
 	});
 });
 
 describe("package source resolution", () => {
-	it("resolves npm specs to the scope's npm cache, version stripped", () => {
+	it("resolves npm specs to the scope's npm cache, version stripped", async () => {
 		const ref = resolvePackageRef("npm:@scope/tool@1.2.3", "/scope", "/cwd");
 		expect(ref).toEqual({
 			identity: "npm:@scope/tool",
@@ -137,7 +137,7 @@ describe("package source resolution", () => {
 		});
 	});
 
-	it("resolves git specs across spellings to one identity, ref stripped", () => {
+	it("resolves git specs across spellings to one identity, ref stripped", async () => {
 		const spellings = [
 			"git:example.com/user/repo@v1",
 			"https://example.com/user/repo@v1",
@@ -151,7 +151,7 @@ describe("package source resolution", () => {
 		}
 	});
 
-	it("marks packages with an empty extensions filter disabled", () => {
+	it("marks packages with an empty extensions filter disabled", async () => {
 		expect(resolvePackageRef({ source: "npm:x" }, "/s", "/c")?.disabled).toBe(false);
 		expect(resolvePackageRef({ source: "npm:x", extensions: [] }, "/s", "/c")?.disabled).toBe(true);
 	});
@@ -160,13 +160,13 @@ describe("package source resolution", () => {
 describe("estate counts", () => {
 	const { sources } = fixture();
 
-	it("counts inbox markdown notes, README excluded", () => {
-		expect(countInboxNotes(sources.agentsDir)).toBe(2);
+	it("counts inbox markdown notes, README excluded", async () => {
+		expect(await countInboxNotes(sources.agentsDir)).toBe(2);
 	});
 
-	it("returns undefined per count when a location is missing", () => {
+	it("returns undefined per count when a location is missing", async () => {
 		const empty = mkdtempSync(join(tmpdir(), "pitui-estate-empty-"));
-		expect(countEstate({ agentsDir: empty, piAgentDir: join(empty, "pi"), cwd: empty, projectTrusted: false })).toEqual(
+		expect(await countEstate({ agentsDir: empty, piAgentDir: join(empty, "pi"), cwd: empty, projectTrusted: false })).toEqual(
 			{ extensions: undefined, inboxNotes: undefined },
 		);
 	});
