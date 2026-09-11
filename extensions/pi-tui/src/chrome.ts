@@ -59,9 +59,15 @@ export function collectFooterFacts(pi: ExtensionAPI, ctx: ExtensionContext, foot
 
 export function registerChrome(pi: ExtensionAPI): void {
 	let disposeHeader = () => {};
-	pi.on("session_shutdown", () => disposeHeader());
+	let generation = 0;
+	pi.on("session_shutdown", () => {
+		generation++;
+		disposeHeader();
+	});
 	pi.on("session_start", async (_event, ctx) => {
 		if (ctx.mode !== "tui") return;
+		const startup = ++generation;
+		disposeHeader();
 
 		// The branch rides the footer's cached git watcher via shared state.
 		const shared: { branch?: string } = {
@@ -70,6 +76,7 @@ export function registerChrome(pi: ExtensionAPI): void {
 				.then((result) => (result.code === 0 ? result.stdout.trim() : undefined))
 				.catch(() => undefined),
 		};
+		if (startup !== generation) return;
 		const sources: EstateSources = {
 			agentsDir: join(homedir(), ".agents"),
 			piAgentDir: join(homedir(), ".pi", "agent"),

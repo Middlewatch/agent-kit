@@ -12,7 +12,7 @@ function deferred<T>() {
 	return { promise, resolve, reject };
 }
 
-async function startChrome() {
+function chromeHarness(exec = async () => ({ code: 1, stdout: "" })) {
 	type Header = { render(width: number): string[]; dispose?(): void };
 	const handlers = new Map<string, (event: unknown, ctx: ExtensionContext) => void | Promise<void>>();
 	const requestRender = vi.fn();
@@ -20,7 +20,7 @@ async function startChrome() {
 	const pi = {
 		on: (event: string, handler: (event: unknown, ctx: ExtensionContext) => void | Promise<void>) => handlers.set(event, handler),
 		getCommands: () => [{ source: "skill" }],
-		exec: async () => ({ code: 1, stdout: "" }),
+		exec,
 	};
 	const ctx = {
 		hasUI: true,
@@ -39,13 +39,18 @@ async function startChrome() {
 	} as unknown as ExtensionContext;
 	registerChrome(pi as unknown as ExtensionAPI);
 	const start = () => handlers.get("session_start")!({}, ctx);
-	await start();
 	return {
 		get header() { return header; },
 		requestRender,
 		start,
 		shutdown: () => handlers.get("session_shutdown")?.({}, ctx),
 	};
+}
+
+async function startChrome() {
+	const ui = chromeHarness();
+	await ui.start();
+	return ui;
 }
 
 beforeEach(() => {
@@ -113,6 +118,30 @@ describe("header estate refresh", () => {
 		await vi.advanceTimersByTimeAsync(30_000);
 		expect(ui.header.render(100).join("\n")).toContain("inbox 18");
 		ui.header.dispose?.();
+	});
+
+	it("omits a source that becomes unavailable after a completed refresh", async () => {
+		vi.mocked(countEstate).mockResolvedValue({ extensions: 8, inboxNotes: 17 });
+		const ui = await startChrome();
+		await vi.advanceTimersByTimeAsync(0);
+		vi.mocked(countEstate).mockResolvedValue({ extensions: 8, inboxNotes: undefined });
+		await vi.advanceTimersByTimeAsync(30_000);
+		expect(ui.header.render(100).join("\n")).toContain("extensions 8");
+		expect(ui.header.render(100).join("\n")).not.toContain("inbox");
+		ui.header.dispose?.();
+	});
+
+	it("does not install chrome if shutdown happens during the initial git lookup", async () => {
+		const git = deferred<{ code: number; stdout: string }>();
+		vi.mocked(countEstate).mockResolvedValue({ inboxNotes: 17 });
+		const ui = chromeHarness(() => git.promise);
+		const starting = ui.start();
+		await ui.shutdown();
+		git.resolve({ code: 0, stdout: "main" });
+		await starting;
+		expect(ui.header).toBeUndefined();
+		await vi.advanceTimersByTimeAsync(60_000);
+		expect(countEstate).not.toHaveBeenCalled();
 	});
 
 	it.each(["dispose", "shutdown", "replacement"])("stops refreshes and ignores late results after %s", async (action) => {
