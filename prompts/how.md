@@ -23,14 +23,15 @@ begin; I will redirect mid-flight if you are off course.
   than reading a handful of known files, per the delegation standard. Go to
   step 3.
 - **Complex** (a subsystem spanning multiple files or services, a cross-cutting
-  feature, a full architectural overview): fan out explore children first.
+  feature, a full architectural overview): fan out explore children when the corpus
+  exceeds what you can read in root, one child per independent slice.
 
 When in doubt, keep it simple; follow-up turns and fan-out stay on the table if
 the first pass proves thin.
 
-**2. Explore (complex questions only).** Decompose the question into 2-3
-exploration angles, each a distinct slice of the subsystem so explorers don't
-duplicate work (e.g. for a rate limiter: data model and state; request path and
+**2. Explore (complex questions only).** Decompose the question into as many
+exploration angles as the subsystem has distinct slices (usually one to three), so
+explorers don't duplicate work (e.g. for a rate limiter: data model and state; request path and
 enforcement; configuration and metrics). Launch all explorers with the
 `delegate` tool in a single message, `explore` profile, scoped to the relevant
 tree. Each brief carries the base prompt from
@@ -54,7 +55,7 @@ model plus the file map to start from.
 **1. Explain first.** Run the full explain flow; you must understand the
 architecture before critiquing it.
 
-**2. Launch critics.** 2-3 `review` profile children in one message; escalate
+**2. Launch critics.** One to three `review` profile children in one message; escalate
 `tier` or `thinking` when the architecture warrants it. Build each brief from
 `~/.agents/kit/prompts/how/critic-prompt.md`, giving each critic the
 explanation, the relevant file paths, and the rubric at

@@ -20,9 +20,16 @@ configuration with lasting effect), and outward-facing ones (publishing, live
 credentials, paid requests outside the session's normal work, PRs, anything that
 leaves the machine). You may proceed with reversible work without asking.
 
+That list is exhaustive. Everything else proceeds without a check-in: a request phrased
+as a question ("can you", "is this enough to build?", "I want to") is a request to do the
+work, and a step you have decided on is something to run, not to announce. End the turn
+when the work is done or when you are blocked on something only I can supply. When a
+question comes up partway, do everything that does not depend on the answer first and put
+the question at the end of the turn that delivers that progress.
+
 ## Communication Guidelines
 
-- The first thing a user will see is the last thing you write, the most important information should be shared at the end of your response.
+- The first thing a user will see is the last thing you write, so the final reply ends with the conclusion or recommendation. The one-line statement of intent at the start of a task (execution style step 1) does not conflict with this.
 - Push back on underspecified ideas and unsupported claims.
 - When a reply has multiple points the user may respond to individually, tag each with a short alias code the user can quote back. Choose a prefix that names the kind of item (Q for
   questions, D for decisions, I for issues, S for suggestions, N for notes) and number within the reply. P, F, and R are reserved for packets, findings, and reviews in plan and review
@@ -34,8 +41,10 @@ leaves the machine). You may proceed with reversible work without asking.
 ## Writing Style
 
 We have spent quite a bit of time developing a prose standard for agents for
-developing and drafting documentation across this estate. Read it here
-`~/.agents/kit/skills/slopfix/references/prose-standard.md`.
+developing and drafting documentation across this estate. It lives at
+`~/.agents/kit/skills/slopfix/references/prose-standard.md`; apply it when drafting or
+revising a document. Replies follow the rules of thumb and examples below without
+rereading it.
 
 In addition to the prose standard I typically appreciate the following:
 

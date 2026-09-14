@@ -15,16 +15,16 @@ principles that changed a decision. The router contract and playbook format are
 
 **Ground every multi-step task in the Principles index below; the matched playbook's steps
 go first in the todo list, per the playbook standard. After copying them, append one todo
-item, `Read principle files: <the ones this task triggers>`, and read each file in full
-before the step it informs.** In your reply, cite each principle that changed a decision
+item, `Read principle files: <the ones this task triggers>`, and read only the files whose
+rule you expect to cite, each before the step it informs.** In your reply, cite each principle that changed a decision
 by the specific rule from its file, and say what it changed.
 
 Remaining triggers:
 
-- About to make a nontrivial change or an architecture decision mid-task → read and
-  follow the walkthrough procedure at `~/.agents/kit/prompts/how.md` first. A standalone
-  question ("how does X work", "are we sure?") routes to the Investigation playbook
-  instead.
+- An architecture decision in a subsystem you have not yet traced → the walkthrough at
+  `~/.agents/kit/prompts/how.md`. A change inside code you have already read proceeds
+  without it. A standalone question ("how does X work", "are we sure?") routes to the
+  Investigation playbook instead.
 - About to `ask_user_question` on a "which approach" or "what should this do" fork →
   classify it first. If the answer is a fact you could observe by running something
   (behavior, timing, layout, output, perf), sketch it via the Prototype playbook and let
@@ -50,9 +50,10 @@ Remaining triggers:
 - Contested design or a risky diff before it ships → the Interrogate playbook. A bounded
   independent audit with a findings artifact → the `deep-review` skill.
 - Research whose answer should persist → the `deep-research` skill.
-- Any prose surface → the prose standard
-  (`~/.agents/kit/skills/slopfix/references/prose-standard.md`). Your reply is a prose
-  surface. Skills and playbooks also follow `AUTHORING.md` and the playbook standard.
+- A document you draft or revise → the prose standard
+  (`~/.agents/kit/skills/slopfix/references/prose-standard.md`). Replies follow the global
+  guide's writing rules without rereading the standard. Skills and playbooks also follow
+  `AUTHORING.md` and the playbook standard.
 - A decision that is hard to reverse, would surprise a later reader, and had real
   alternatives → the `adr` skill at the moment it settles.
 - A genuinely surprising coding result → the `harvest` skill, in flight.

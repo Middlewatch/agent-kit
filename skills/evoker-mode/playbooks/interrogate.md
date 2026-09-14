@@ -13,9 +13,9 @@ multi-perspective adversarial pass whose output is a verdict in chat.
 3. Launch one `review` child per lens in a single message (the prose pool caps at three).
    Each brief carries: the lens, the shared context, the refutation rule (attempt a
    written refutation of every candidate, keep survivors), a findings cap with severities,
-   a required Dismissed list, and permission for an honest empty report. Set
-   `requireMatchedCitations` for code targets, and expect an occasional completed report
-   to fail that gate; read its partial output rather than discarding it.
+   a required Dismissed list, and permission for an honest empty report. Leave
+   `requireMatchedCitations` off; the result's `details.unmatchedCitations` lists what to
+   verify by hand, and a report with one unmatched line is still a report.
 4. Act as lead judge: dedupe findings across critics, verify every load-bearing claim
    against the source yourself, and downgrade or discard what fails. The common failure
    modes are severity inflation, threat-model overreach, and misread context, so agreement
