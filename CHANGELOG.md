@@ -6,7 +6,25 @@ semver.
 
 ## [Unreleased]
 
+### Added
+
+- `guidance/sysprompt/astra.md`: a template for GPT-6 Astra whose role block
+  carries OpenAI's autonomy, skill-precedence, and name-the-pausing-skill
+  guidance. Select it with `/sysprompt switch astra.md`.
+
 ### Changed
+
+- `guidance/AGENTS.md`: the owner-gates list is exhaustive and a question-form
+  request is a request; the prose standard applies to documents rather than
+  every reply; the "most important information last" rule names the intent
+  line it does not conflict with.
+- `skills/evoker-mode`: read only the principle files whose rule you will
+  cite; `how.md` applies to untraced subsystems rather than every nontrivial
+  change; the interrogate playbook leaves `requireMatchedCitations` off.
+- `prompts/how.md`: fan-out is sized by the corpus, with no fixed child count.
+- `extensions/agent-delegate`: `requireMatchedCitations` lists unmatched
+  citations at the top of the returned text instead of failing the call, and a
+  failed delegation's error carries its delegation id so it can be assessed.
 
 - `extensions/agent-delegate`: compact result `reads` targets are joined to
   the child's first scope root, so a journal or other consumer sees the

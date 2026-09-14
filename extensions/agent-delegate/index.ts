@@ -451,7 +451,7 @@ export default function agentDelegate(pi: ExtensionAPI): void {
       "Profiles: explore (default) for read-heavy discovery and tracing, review for adversarial critique, research for web-backed answers returning one JSON object validated against resultSchema. Explore and review may also request a schema-validated return.",
       "Optional tier and thinking select the routing preset and reasoning depth independently of the profile's tools.",
       "The child has four bounded file inspection tools and shell-free git status/diff; no AGENTS.md, built-in tools, edits, memory, delegation, or network outside research's web tools. Writable agents (seeded: editor) edit in their own git worktree and return the branch and diffstat for the root to review and merge.",
-      "Returned URL and path:line citations are checked against the child's provenance ledger; unmatched ones surface in details, and requireMatchedCitations fails the call on any.",
+      "Returned URL and path:line citations are checked against the child's provenance ledger; unmatched ones surface in details, and requireMatchedCitations also lists them at the top of the returned text.",
       "Give a complete brief with one question, exact scope, expected evidence, exclusions, and a concise return format. The root verifies claims and owns the final answer.",
       "scope is an existing directory beneath the home directory (or beneath Pi's cwd when Pi runs outside home); Pi refuses home itself, filesystem root, and runtime or credential trees such as ~/.config and ~/.ssh. Calls emitted together run concurrently.",
     ].join(" "),
@@ -487,7 +487,7 @@ export default function agentDelegate(pi: ExtensionAPI): void {
         additionalProperties: true,
         description: "JSON Schema the child's single JSON object return must validate against; required with profile research and optional for explore/review. Stay within the documented keyword subset (type, properties, required, items, enum, const, minimum, maximum, minLength, maxLength, minItems, maxItems, description, additionalProperties) and under 8192 bytes serialized.",
       })),
-      requireMatchedCitations: Type.Optional(Type.Boolean({ description: "Fail the delegation when the final answer cites a URL or path:line range absent from the child's successful tool-result provenance ledger" })),
+      requireMatchedCitations: Type.Optional(Type.Boolean({ description: "List at the top of the returned text any URL or path:line citation absent from the child's successful tool-result provenance ledger" })),
       task: Type.String({ minLength: 80, maxLength: 12_000, description: "Complete bounded assignment with scope, evidence, exclusions, and concise output request" }),
     }),
     async execute(toolCallId, params, signal, onUpdate, ctx) {
@@ -996,8 +996,11 @@ export default function agentDelegate(pi: ExtensionAPI): void {
       details.unmatchedCitations = unmatchedCitations(citationText, details.provenance ?? []);
       if (details.unmatchedCitations.length === 0) details.unmatchedCitations = undefined;
       if (details.status === "completed" && params.requireMatchedCitations && details.unmatchedCitations?.length) {
-        details.status = "failed";
-        details.diagnostic = `citation provenance check failed: ${details.unmatchedCitations.length} citation(s) were not present in successful child tool results`;
+        details.diagnostic = `citation check: ${details.unmatchedCitations.length} citation(s) were not present in successful child tool results`;
+        const header = `Citation check: ${details.unmatchedCitations.length} citation(s) not present in successful child tool results, verify by hand: ${details.unmatchedCitations.map((c) => c.kind === "file" && c.startLine !== undefined ? `${c.target}:${c.startLine}${c.endLine !== undefined && c.endLine !== c.startLine ? `-${c.endLine}` : ""}` : c.target).join(", ")}`;
+        const trimmed = trimUtf8(`${header}\n\n${contentText}`, MAX_RESULT_BYTES);
+        if (trimmed.truncated) details.truncated = true;
+        contentText = trimmed.text;
       }
       if (activeEntry.shutdownCause) {
         // Shutdown may land mid-pipeline; the
@@ -1024,7 +1027,7 @@ export default function agentDelegate(pi: ExtensionAPI): void {
       onUpdate?.({ content: [{ type: "text", text: `${details.label}: ${details.status}` }], details: published });
       if (details.status !== "completed") {
         const partial = details.partialOutput ? `\n\nPartial output (capped at ${PARTIAL_OUTPUT_CAP_BYTES} bytes):\n${details.partialOutput}` : "";
-        throw new Error(`[${details.label}] ${details.status}: ${details.diagnostic ?? "unknown cause"}${partial}`);
+        throw new Error(`[${details.label}] ${details.status}: ${details.diagnostic ?? "unknown cause"}${partial}\n\n${assessmentReference}`);
       }
       return {
         content: [

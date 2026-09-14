@@ -220,8 +220,9 @@ of ledger data cross the child boundary, while the full ledger stays in the
 local record rather than the normal root result. The parent compares URL and
 `path:line[-line]` citations in the final answer with successful ledger
 entries and exposes unsupported references as `details.unmatchedCitations`.
-Set `requireMatchedCitations: true` for work where an unsupported concrete
-citation should fail the call.
+Set `requireMatchedCitations: true` to have the unmatched citations listed at
+the top of the returned text as well, so they are in front of you when you
+verify the report. The call completes either way.
 
 A match proves only that the cited URL or `path:line` appeared in a
 successful tool result the child obtained, which is weaker than the child
@@ -230,8 +231,8 @@ having independently inspected that exact location. Two limits follow. A
 counts as ledger support, so a match confirms the child saw the token rather
 than that the location is real. And colon-number tokens in ordinary prose
 (clock times, `RFC:2119`-style references) can read as file citations, so
-`requireMatchedCitations` can over-flag. Leave it off when the answer
-legitimately carries such tokens. The
+the check can over-flag; treat the list as a verification queue rather than
+a verdict. The
 ledger is a cooperative hallucination catch rather than an anti-forgery
 boundary (see `issues/2026-08-21-provenance-ledger-content-scrape.md`), and
 the root still owns verification.

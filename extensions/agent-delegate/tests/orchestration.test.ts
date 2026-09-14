@@ -855,11 +855,15 @@ test("compact details carry inspect_read targets as reads under the scope root",
   }
 });
 
-test("strict citation mode rejects claims absent from tool provenance", async () => {
+test("strict citation mode surfaces claims absent from tool provenance without failing", async () => {
   const env = stubEnv("ungrounded-prose");
   try {
-    const error = await catchError(callDelegate({ profile: "review", label: "ungrounded", scope: ".", requireMatchedCitations: true }));
-    assert.match(error.message, /citation provenance check failed: 2 citation\(s\)/);
+    const result = await callDelegate({ profile: "review", label: "ungrounded", scope: ".", requireMatchedCitations: true });
+    const header = result.content[0].text.match(/Citation check: 2 citation\(s\) not present in successful child tool results, verify by hand: (.*)\n/);
+    assert.ok(header, "citation header missing");
+    assert.deepEqual(header[1].split(", ").sort(), ["https://invented.example/fact", "src/invented.ts:99"]);
+    assert.equal(result.details.status, "completed");
+    assert.equal(result.details.unmatchedCitations.length, 2);
     const record = readRecords(env.recordsDir).at(-1);
     assert.equal(record.unmatchedCitations.length, 2);
   } finally {
@@ -873,6 +877,7 @@ test("failure retains multiple assistant messages in rolling partial output", as
     const error = await catchError(callDelegate({ profile: "review", label: "multi", scope: "." }));
     assert.match(error.message, /first useful finding/);
     assert.match(error.message, /second useful finding/);
+    assert.match(error.message, /Delegation ID for assess_delegation: \S+/);
   } finally {
     env.restore();
   }
