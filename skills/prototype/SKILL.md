@@ -1,15 +1,14 @@
 ---
 name: prototype
-description: "Build throwaway code that answers one named design question before real effort is committed: does this state model hold, does this approach perform, what should this look like. Use when a spec or grilling session hits a fork that arguing cannot settle, or when the owner wants to feel an idea before investing in it. The verdict survives; the code does not."
+description: "This skill is used to build throwaway code that answers one named design question before real effort is committed. Use when a spec or grilling session hits a fork that arguing cannot settle, or when the owner wants to feel an idea before investing in it."
 ---
 
 # Prototype
 
 A prototype is throwaway code that answers a question. Name the question in
-one sentence before writing anything, because the question decides the
-shape, and a prototype without one is just unreviewed product code.
+one sentence before writing anything.
 
-## Question shapes
+## Shape of the Prototype question
 
 - **"Does this logic or state model feel right?"** Build the smallest
   driver that pushes the model through the cases that are hard to reason
@@ -20,8 +19,7 @@ shape, and a prototype without one is just unreviewed product code.
   everything except the one risky mechanism, measure it with real-shaped
   data, report the number against the budget.
 - **"What should this look like?"** Several genuinely different variants
-  behind one toggle, not one variant with three color schemes. The point is
-  to compare shapes.
+  behind one toggle, not one variant with three color schemes. 
 
 ## Rules
 

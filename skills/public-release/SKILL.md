@@ -1,6 +1,6 @@
 ---
 name: public-release
-description: "Prepare a repo's public-release export (filtered tree, fresh orphan first commit, secret and size scans, license and CI safety review, external changelog, clean-room proof), then stop and hand the owner the export. Use when the owner asks to prepare a public release, publish a repo, or cut a public export."
+description: "Use when the owner asks to prepare a public release, publish a repo, or cut a public export."
 disable-model-invocation: true
 ---
 

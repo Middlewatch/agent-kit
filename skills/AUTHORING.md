@@ -146,11 +146,6 @@ formatting, and bulk migrations do not get entries.
 - Outcome (YYYY-MM-DD sweep): appended later by the sweep
 ```
 
-A cautionary precedent: the deep-research run ledger was retired in August 2026 because
-it had a writer but no reader (one journal mention in two weeks). These ledgers earn
-their place only while the sweep reads them; if the sweeps stop, retire the ledgers
-rather than letting the ritual run on.
-
 ## Verify a skill before deployment
 
 Use them, literally, just open a chat and use them. Thats all there is to it.

@@ -1,6 +1,6 @@
 # Project layout
 
-This document defines the directory shape of a project under
+This document defines the directory shape of a project 
 
 ## Shape
 
