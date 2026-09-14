@@ -2,6 +2,7 @@
 import { homedir } from "node:os";
 import { basename, join } from "node:path";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { installTranscriptCopy } from "./copy.ts";
 import { countEstate, type EstateCounts, type EstateSources } from "./estate.ts";
 import { buildFooterLines, type FooterFacts } from "./footer.ts";
 import { buildHeaderLines, type HeaderFacts } from "./header.ts";
@@ -137,6 +138,8 @@ export function registerChrome(pi: ExtensionAPI): void {
 			dispose: footerData.onBranchChange(() => tui.requestRender()),
 			invalidate() {},
 			render(width: number): string[] {
+				// Every frame reaches the live renderer here, so a swapped one gets the copy layer too.
+				installTranscriptCopy(tui);
 				const facts = collectFooterFacts(pi, ctx, footerData);
 				shared.branch = facts.branch ?? shared.branch;
 				return buildFooterLines(facts, theme, width);

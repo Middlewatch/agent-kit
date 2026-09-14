@@ -1,8 +1,9 @@
 # pi-tui
 
 The owner's TUI layer for pi: legible tool output, a labeled footer, a
-fade-glyph header with estate facts, a glanceable todo widget, and
-`/edit` into neovim on real paths. Spec:
+fade-glyph header with estate facts, a glanceable todo widget,
+transcript-backed copy in fullscreen mode, and `/edit` into neovim on
+real paths. Spec:
 `docs/specs/2026-08-30-pi-tui.md` in the kit repo.
 
 ## What it changes
@@ -23,6 +24,13 @@ fade-glyph header with estate facts, a glanceable todo widget, and
 - **Todo widget.** It rides the todo tool's result details and shows a
   settled-count summary plus up to four open items above the editor.
 - **Working indicator.** The glyph's shade blocks breathe in accent.
+- **Transcript copy.** In fullscreen mode, a mouse selection copies what
+  the transcript holds rather than what the screen shows: fenced code
+  blocks come back as their markdown source (no message margin or
+  code-block indent, wrapped lines rejoined, tabs kept), prose loses its
+  margin, and gutter tool output loses the `│ ` bar. pi's own
+  `fullscreenCopyOnSelect` setting and `Ctrl+X` keep working, and any row
+  the layer cannot resolve copies as pi renders it.
 - **`/edit`.** A two-level picker over estate files: choose a root, then
   a file within it, typing to fuzzy-filter (esc clears the filter, then
   backs out to the roots). The roots are:
@@ -57,8 +65,11 @@ scratch file, resume).
 ## Tests
 
 ```bash
-npm test            # line builders, discovery, and delayed header refresh
+npm test            # line builders, discovery, delayed header refresh, and selection extraction
 npm run typecheck
 ```
+
+The copy layer's live check: in fullscreen mode, drag across an indented
+code block and paste; the lines should carry only their own indentation.
 
 Design notes in `DESIGN.md`.

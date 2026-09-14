@@ -20,6 +20,7 @@ is asserted with `visibleWidth`. The `Style` type is a structural
 | `edit-targets.ts` | `discoverEditRoots`, `scanMarkdown`, `filterTargets` | none |
 | `edit-command.ts` | none | two-level picker + command wiring |
 | `editor.ts` | `editorCommand` | `suspendAndEdit` |
+| `copy.ts` | `extractSelection`, `fencedBlocks`, `mapCodeRows` | `installTranscriptCopy` |
 
 ## Decisions that surprised the spec
 
@@ -69,6 +70,36 @@ is asserted with `visibleWidth`. The `Style` type is a structural
   spawn with `stdio: "inherit"`, `tui.start()`, `requestRender(true)`,
   lifted from pi's ctrl+g handler. The `tui` object comes from the
   `ctx.ui.custom()` factory.
+
+- **Transcript copy overrides one private renderer method.** pi's
+  fullscreen drag-select copies a slice of the rendered scroll content
+  (`TuiAltScreen.getActiveSelectionText`), which is why copied code
+  carries the message margin and the markdown code-block indent. The
+  `tui` handle pi passes to header, footer, and custom factories is a
+  proxy whose `set` trap writes through to the live renderer, so the
+  footer's render installs an own-property override on the instance;
+  pi's release handler, `Ctrl+X`, and its clipboard delivery all call
+  through it. `getSelectionBounds`, `currentLayout`, and the method
+  itself are private in the type declarations but plain properties at
+  runtime, so the override wraps everything in a fallback to pi's text.
+  A TUI mode change creates a fresh renderer; the install marker lives on
+  the instance, and the footer renders every frame, so the swap is
+  covered without an event.
+- **Rows map to source by replaying the layout, then validating.** The
+  layout frame stops at pi's document `Container` (plain containers are
+  not layout nodes), so the walk descends `children`, locating each
+  child's rendered lines inside its parent's from the stacked position
+  (pi's tool component paints a blank row before its container in
+  self-shell mode, so plain height sums would drift by one). Renders
+  along the way are cached by their components. A `Markdown` leaf
+  exposes its source, and each fenced block is replayed the way the
+  renderer paints it (fence, `codeBlockIndent` plus line through
+  `wrapTextWithAnsi`, fence); a block claims rows only when every row
+  matches the painted text, and every row is checked against the scroll
+  content before its leaf is trusted. Anything unmatched (a parent that
+  rewrites lines, nested fences, streaming partials) falls back to pi's
+  slice for that row. pi aliases `@earendil-works/pi-tui` to its own
+  copy for extensions, so the replay wraps with the renderer's code.
 
 ## Known coupling
 
