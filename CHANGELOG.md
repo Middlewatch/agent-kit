@@ -14,6 +14,11 @@ semver.
 
 ### Changed
 
+- `extensions/pi-tui`: the progress widget derives from task-list lines in
+  assistant replies (`- [ ]`, `- [x]`, `- [-] … (skip: reason)`) instead of
+  a todo tool; `guidance/AGENTS.md` and the evoker-mode playbook standard
+  name that convention. Gutter overrides cover only pi's four default tools,
+  so `grep`, `find`, and `ls` stay inactive as in stock pi.
 - `guidance/AGENTS.md`: the owner-gates list is exhaustive and a question-form
   request is a request; the prose standard applies to documents rather than
   every reply; the "most important information last" rule names the intent
@@ -35,6 +40,8 @@ semver.
 
 ### Removed
 
+- `extensions/todo`: session logs showed it write-only (85% `status` calls,
+  `list` called once); the pi-tui progress widget replaces it.
 - `tools/lemonade-hub-sync`: tied to one inference server's internals and
   one disk layout, so it moved to the owner's private tools repo.
 

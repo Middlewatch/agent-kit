@@ -125,7 +125,7 @@ guidance/            AGENTS.md (global guide), CLAUDE.md, LOCATIONS.md,
 skills/              one directory per skill, plus AUTHORING.md and the index
 prompts/             prompt templates (/prompt picker library)
 extensions/          pi extensions: pi-interlock, pi-scratchpad, agent-delegate,
-                     pageview, todo, pi-tui, prompt-picker, pi-config,
+                     pageview, pi-tui, prompt-picker, pi-config,
                      sysprompt-editor
 tools/               sess, prefixdiff, portaudit, introspect-scan
 tests/               test_check.py and the fixture kit it installs

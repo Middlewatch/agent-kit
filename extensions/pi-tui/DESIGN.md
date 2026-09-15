@@ -16,7 +16,7 @@ is asserted with `visibleWidth`. The `Style` type is a structural
 | `footer.ts` | three line builders, `stripSelfName` | `chrome.ts` |
 | `header.ts` | glyph, centering, fact lines | `chrome.ts` |
 | `estate.ts` | none | async filesystem counts, tested against fixtures |
-| `todo-widget.ts` | `buildTodoWidgetLines` | event wiring in-file |
+| `progress-widget.ts` | `parseTaskLines`, `applyItems`, `buildProgressWidgetLines` | event wiring in-file |
 | `edit-targets.ts` | `discoverEditRoots`, `scanMarkdown`, `filterTargets` | none |
 | `edit-command.ts` | none | two-level picker + command wiring |
 | `editor.ts` | `editorCommand` | `suspendAndEdit` |
@@ -53,10 +53,12 @@ is asserted with `visibleWidth`. The `Style` type is a structural
   `resultLines` renders in `muted`, leaving assistant prose the only
   full-strength text between tool blocks. Error lines keep `error`, and
   diffs keep their diff colors.
-- **The todo widget couples to a contract rather than an extension.** It
-  replays the todo tool's result `details` from the branch (the same
-  mechanism the todo extension itself uses after forks), so neither
-  extension imports the other.
+- **The progress widget reads assistant text, not a tool.** Task-list
+  lines in replies are the source, so the agent spends no tool calls on
+  bookkeeping and no schema rides every request. Session history showed
+  the earlier todo tool was write-only (85% `status` updates, `list`
+  called once), so tracking moved to prose the guide already asks for.
+  The list replays from the branch after resume and fork.
 - **Line builders must cache, because pi renders every component on
   every frame.** `Container.render` walks all children with no cache,
   and every input event (each wheel tick in fullscreen mode) forces a

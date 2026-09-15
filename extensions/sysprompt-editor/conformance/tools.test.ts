@@ -5,9 +5,6 @@ import { fileURLToPath } from "node:url";
 import {
   createBashToolDefinition,
   createEditToolDefinition,
-  createFindToolDefinition,
-  createGrepToolDefinition,
-  createLsToolDefinition,
   createReadToolDefinition,
   createWriteToolDefinition,
   type ExtensionAPI,
@@ -20,9 +17,6 @@ const builtinDefinitions = [
   createReadToolDefinition,
   createEditToolDefinition,
   createWriteToolDefinition,
-  createGrepToolDefinition,
-  createFindToolDefinition,
-  createLsToolDefinition,
 ];
 
 function once(text: string, value: string): void {

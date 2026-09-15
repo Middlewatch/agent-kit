@@ -7,14 +7,14 @@ disable-model-invocation: true
 # Evoker Mode
 
 A full router across many different workflow paradigms. Match the task to a playbook, copy
-its steps verbatim into the todo list, ground the choices in principles, and cite only the
+its steps verbatim into your reply as a task list, ground the choices in principles, and cite only the
 principles that changed a decision. The router contract and playbook format are
 `guidance/playbook-standard.md`.
 
 ## Non-negotiables
 
 **Ground every multi-step task in the Principles index below; the matched playbook's steps
-go first in the todo list, per the playbook standard. After copying them, append one todo
+go first in the task list, per the playbook standard. After copying them, append one
 item, `Read principle files: <the ones this task triggers>`, and read only the files whose
 rule you expect to cite, each before the step it informs.** In your reply, cite each principle that changed a decision
 by the specific rule from its file, and say what it changed.
@@ -140,8 +140,9 @@ file you produce, including test scripts.
 ## Playbooks
 
 Per `guidance/playbook-standard.md`: match one playbook (narrower wins), copy its numbered
-steps verbatim as the first todo items, mark any step you will not run with `skip:
-<reason>`, and route to leaf skills when their step fires. When none fits, say so and
+steps verbatim as the first task-list items (`- [ ] step`, `- [x] step` once it lands),
+mark any step you will not run `- [-] step (skip: <reason>)`, and route to leaf skills
+when their step fires. When none fits, say so and
 proceed without one.
 
 - **Investigation.** Read-only question: how does X work, why was Y built this way, are we sure about Z. `playbooks/investigation.md`.

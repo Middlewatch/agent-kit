@@ -8,11 +8,14 @@ real paths. Spec:
 
 ## What it changes
 
-- **Tool rendering.** The seven built-in tools (`bash`, `read`, `edit`,
-  `write`, `grep`, `find`, `ls`) render gutter-style with no background
+- **Tool rendering.** Pi's four default tools (`bash`, `read`, `edit`,
+  `write`) render gutter-style with no background
   fill: a status-glyph header (`●`/`◌`), output lines behind a dim `│`
   gutter, and a closing `╰` line with status, duration, and hidden-line
   count. Execution still delegates to the built-in implementations.
+  `grep`, `find`, and `ls` are left unregistered, so they stay inactive as
+  in stock pi; the models that used them reached for `rg`/`ls` in bash
+  over 95% of the time anyway.
 - **Footer.** Three labeled lines: location (cwd, `⎇` branch, session
   name), session (`model`, `think`, `ctx … of …`, `in`, `out`, `hit`,
   cost), and extensions (each `setStatus` value labeled with its
@@ -21,8 +24,13 @@ real paths. Spec:
   shade blocks) over the workspace, branch, and estate counts (skills,
   extensions, inbox notes). Filesystem counts refresh asynchronously every
   30 seconds; the header shows cached values while a read is pending.
-- **Todo widget.** It rides the todo tool's result details and shows a
-  settled-count summary plus up to four open items above the editor.
+- **Progress widget.** Derived from the assistant's own replies, so it
+  costs no tool calls: markdown task-list lines (`- [ ] slice`, `- [x]
+  slice`, `- [-] slice (skip: reason)`) in assistant text become items keyed
+  by their text, latest status wins. Above the editor it shows a settled
+  count plus up to four open items, flags a skip with no reason, and clears
+  when the next user message arrives after every item has settled. The
+  list rebuilds from the session branch on start, resume, and fork.
 - **Working indicator.** The glyph's shade blocks breathe in accent.
 - **Transcript copy.** In fullscreen mode, a mouse selection copies what
   the transcript holds rather than what the screen shows: fenced code

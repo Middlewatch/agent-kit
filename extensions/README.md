@@ -18,7 +18,7 @@ repo and is installed separately.
 - `agent-delegate`: the depth-one `delegate` tool: explore, review, and
   research children, named agent definitions, and worktree-jailed writers.
 - `pi-tui`: the owner's TUI layer: gutter tool rendering, labeled footer,
-  fade-glyph header, todo widget, `/edit` into neovim, and the
+  fade-glyph header, progress widget, `/edit` into neovim, and the
   modus-vivendi-tinted theme; spec at `docs/specs/2026-08-30-pi-tui.md`.
 - `prompt-picker`: `/prompt` picker over the kit's `prompts/` library with
   live preview; inserts the chosen template into the editor.
@@ -31,8 +31,8 @@ repo and is installed separately.
   and output-tests templates. It fails open to the stock prompt.
 
 Each extension keeps its README in its directory, with tests and a design
-doc where the extension is large enough to need them (`todo` is a single
-file with a README only). Tests run in the extension's directory:
+doc where the extension is large enough to need them. Tests run in the
+extension's directory:
 
 - `npm run test:unit` for pi-interlock
 - `npm test` for pi-scratchpad, pageview, agent-delegate, and pi-tui

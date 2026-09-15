@@ -9,9 +9,6 @@ import type { AgentToolResult, ExtensionAPI, Theme, ToolRenderResultOptions } fr
 import {
 	createBashToolDefinition,
 	createEditToolDefinition,
-	createFindToolDefinition,
-	createGrepToolDefinition,
-	createLsToolDefinition,
 	createReadToolDefinition,
 	createWriteToolDefinition,
 } from "@earendil-works/pi-coding-agent";
@@ -135,30 +132,6 @@ const SPECS: GutterToolSpec[] = [
 			const count = String(args.content ?? "").split("\n").length;
 			return `${String(args.path ?? "")} ${dim(style, `(${count} lines)`)}`;
 		},
-	},
-	{
-		name: "grep",
-		create: createGrepToolDefinition,
-		collapsed: 6,
-		keep: "head",
-		summary: (args, style) => {
-			const where = [args.path, args.glob && `glob ${args.glob}`, args.ignoreCase && "-i"].filter(Boolean);
-			return `${String(args.pattern ?? "")}${where.length ? ` ${dim(style, `(${where.join(", ")})`)}` : ""}`;
-		},
-	},
-	{
-		name: "find",
-		create: createFindToolDefinition,
-		collapsed: 6,
-		keep: "head",
-		summary: (args, style) => String(args.pattern ?? "") + (args.path ? ` ${dim(style, `(in ${args.path})`)}` : ""),
-	},
-	{
-		name: "ls",
-		create: createLsToolDefinition,
-		collapsed: 6,
-		keep: "head",
-		summary: (args, _style) => String(args.path ?? "."),
 	},
 ];
 

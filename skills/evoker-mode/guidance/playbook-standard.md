@@ -8,8 +8,8 @@ pstack's `poteto-mode` (github.com/cursor/plugins, MIT).
 A skill that both routes and executes drifts: the agent reads it, writes a
 bespoke plan, and drops named steps along the way. Splitting the two fixes
 this. A **router** matches the task to a task shape. A **playbook** is the
-step list for one shape, and it enters the todo list verbatim, so a dropped
-step is visible instead of silent.
+step list for one shape, and it enters the reply as a task list verbatim, so
+a dropped step is visible instead of silent.
 
 A playbook is not a skill. It has no frontmatter, is not independently
 invocable, and is only reached through its router. Leaf skills (diagnose,
@@ -22,10 +22,13 @@ any task-specific reasoning:
 
 1. **Match** the task to one playbook. When two fit, the narrower wins. When
    none fits, say so and proceed without one; do not force a match.
-2. **Copy the matched playbook's numbered steps verbatim** as the first todo
-   items, ahead of any task-specific todos.
-3. **Mark every step it will not run** with `skip: <one-line reason>` in the
-   todo list. The step stays visible.
+2. **Copy the matched playbook's numbered steps verbatim** as the first
+   task-list items in the reply (`- [ ] step`, then `- [x] step` when it
+   lands), ahead of any task-specific items. The TUI progress widget
+   reads these lines.
+3. **Mark every step it will not run** as `- [-] step (skip: <one-line
+   reason>)`. The step stays visible, and the widget flags a skip with no
+   reason.
 4. **Route** to the leaf skills a step names when that step fires, reading
    the skill at that point rather than up front.
 
@@ -41,7 +44,7 @@ One file per task shape, in a `playbooks/` directory beside the router's
 - **Ownership line**, bold: "You own <the one thing this playbook
   guarantees>," followed by the trigger phrases that select it and any
   neighbor it is commonly confused with.
-- **Numbered steps.** Each step is an action the agent can put in a todo
+- **Numbered steps.** Each step is an action the agent can put in a task
   list as written. A step that invokes a leaf skill names it.
 - **Reply**, bold: what the final reply to the owner must contain.
 

@@ -1,9 +1,6 @@
 import {
 	createBashToolDefinition,
 	createEditToolDefinition,
-	createFindToolDefinition,
-	createGrepToolDefinition,
-	createLsToolDefinition,
 	createReadToolDefinition,
 	createWriteToolDefinition,
 	type ExtensionAPI,
@@ -22,9 +19,6 @@ const builtinDefinitions = [
 	createReadToolDefinition,
 	createEditToolDefinition,
 	createWriteToolDefinition,
-	createGrepToolDefinition,
-	createFindToolDefinition,
-	createLsToolDefinition,
 ];
 
 function registeredTools(): Map<string, ToolDefinition> {
@@ -157,13 +151,7 @@ describe("summaries", () => {
 		);
 	});
 
-	it("grep shows pattern with qualifiers", () => {
-		expect(spec("grep").summary({ pattern: "TODO", glob: "*.ts", ignoreCase: true }, style)).toBe(
-			"TODO <dim>(glob *.ts, -i)</>",
-		);
-	});
-
-	it("covers every built-in the spec names", () => {
-		expect(SPECS.map((s) => s.name).sort()).toEqual(["bash", "edit", "find", "grep", "ls", "read", "write"]);
+	it("overrides only pi's default active tools, so grep/find/ls stay inactive", () => {
+		expect(SPECS.map((s) => s.name).sort()).toEqual(["bash", "edit", "read", "write"]);
 	});
 });
