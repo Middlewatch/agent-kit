@@ -34,6 +34,7 @@ import {
   type PromptEvidence,
 } from "./lib/evidence.ts";
 import { coreSource, onFinalPayload } from "./lib/pi-contract.ts";
+import { readLocalTools } from "./lib/local-tools.ts";
 import { splitTail, splicePrompt } from "./lib/splice.ts";
 import {
   PINNED_PI_VERSION,
@@ -260,6 +261,7 @@ export default function systemPromptExtension(
         contextFiles: files,
       },
       process.env.PI_SCRATCHPAD,
+      readLocalTools(),
     );
     if ("reason" in result) {
       warn(ctx, result.reason);
@@ -666,6 +668,7 @@ export default function systemPromptExtension(
             contextFiles: files,
           },
           process.env.PI_SCRATCHPAD,
+          readLocalTools(),
         );
         if ("reason" in result) evidence.reason = result.reason;
         else {

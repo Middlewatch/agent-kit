@@ -97,7 +97,8 @@ export function scratchpadSection(path: string | undefined): string {
  * placeholder means the template omits that section, and replaceAll no-ops.
  * `scratchpad` is the session scratch directory, or undefined when the
  * pi-scratchpad extension is not running; then `{{PI_SCRATCHPAD}}` renders
- * empty.
+ * empty. `localTools` is the rendered `{{LOCAL_TOOLS}}` body from
+ * lib/local-tools.ts, empty when the machine advertises nothing.
  */
 export function renderTemplate(
   template: string,
@@ -106,6 +107,7 @@ export function renderTemplate(
   skills = "",
   instructions = { global: "", workspace: "" },
   tailSections = { session: "", append: "" },
+  localTools = "",
 ): string | null {
   const tools = extract(
     core,
@@ -122,6 +124,7 @@ export function renderTemplate(
     GUIDELINES: guidelines,
     PI_DOCS: docs,
     PI_SCRATCHPAD: scratchpadSection(scratchpad),
+    LOCAL_TOOLS: localTools,
     SKILLS: skills,
     GLOBAL_INSTRUCTIONS: instructions.global,
     WORKSPACE_INSTRUCTIONS: instructions.workspace,
@@ -130,7 +133,7 @@ export function renderTemplate(
   };
   return template
     .replace(
-      /{{(AVAILABLE_TOOLS|GUIDELINES|PI_DOCS|PI_SCRATCHPAD|SKILLS|GLOBAL_INSTRUCTIONS|WORKSPACE_INSTRUCTIONS|SESSION_CONTEXT|APPENDED_INSTRUCTIONS)}}/g,
+      /{{(AVAILABLE_TOOLS|GUIDELINES|PI_DOCS|PI_SCRATCHPAD|LOCAL_TOOLS|SKILLS|GLOBAL_INSTRUCTIONS|WORKSPACE_INSTRUCTIONS|SESSION_CONTEXT|APPENDED_INSTRUCTIONS)}}/g,
       (_match, name: string) => slots[name]!,
     )
     .trimEnd();
@@ -145,6 +148,7 @@ export function splicePrompt(
     contextFiles?: InstructionFile[];
   },
   scratchpad?: string,
+  localTools = "",
 ): { prompt: string } | { reason: string } {
   for (const slot of ["SESSION_CONTEXT", "APPENDED_INSTRUCTIONS"]) {
     if (template.split(`{{${slot}}}`).length > 2)
@@ -203,6 +207,7 @@ export function splicePrompt(
         ? `<appended_instructions>\n${options.appendSystemPrompt}\n</appended_instructions>`
         : "",
     },
+    localTools,
   );
   if (rendered === null)
     return { reason: "stock core boundary not recognized" };

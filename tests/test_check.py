@@ -111,6 +111,17 @@ class InstallAndCheck(unittest.TestCase):
         settings = json.loads((h.dir / ".pi/agent/settings.json").read_text())
         self.assertIn("~/.agents/kit", settings["packages"])
 
+    def test_advertised_tool_off_path_warns(self):
+        h = self.home()
+        h.install()
+        (h.dir / ".agents/system-tools-index.md").write_text(
+            "# Index\n\n## Advertised\n\n- `demo-built`: on PATH\n- `no-such-tool-xyz`: not installed\n\n## Other\n\n- `also-missing`: outside the section\n"
+        )
+        r = h.check()
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("WARN: system-tools-index: advertised but not on PATH: no-such-tool-xyz", r.stdout)
+        self.assertNotIn("also-missing", r.stdout)
+
     def test_broken_binding(self):
         h = self.home()
         self.assertEqual(h.install().returncode, 0)

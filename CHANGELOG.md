@@ -8,6 +8,13 @@ semver.
 
 ### Added
 
+- `extensions/sysprompt-editor`: a `{{LOCAL_TOOLS}}` slot renders the
+  `## Advertised` section of the machine's `~/.agents/system-tools-index.md`
+  into the prompt, minus names not on PATH; the shipped templates place it
+  after `<available_tools>`, and `bin/check` warns when an advertised name
+  is off PATH. Session logs showed tools named only in the index went
+  unused (`portaudit`, `prefixdiff` 0 calls) while the one a skill names
+  inline (`slopcheck`) was used in 50 sessions.
 - `guidance/sysprompt/astra.md`: a template for GPT-6 Astra whose role block
   carries OpenAI's autonomy, skill-precedence, and name-the-pausing-skill
   guidance. Select it with `/sysprompt switch astra.md`.

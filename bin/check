@@ -185,6 +185,34 @@ def check_inbox_age(warnings: list[str]) -> None:
         )
 
 
+ADVERTISED_LINE = re.compile(r"^- `([^`/\s]+)`: \S")
+
+
+def advertised_tools(index_text: str) -> list[str]:
+    """Tool names in the index's `## Advertised` section, the sysprompt-editor's {{LOCAL_TOOLS}} source."""
+    names: list[str] = []
+    in_section = False
+    for line in index_text.splitlines():
+        if line.startswith("## "):
+            in_section = line.strip() == "## Advertised"
+            continue
+        if in_section:
+            match = ADVERTISED_LINE.match(line)
+            if match:
+                names.append(match.group(1))
+    return names
+
+
+def check_advertised_tools(warnings: list[str]) -> None:
+    """The prompt slot drops a name that is not on PATH silently; this names it so the index gets fixed."""
+    index = AGENTS / "system-tools-index.md"
+    if not index.is_file():
+        return
+    missing = [name for name in advertised_tools(index.read_text()) if shutil.which(name) is None]
+    if missing:
+        warnings.append(f"system-tools-index: advertised but not on PATH: {', '.join(missing)}")
+
+
 def check_install() -> list[str]:
     kit = kit_root()
     if not kit.is_dir():
@@ -197,6 +225,7 @@ def check_install() -> list[str]:
     errors += check_tools(manifest, kit, warnings)
     errors += check_pi_package(manifest, kit)
     check_inbox_age(warnings)
+    check_advertised_tools(warnings)
     for warning in warnings:
         print(f"WARN: {warning}")
     return errors

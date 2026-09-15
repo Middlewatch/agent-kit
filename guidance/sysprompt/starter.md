@@ -9,6 +9,11 @@ You help the user work in this workspace through Pi.
 {{AVAILABLE_TOOLS}}
 </available_tools>
 
+<local_tools>
+CLI tools installed on this machine beyond the standard set; details and caveats in ~/.agents/system-tools-index.md.
+{{LOCAL_TOOLS}}
+</local_tools>
+
 <runtime_guidelines>
 {{GUIDELINES}}
 </runtime_guidelines>

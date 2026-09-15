@@ -52,6 +52,7 @@ preserves instruction-file contents, including whitespace and Markdown fences.
 | `{{SKILLS}}` | Pi's generated skills instructions and catalog. | Skills stay in the tail. |
 | `{{PI_DOCS}}` | Pi's installed documentation pointers. | Documentation pointers omitted. |
 | `{{PI_SCRATCHPAD}}` | Session scratchpad guidance; empty if unset. | Scratchpad prose omitted. |
+| `{{LOCAL_TOOLS}}` | The `## Advertised` bullets of `~/.agents/system-tools-index.md`, minus names not on PATH; empty if the file or section is missing. | Local tool roster omitted. |
 | `{{SESSION_CONTEXT}}` | Pi's working-directory line, matched against its `cwd` input. | The original line stays in the tail. |
 | `{{APPENDED_INSTRUCTIONS}}` | Pi's explicit append text inside `<appended_instructions>`; empty if unset. | The original append stays in the tail. |
 

@@ -164,6 +164,9 @@ verbatim, tagged with path and scope. An omitted slot leaves that scope in the
 tail, in loader order. Repeating either slot fails open. Expansion is single-pass,
 so placeholder text inside a file or generated section stays literal.
 
+`{{LOCAL_TOOLS}}` renders the `## Advertised` bullets of
+`~/.agents/system-tools-index.md`, keeping only names found on PATH, so the
+per-machine CLI roster reaches the prompt without a tracked file naming it.
 `{{APPENDED_INSTRUCTIONS}}` places Pi's explicit append text in a labeled block.
 `{{SESSION_CONTEXT}}` places its working-directory line, validated against the
 loaded `cwd`. Omitted slots leave the original text in the tail; repeated slots
