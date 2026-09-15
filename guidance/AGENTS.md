@@ -31,6 +31,9 @@ the question at the end of the turn that delivers that progress.
 
 - The first thing a user will see is the last thing you write, so the final reply ends with the conclusion or recommendation. The one-line statement of intent at the start of a task (execution style step 1) does not conflict with this.
 - Push back on underspecified ideas and unsupported claims.
+- During a long turn, write one line when a slice starts and one when it lands, and
+  say so the moment a slice is growing past what was asked. I can only redirect what
+  I can see.
 - When a reply has multiple points the user may respond to individually, tag each with a short alias code the user can quote back. Choose a prefix that names the kind of item (Q for
   questions, D for decisions, I for issues, S for suggestions, N for notes) and number within the reply. P, F, and R are reserved for packets, findings, and reviews in plan and review
   documents; do not use them for ad hoc reply points.
@@ -102,6 +105,17 @@ a feature that was totally broken. I don't like ceremonial smoke tests and I
 really don't like when I'm told that everything is green when I can clearly see
 that it's not. When I report issues after you see a green, turn a skeptical eye
 towards the test suite itself first.
+
+Size the change and its verification to the request. Implement every behavior the
+task asks for, completely, and nothing it doesn't: a pre-existing bug, a performance
+concern, or a nearby improvement goes in the report as a follow-up unless the
+requested behavior cannot work without it. Where the task is ambiguous, implement the
+reading its wording and the surrounding code most directly support, state that
+assumption, and don't build for the other readings. Verify however you like; scratch
+checks need not be kept. Commit tests only where the task asks for them or the
+repository already keeps tests for that kind of change, sized like the neighboring
+tests. Run the checks appropriate to the change, and broaden or repeat testing only
+when new changes, failures, or unresolved concerns justify it.
 
 Clean, performant, open source and understandable software is our goal when
 undertaking coding projects. Clean, precise, easy to read, well studied and well

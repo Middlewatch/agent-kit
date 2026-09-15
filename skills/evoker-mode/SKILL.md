@@ -67,7 +67,12 @@ Remaining triggers:
 ## Principles
 
 Each entry names when it applies; the file holds the full rules. Files live in
-`principles/`.
+`principles/`. The architecture and verification principles assume software with
+shared, durable, multi-writer state. For a single-user configuration, a script, or a
+scratch tool, Laziness Protocol decides first, and a durable-state principle (Model the
+Domain, Boundary Discipline, Type System Discipline, Make Operations Idempotent,
+Separate Before Serializing Shared State) applies only once you can name the second
+writer or the reader it protects.
 
 **Core**
 

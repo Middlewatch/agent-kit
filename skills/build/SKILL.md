@@ -28,8 +28,14 @@ owner has seen. Read the spec, `docs/adr/` for the area, `CONTEXT.md` if present
 `docs/FEATURE_MAP.md` and the entries they name in `docs/DATA_MODEL.md` if present, and
 the real code before the first edit. Build to the data-model entry; a slice that would
 change an entry's owner, lifetime, or boundary is a stop per that skill. Check the principle index (`../evoker-mode/SKILL.md`)
-and read in full any principle file the slices' data shapes or boundaries trigger. Note
+and read the principle file whose rule a slice's data shape or boundary triggers, under
+the index's stakes clause. Note
 the base commit for the review diff.
+
+A small agreed change, or any change to a personal configuration, script, or scratch
+tool, takes the short form: orient, make the change, gate once, one review of the whole
+diff, report. The per-slice loop below is for a spec with slices; the per-slice review
+it does not contain is the one at step 7, which runs once.
 
 ## Procedure
 
@@ -55,9 +61,8 @@ pass.
 6. **Commit and tick.** Message names the slice (`S3: ...`). Check the box in the spec in
 the same commit.
 
-At the end of the spec (or at a natural midpoint for a long one):
-
-7. **One review.** Delegate a fresh-context review child with the diff range (`git diff
+7. **One review, at the end of the spec (or a natural midpoint of a long one), never
+per slice.** Delegate a fresh-context review child with the diff range (`git diff
 <base>...HEAD`), the spec, and the repo. Brief: (a) defects, races, and wrong behavior,
 with a reproduction where possible; (b) spec conformance: requirements missing, scope not
 asked for, requirements that look done but are wrong. Under 400 words each axis. The
