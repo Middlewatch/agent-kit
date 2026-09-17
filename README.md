@@ -39,9 +39,8 @@ its clone lands under `$HOME/.pi/agent/git/github.com/Middlewatch/agent-kit`.
 Either way `pi install` registers the Pi package, and `bin/install` completes
 the cross-client links and tool deployment. Restart Pi after the script passes.
 
-Pi loads the extensions, prompt templates, and the one nested skill variant
-from the package manifest; the rest of the skills reach Pi through the
-`~/.agents/skills` link that `bin/install` makes. A `pi install` without
+Pi loads the extensions and prompt templates from the package manifest; the
+skills reach Pi through the `~/.agents/skills` link that `bin/install` makes. A `pi install` without
 `bin/install` gives you the extensions and prompts only.
 
 ### Development checkout
@@ -114,7 +113,7 @@ holds and the write contract for it.
 AGENTS.md            repo charter
 CHANGELOG.md         release notes
 deployments.json     bindings, client links, tool table; bin/install reads it
-package.json         pi package manifest: extensions, prompts, the nested skill variant
+package.json         pi package manifest: extensions, prompts
 bin/install          installer           bin/check    verifier, --lint, --scan
 bin/hooks/           git hooks for a development checkout (pre-push runs the gates)
 bin/lint-exempt.txt  history dirs the lint skips

@@ -20,7 +20,6 @@
     "extensions",
     "prompts",
     "guidance/sysprompt",
-    "skills/deep-research/pi",
     "CHANGELOG.md",
     "!**/node_modules",
     "!**/artifacts",
@@ -43,9 +42,6 @@
     "prompts": [
       "./prompts/*.md",
       "!prompts/README.md"
-    ],
-    "skills": [
-      "./skills/deep-research/pi"
     ]
   },
   "peerDependencies": {

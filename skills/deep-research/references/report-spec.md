@@ -1,7 +1,7 @@
 # Research report spec
 
 The portable contract every harness and mode shares. The evidence-collection engine may differ
-per harness (Claude Code or Pi) and per mode (research, deep), but the output and filing are
+per mode (research, deep), but the output and filing are
 identical everywhere.
 
 ## Report format

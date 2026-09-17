@@ -60,7 +60,7 @@ callers cannot supply a model slug. A malformed tier table fails at load.
 Workflow skills select work for this surface. The
 [build skill](~/.agents/kit/skills/build/SKILL.md) requests a fresh review,
 [deep review](~/.agents/kit/skills/deep-review/SKILL.md) uses judge-tier refuters,
-and [Pi deep research](~/.agents/kit/skills/deep-research/pi/SKILL.md) controls
+and [Pi deep research](~/.agents/kit/skills/deep-research/SKILL.md) controls
 research fan-out. These callers inherit the central routes rather than owning
 model slugs. Claude Code's separate subagent routing is outside this tool.
 

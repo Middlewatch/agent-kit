@@ -1,22 +1,18 @@
 {
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
-  "required": [
-    "findings"
-  ],
+  "required": ["findings"],
   "properties": {
     "findings": {
       "type": "array",
       "description": "Specific, checkable claims extracted from sources actually read.",
       "items": {
         "type": "object",
-        "required": [
-          "claim",
-          "sourceUrl"
-        ],
+        "required": ["claim", "sourceUrl"],
         "properties": {
           "claim": {
             "type": "string",
-            "description": "One specific, checkable claim \u2014 not a topic, a claim that could be true or false."
+            "description": "One specific, checkable claim — not a topic, a claim that could be true or false."
           },
           "sourceUrl": {
             "type": "string",
@@ -32,11 +28,7 @@
           },
           "confidence": {
             "type": "string",
-            "enum": [
-              "high",
-              "medium",
-              "low"
-            ],
+            "enum": ["high", "medium", "low"],
             "description": "How well the source supports the claim."
           }
         }
@@ -44,10 +36,8 @@
     },
     "gaps": {
       "type": "array",
-      "description": "What this sub-question could not settle \u2014 unanswered angles or missing evidence.",
-      "items": {
-        "type": "string"
-      }
+      "description": "What this sub-question could not settle — unanswered angles or missing evidence.",
+      "items": { "type": "string" }
     }
   }
 }

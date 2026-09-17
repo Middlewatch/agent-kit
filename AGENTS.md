@@ -19,8 +19,7 @@ reads; `README.md` explains the convention and the install.
   `guidance/workspaces/*/AGENTS.md`, this file) stay at or under 240 lines;
   procedures go into skills or linked documentation.
 - Skills are served by the `~/.agents/skills -> kit/skills` link; the pi
-  manifest (`package.json`) declares extensions plus the one skill variant pi
-  cannot discover on its own. Tools build from their own directory with the
+  manifest (`package.json`) declares extensions and prompts. Tools build from their own directory with the
   command in `deployments.json`; a missing toolchain skips the tool.
 - Each tool and extension keeps its own README, tests, and design doc in its
   directory; `tools/README.md` and `extensions/README.md` are the indexes.
