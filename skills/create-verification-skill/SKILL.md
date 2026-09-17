@@ -1,20 +1,20 @@
 ---
 name: create-verification-skill
-description: "Use when asked to create a verification skill or a control skill for a repo, or when a project has no scripted way to prove UI/CLI/service behavior."
-disable-model-invocation: true
+description: "Create a project's verification or control skill. Use when asked, or when a project has no scripted way to prove its behavior."
 ---
 
 # Create a verification skill
 
-Every serious project needs a scripted way to drive the real app and prove behavior:
-launch it, exercise a feature the way a user would, and capture evidence. This skill
-generates that as a project-local skill (`.agents/skills/verify-<app>/` in the target
-repo) tailored to the codebase. Write the generator's output for the next agent rather
-than for a human: it will be read cold, mid-task, by an agent that has never seen the app.
+Write a project local skill that can generate a scripted way to drive the real
+app/interface/environment and prove behavior: launch it, exercise a feature the
+way a user would, and capture evidence. Create it  as a project-local skill
+(`.agents/skills/verify-<app>/` in the target repo) tailored to the codebase.
+Write the generator's output for the next agent: it will be read cold,
+mid-task, by an agent that has never seen the app.
 
 ## 1. Interview the repo
 
-Answer these from the codebase and only ask the user what you cannot observe:
+Answer these from the codebase and then ask the user about the things you cannot clearly observe:
 
 - **Surface:** what does a user actually touch? A web UI, a CLI/TUI, a desktop app, an
   API, a mobile app, a library? A repo can have several, so pick the primary one and note
@@ -40,10 +40,9 @@ and remove it in cleanup.
 
 ## 2. Generate the skill
 
-Write `.agents/skills/verify-<app>/SKILL.md` with YAML frontmatter (`name: verify-<app>`
-and a quoted `description` that names the app, the surface, and when to reach for it;
-without frontmatter the skill never registers) and these sections, each grounded in what
-the interview actually found, with no placeholders left:
+Write `.agents/skills/verify-<app>/SKILL.md` with YAML frontmatter (`name:
+verify-<app>` and a quoted `description` that names the trigger conditions for
+use) and these sections, each grounded in what the interview actually found:
 
 - **Launch:** the exact command that starts the app for verification, and how to tell it's
   ready (a log line, a port answering, a prompt). Include teardown. For a short-lived CLI
@@ -54,9 +53,7 @@ the interview actually found, with no placeholders left:
   first whenever anything looks off.
 - **Drive:** the harness recipe with real selectors and commands from this repo rather
   than examples. Prefer stable handles (ARIA labels, data attributes, prompt strings,
-  route paths) over coordinates and tab order. For a TUI whose rendering or feel needs the
-  owner's eyes, point at the estate's `tui-live-review` skill as the escalation; this
-  harness stays headless.
+  route paths) over coordinates and tab order. 
 - **Evidence:** what to capture for a proof and where it goes. State the proof standards:
   exercise the real user path rather than internal setters or test-only endpoints; capture
   the action and the resulting state rather than only the final screen; verify side
@@ -66,33 +63,27 @@ the interview actually found, with no placeholders left:
   network, and git refs rather than trusting its name, because some dry-runs still touch
   the network or open a browser.
 - **Cleanup:** how to tear down instances the run created. Kill only what you started,
-  never by process name. Cleanup removes instances and scratch state, never the evidence:
-  proof artifacts survive the teardown, in a location the skill names.
+  by the pid or handle you recorded. Cleanup removes instances and scratch state and
+  leaves the evidence: proof artifacts survive the teardown, in a location the skill names.
 - **Helpers:** any script the skill ships is executable and its invocation is shown in the
   skill body.
 
 ## 3. Seed the feature map
 
-Create `.agents/skills/verify-<app>/features/README.md` plus one file per user-facing
-feature you can identify, aiming for the top 3-5 to start, drawn from routes, commands,
-menus, or docs. Follow the shape in
-[`references/feature-map-example/`](references/feature-map-example/): a README index and
-one file per feature. Each file answers, from the user's point of view: what the feature
-is, how to reach it, how to drive it with the harness, and what observable end state
-proves it works. The four H2s are `Sub-features`, `How to get to it (user POV)`, `Driving
-it with <harness>`, and `Gotchas`. The map is the repo's maintained verification source,
-so a proof that drives one convenient entry point is incomplete when the map lists others.
+Create `.agents/skills/verify-<app>/features/README.md` plus one file per
+user-facing feature you can identify, aiming for the top 3-5 to start, drawn
+from routes, commands, menus, or docs. Follow the shape in
+[`references/feature-map-example/`](references/feature-map-example/): a README
+index and one file per feature. Each file answers, from the user's point of
+view: what the feature is, how to reach it, how to drive it with the harness,
+and what observable end state proves it works. The map is the repo's maintained
+verification source, so a proof that drives one convenient entry point is
+incomplete when the map lists others.
 
 ## 4. Prove the generated skill before handing it over
 
-Run its own instructions end to end once: launch, doctor, drive ONE mapped feature (one is
-enough, because the map exists so later runs can cover the rest), capture evidence, clean
-up. After cleanup, confirm the evidence still exists at the named location; a cleanup that
-eats the proof fails this step. Fix what fails, and run the generated cleanup after every
-failed iteration too, so broken attempts don't strand processes and ports. A generated
-skill that was never executed is a draft rather than a deliverable.
-
-## 5. Offer the maintenance loop
-
-Point the owner at the `maintain-verification-skill` skill for keeping the map honest as
-the app changes. Suggest a cadence only if they ask.
+Run its own instructions end to end once: launch, doctor, drive one mapped
+feature, capture evidence, clean up. After cleanup, confirm the evidence still
+exists at the named location; a cleanup that eats the proof fails this step.
+Fix what fails, and run the generated cleanup after every failed iteration too,
+so broken attempts don't strand processes and ports.

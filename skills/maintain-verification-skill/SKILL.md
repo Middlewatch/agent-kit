@@ -1,6 +1,6 @@
 ---
 name: maintain-verification-skill
-description: "Use when asked to audit, maintain, or true up a project's verify skill or feature map."
+description: "Audit or true up a project's verify skill or feature map."
 disable-model-invocation: true
 ---
 
@@ -24,10 +24,10 @@ Pick one, and say which:
 
 ## Edit scope
 
-Only edit the verification skill's own directory (its SKILL.md, features/, and any harness
-scripts it owns). Never edit product code during a run: a behavior the map describes that
-the app no longer does is either doc drift (fix the map) or a product regression (report
-it; the map keeps describing the intended behavior).
+Only edit the verification skill's own directory (its SKILL.md, features/, and
+any harness scripts it owns). A behavior the map describes that the app no
+longer does is either doc drift (fix the map) or a product regression (report
+it).
 
 ## Pass
 
@@ -39,50 +39,48 @@ point at `create-verification-skill` instead of inventing a target.
 1. **Index hygiene.** Read the feature map README and glob its sibling files. Fix missing,
 extra, duplicate, or dead entries. Keep this lightweight, with no generated inventory.
 
-2. **Source wave.** One read-only subagent per feature file, launched concurrently. Each
-explains "how does this user-facing feature work?" from source, flags likely doc drift
-with citations, and returns one concise live-verification recipe. Children never drive the
-app and never edit files. Return shape: feature summary, source entry points, likely drift
-or none, one recipe.
+2. **Source wave.** For each feature file, read the source and answer "how does this
+user-facing feature work?", flag likely doc drift with citations, and write one concise
+live-verification recipe. Shape per feature: feature summary, source entry points, likely
+drift or none, one recipe. When the map is large enough that reading every feature's
+source would crowd the live pass (roughly ten or more feature files, or features spanning
+several services), delegate one read-only child per feature file, launched concurrently,
+returning that same shape. Children read source only; driving the app and editing files
+stay with you.
 
 3. **Reconcile.** Every feature file has a returned summary. Merge overlapping recipes
 into as few app states as practical. Spot-check cited drift rather than re-proving clean
 claims. Sweep recent churn for user-facing surfaces missing from the map, and require a
 concrete source path before calling one missing.
 
-4. **Live pass.** Required even when source looks clean. The coordinator owns all driving
-and follows the verification skill's own launch model: one long-lived instance driven
-serially for servers and UIs, or a fresh isolated session per drive for short-lived CLIs.
-The skill's Launch section decides, not this one. Exercise every feature at least once,
-and hold three invariants the whole pass, whatever the failure:
-   1. Never drive an instance you haven't health-checked since it last did something
-      surprising. Doctor before the first drive, doctor on each fresh session where
-      sessions are the unit, and doctor again after any failed drive. Where doctor can't
-      see the failure (a wedged UI state on a healthy process), reset to a known state or
-      relaunch rather than hoping.
-   2. Evidence captured so far survives every cleanup, checked at its named location
-      rather than assumed.
-   3. Nothing a drive started outlives that drive's usefulness. Failed-iteration residue
-      is cleaned whether the session is stuck, exited, or shared; for a shared instance,
-      clean the residue rather than the instance.
+4. **Live pass.**  Follow the verification skill's own launch model: one
+long-lived instance driven serially for servers and UIs, or a fresh isolated
+session per drive for short-lived CLIs.  Exercise every feature at least once,
+and hold the following:
 
-   A doctor failure caused by skill drift is drift: fix it under edit scope, restart
-   whatever the fix invalidated (nothing more), and retry once before calling the pass
-   `blocked`. A feature that can't be reached is `verified-unreachable` only with the
-   concrete prerequisite (auth, entitlement, OS, external state) and the route attempted;
-   if the map omits that prerequisite, that's drift. Any harness fix from triage gets
-   re-driven live before it ships. Final teardown happens after the last drive of the run,
-   including those re-proofs, so nothing outlives the run. Evidence stays, per the skill.
+1. Drive only an instance health-checked since it last did something
+surprising. Doctor after any failed drive. Where doctor can't see the
+failure (a wedged UI state on a healthy process), reset to a known state or
+relaunch.
+2. Make sure that captured evidence survives cleanup.
+3. Nothing a drive started outlives that drive's usefulness, practice good housekeeping.
 
-5. **Triage.** A wrong or missing user-POV description is doc drift: fix it. Working
-behavior the harness can't drive is a harness gap: fix it, and a harness fix follows the
+Note: A doctor failure caused by skill drift is drift: fix it under edit scope,
+restart whatever the fix invalidated, and retry once before calling the pass
+`blocked`. A feature that can't be reached is `verified-unreachable` only with
+the concrete prerequisite (auth, entitlement, OS, external state) and the route
+attempted. Any harness fix from triage gets re-driven live before it ships.
+Final teardown happens after the last drive of the run, including those
+re-proofs, so nothing outlives the run.
+
+5. **Triage.** A wrong or missing user-POV description should be fixed. Working
+behavior the harness can't drive should be fixed. A harness fix follows the
 same helpers rule as generation (scripts executable, invocation documented in the skill
 body). App behavior that's actually broken is a product gap: record it for the owner and
-keep it out of this commit.
+provide a recommended next step after this process is complete (this piece stays out of the commit).
 
-6. **Ship or stop.** For changed: one commit of proven corrections, re-reading every
-changed file first. For clean or blocked: no commit; report the outcome and the coverage
-honestly.
+6. **Ship or stop.** For changed: one commit of proven corrections. For clean
+or blocked: no commit; report the outcome and the coverage honestly.
 
 Keep concise run notes (features covered, unreachable prerequisites, confirmed drift,
-outcome) in a scratch location rather than committing them.
+outcome) in the scratchpad. 
