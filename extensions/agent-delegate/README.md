@@ -131,19 +131,28 @@ and under 8 192 bytes serialized; anything off-list (`$ref`, `allOf`,
 `oneOf`, `anyOf`, `not`, `patternProperties`, `format`, …) fails closed at
 call time.
 
-The child's raw return is capped at 24 KiB, sanitized, scanned, parsed as
-exactly one bare JSON object, and validated against the schema. Validation
-failures fail closed. No model-authored repair pass can add facts absent from
-the child's evidence. The failure names the child and carries a rolling
-transcript of up to 8 KiB. A validated object whose serialization exceeds 24
-KiB is a typed failure (`oversize`). Injection-scan findings ride in the tool
-result's `details.scanFindings` and the delegation record rather than the
-JSON payload. The validated object remains the first text block. A separate final text block exposes the delegation UUID for
-`assess_delegation`, with its fixed overhead reserved inside the complete 24
-KiB model-visible result cap. Prose returns keep the
+The child's whole return is sanitized, scanned, parsed as exactly one bare
+JSON object, and validated against the schema. Validation failures fail
+closed. No model-authored repair pass can add facts absent from the child's
+evidence. The failure names the child, carries a rolling transcript of up to
+8 KiB, and names a file under `records/returns/` holding the child's full
+output, so one bad field never loses the work.
+
+Size never fails a return. The model-visible result has a 24 KiB inline limit,
+which bounds what concurrent children can add to the root's context. A
+validated object over that limit is saved whole to
+`records/returns/<UTC start date>-<id>.json`, and the root receives the path
+and the pretty-printed size of each top-level key in its place. A prose return
+over the limit is cut at 24 KiB with its full copy saved as `.txt` and the
+path at the top. Return files are pruned with the records at 90 days.
+
+Injection-scan findings ride in the tool result's `details.scanFindings` and
+the delegation record rather than the JSON payload. The validated object, or
+its saved-return notice, remains the first text block. A separate final text
+block exposes the delegation UUID for `assess_delegation`, with its fixed
+overhead reserved inside the inline limit. Prose returns keep the
 annotate-then-truncate disposition: a warning header naming the matched
-pattern class and source, content delivered unmodified below it, truncated at
-24 KiB.
+pattern class and source, content delivered unmodified below it.
 
 ## Web boundary (research children)
 

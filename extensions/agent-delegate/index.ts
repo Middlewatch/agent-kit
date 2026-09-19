@@ -18,12 +18,14 @@ import { DELEGATE_PROFILE_NAMES, POOL_LIMITS, type DelegatePoolName, type Delega
 import { THINKING_LEVELS, TIER_NAMES, type ResolvedRoute, type TierName, loadTiers, resolveRoute } from "./src/tiers.ts";
 import { loadAgentDefinitions, type AgentDefinition } from "./src/agents.ts";
 import { createWorktree, removeWorktree, summarizeWorktree, type CreatedWorktree } from "./src/worktree.ts";
-import { PARTIAL_OUTPUT_CAP_BYTES, pruneRecords, writeAssessment, writeRecord, type DelegateStatus, type DelegationRecord, type Usage } from "./src/record.ts";
+import { PARTIAL_OUTPUT_CAP_BYTES, pruneRecords, writeAssessment, writeRecord, writeReturnFile, type DelegateStatus, type DelegationRecord, type Usage } from "./src/record.ts";
 import { annotate, sanitize, scan, type ScanFinding } from "./src/scan.ts";
 import type { SearchProviderName } from "./src/web.ts";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)));
 const DEFAULT_TIMEOUT_MS = 60 * 60 * 1000; // one-hour wall-clock on every profile
+// Inline limit on the model-visible result. A larger return is never failed or
+// cut for size: it is saved whole under records/returns/ and the root gets the path.
 const MAX_RESULT_BYTES = 24 * 1024;
 const MAX_STDERR_BYTES = 16 * 1024;
 const MAX_EVENT_LINE_BYTES = 4 * 1024 * 1024;
@@ -65,20 +67,28 @@ function worktreesDir(): string {
 }
 
 type TypedValidation =
-  | { kind: "ok"; payload: string }
-  | { kind: "invalid"; errors: string[] }
-  | { kind: "oversize"; bytes: number };
+  | { kind: "ok"; value: unknown; payload: string }
+  | { kind: "invalid"; errors: string[] };
 
-/** Extract → validate → oversize-check for one candidate typed-return text. */
-function validateTypedText(schema: object, cleaned: string, maxPayloadBytes = MAX_RESULT_BYTES): TypedValidation {
+/** Extract → validate for one candidate typed-return text. */
+function validateTypedText(schema: object, cleaned: string): TypedValidation {
   const value = extractJson(cleaned);
   if (value === undefined) return { kind: "invalid", errors: ["no JSON object found in child output"] };
   const verdict = validateReturn(schema, value);
   if (!verdict.ok) return { kind: "invalid", errors: verdict.errors };
-  const pretty = JSON.stringify(value, null, 2);
-  const bytes = Buffer.byteLength(pretty, "utf8");
-  if (bytes > maxPayloadBytes) return { kind: "oversize", bytes };
-  return { kind: "ok", payload: pretty };
+  return { kind: "ok", value, payload: JSON.stringify(value, null, 2) };
+}
+
+/** What the root sees in place of a validated object too large to inline. */
+function savedReturnNotice(value: unknown, bytes: number, inlineLimit: number, path: string): string {
+  const sizes = value !== null && typeof value === "object" && !Array.isArray(value)
+    ? Object.entries(value).map(([key, part]) => `${key} ${Buffer.byteLength(JSON.stringify(part, null, 2) ?? "", "utf8")}`).join(", ")
+    : "";
+  return [
+    `Typed return validated. At ${bytes} bytes it is over the ${inlineLimit}-byte inline limit, so it was saved whole instead of inlined.`,
+    `Full JSON: ${path}`,
+    ...(sizes ? [`Top-level keys with pretty-printed bytes: ${sizes}`] : []),
+  ].join("\n");
 }
 
 interface WriterSummaryDetails {
@@ -122,6 +132,8 @@ interface DelegateDetails {
   scanFindings?: ScanFinding[];
   searchProviders?: SearchProviderName[];
   partialOutput?: string;
+  /** Full return on disk: an over-inline-limit success or a failed typed return's raw output. */
+  returnFile?: string;
   provenance?: ProvenanceEntry[];
   provenanceCount?: number;
   /**
@@ -451,7 +463,7 @@ export default function agentDelegate(pi: ExtensionAPI): void {
       "Profiles: explore (default) for read-heavy discovery and tracing, review for adversarial critique, research for web-backed answers returning one JSON object validated against resultSchema. Explore and review may also request a schema-validated return.",
       "Optional tier and thinking select the routing preset and reasoning depth independently of the profile's tools.",
       "The child has four bounded file inspection tools and shell-free git status/diff; no AGENTS.md, built-in tools, edits, memory, delegation, or network outside research's web tools. Writable agents (seeded: editor) edit in their own git worktree and return the branch and diffstat for the root to review and merge.",
-      "Returned URL and path:line citations are checked against the child's provenance ledger; unmatched ones surface in details, and requireMatchedCitations also lists them at the top of the returned text.",
+      "Returned URL and path:line citations are checked against the child's provenance ledger; unmatched ones surface in details, and requireMatchedCitations also lists them at the top of the returned text. A return over the 24 KiB inline limit is saved whole and its file path returned in its place, and a typed return that fails validation leaves its full output at the path named in the error.",
       "Give a complete brief with one question, exact scope, expected evidence, exclusions, and a concise return format. The root verifies claims and owns the final answer.",
       "scope is an existing directory beneath the home directory (or beneath Pi's cwd when Pi runs outside home); Pi refuses home itself, filesystem root, and runtime or credential trees such as ~/.config and ~/.ssh. Calls emitted together run concurrently.",
     ].join(" "),
@@ -794,6 +806,7 @@ export default function agentDelegate(pi: ExtensionAPI): void {
           failureCause: details.status === "completed" ? undefined : details.diagnostic,
           partialOutput: details.partialOutput,
           output: details.status === "completed" ? terminalOutput : undefined,
+          returnFile: details.returnFile,
           validation: details.validation,
           loop: details.loop,
           searchProviders: details.searchProviders,
@@ -962,33 +975,54 @@ export default function agentDelegate(pi: ExtensionAPI): void {
       let typedPayload: string | undefined;
       let contentText = "";
       let citationText = "";
+      // A return the inline limit cannot hold, and a typed return that fails
+      // validation, are saved whole so paid work is never lost to size or to
+      // one bad field. A save failure is reported, never thrown.
+      const saveReturn = (extension: "json" | "txt", text: string): { path?: string; error?: string } => {
+        try {
+          const path = writeReturnFile(recordsDir(), details.startedAt, id, extension, text);
+          details.returnFile = path;
+          return { path };
+        } catch (error) {
+          return { error: error instanceof Error ? error.message : String(error) };
+        }
+      };
       if (details.status === "completed" && params.resultSchema !== undefined) {
-        const capped = trimUtf8(finalText, MAX_RESULT_BYTES);
-        details.truncated = capped.truncated;
-        const cleaned = sanitize(capped.text).text;
+        const cleaned = sanitize(finalText).text;
         citationText = cleaned;
         details.scanFindings = scan(cleaned);
-        const outcome = validateTypedText(params.resultSchema as object, cleaned, contentBudget);
+        const outcome = validateTypedText(params.resultSchema as object, cleaned);
         if (outcome.kind === "ok") {
           details.validation = { outcome: "valid" };
-          typedPayload = outcome.payload;
+          const bytes = Buffer.byteLength(outcome.payload, "utf8");
+          if (bytes <= contentBudget) {
+            typedPayload = outcome.payload;
+          } else {
+            const saved = saveReturn("json", `${outcome.payload}\n`);
+            if (saved.path) {
+              typedPayload = trimUtf8(savedReturnNotice(outcome.value, bytes, contentBudget, saved.path), contentBudget).text;
+            } else {
+              details.status = "failed";
+              details.diagnostic = `typed return validated at ${bytes} bytes, over the ${contentBudget}-byte inline limit, and could not be saved: ${saved.error}`;
+            }
+          }
         } else {
           details.status = "failed";
-          const errors = outcome.kind === "oversize"
-            ? [`validated object serializes to ${outcome.bytes} bytes, leaving no room for the assessment id within the ${MAX_RESULT_BYTES}-byte result cap`]
-            : outcome.errors;
-          details.validation = { outcome: "failed", errors };
-          details.diagnostic = outcome.kind === "oversize"
-            ? `typed return oversize: validated object serializes to ${outcome.bytes} bytes; the complete result cap is ${MAX_RESULT_BYTES}`
-            : `typed return failed schema validation: ${outcome.errors.join("; ")}`;
+          details.validation = { outcome: "failed", errors: outcome.errors };
+          const saved = saveReturn("txt", cleaned);
+          details.diagnostic = `typed return failed schema validation: ${outcome.errors.join("; ")}; ${saved.path ? `full child output: ${saved.path}` : `full child output could not be saved: ${saved.error}`}`;
         }
       } else {
         const cleaned = sanitize(finalText || stderrText() || "(child produced no final text)").text;
         citationText = cleaned;
         details.scanFindings = scan(cleaned);
-        const annotated = details.status === "completed"
+        let annotated = details.status === "completed"
           ? annotate(cleaned, details.scanFindings, `delegate child "${details.label}" (${profile.name})`)
           : cleaned;
+        if (details.status === "completed" && Buffer.byteLength(`[${details.label}] ${details.status}\n\n${annotated}`, "utf8") > contentBudget) {
+          const saved = saveReturn("txt", annotated);
+          if (saved.path) annotated = `Full output saved to ${saved.path}; the text below is cut at the inline limit.\n\n${annotated}`;
+        }
         const trimmed = trimUtf8(annotated, MAX_RESULT_BYTES);
         details.truncated = trimmed.truncated;
         contentText = trimmed.text;

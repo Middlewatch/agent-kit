@@ -4,7 +4,7 @@ import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "n
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { PARTIAL_OUTPUT_CAP_BYTES, pruneRecords, writeAssessment, writeRecord, type DelegationRecord } from "../src/record.ts";
+import { PARTIAL_OUTPUT_CAP_BYTES, pruneRecords, writeAssessment, writeRecord, writeReturnFile, type DelegationRecord } from "../src/record.ts";
 
 const USAGE = { input: 100, output: 50, cacheRead: 0, cacheWrite: 0, cost: 0.01, turns: 3, contextTokens: 900 };
 
@@ -115,4 +115,16 @@ test("stored successful-output digest hashes the bounded stored artifact", (t) =
   const row = JSON.parse(readFileSync(join(dir, "2026-08-11.jsonl"), "utf8"));
   assert.equal(row.outputSha256, createHash("sha256").update(row.output).digest("hex"));
   assert.ok(Buffer.byteLength(row.output, "utf8") <= 24 * 1024);
+});
+
+test("return files are written under returns/ and pruned on the record clock", (t) => {
+  const dir = mkdtempSync(join(tmpdir(), "agent-delegate-returns-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const old = writeReturnFile(dir, "2026-05-01T10:00:00.000Z", "child-old", "json", "{}\n");
+  const kept = writeReturnFile(dir, "2026-08-10T23:59:00.000Z", "child-new", "txt", "raw output");
+  assert.equal(kept, join(dir, "returns", "2026-08-10-child-new.txt"));
+  assert.equal(readFileSync(kept, "utf8"), "raw output");
+  assert.equal(pruneRecords(dir, new Date("2026-08-11T12:00:00.000Z")), 1);
+  assert.deepEqual(readdirSync(join(dir, "returns")), ["2026-08-10-child-new.txt"]);
+  assert.ok(old.endsWith("2026-05-01-child-old.json"));
 });

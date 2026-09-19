@@ -3,10 +3,14 @@
  * `~/.local/state/agent-delegate/records/<UTC start date>.jsonl`, local-only,
  * pruned past 90 days at session_start. Records carry the brief verbatim,
  * profile, resolved capability set, accounting, and validation outcome.
+ *
+ * A return too large for the model-visible result, and the raw output of a
+ * typed return that failed validation, are written whole to
+ * `records/returns/<UTC start date>-<id>.<ext>` and pruned on the same clock.
  */
 
 import { createHash, randomUUID } from "node:crypto";
-import { appendFileSync, mkdirSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import { appendFileSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { truncateUtf8 } from "./protocol.ts";
 import type { ScanFinding } from "./scan.ts";
@@ -52,6 +56,7 @@ export interface DelegationRecord {
   partialOutput?: string; // ≤8 KiB rolling assistant transcript on failure paths
   output?: string; // bounded successful return artifact
   outputSha256?: string;
+  returnFile?: string; // full return on disk: an over-inline-limit success or a failed typed return's raw output
   validation?: { outcome: "valid" | "failed"; errors?: string[] };
   loop?: { kind: "cycle" | "error-streak"; detail: string };
   searchProviders?: SearchProviderName[];
@@ -83,6 +88,17 @@ export interface DelegationAssessmentRecord {
 }
 
 const RECORD_FILE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})\.jsonl$/;
+const RETURNS_SUBDIR = "returns";
+const RETURN_FILE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})-.+\.(json|txt)$/;
+
+/** Write one child's full return under `<dir>/returns/` and give back its path. */
+export function writeReturnFile(dir: string, startedAt: string, id: string, extension: "json" | "txt", text: string): string {
+  const returnsDir = join(dir, RETURNS_SUBDIR);
+  mkdirSync(returnsDir, { recursive: true });
+  const path = join(returnsDir, `${new Date(startedAt).toISOString().slice(0, 10)}-${id}.${extension}`);
+  writeFileSync(path, text, "utf8");
+  return path;
+}
 
 /**
  * Append one record to `<dir>/<UTC start date>.jsonl`, creating the
@@ -141,14 +157,19 @@ export function writeAssessment(
 
 /**
  * Remove record files whose `YYYY-MM-DD` name, parsed as a UTC calendar
- * date, is older than maxAgeDays relative to `now`. Returns files removed.
+ * date, is older than maxAgeDays relative to `now`, and return files under
+ * `returns/` on the same rule. Returns files removed.
  */
 export function pruneRecords(dir: string, now: Date, maxAgeDays = 90): number {
+  return pruneDated(dir, RECORD_FILE_PATTERN, now, maxAgeDays) + pruneDated(join(dir, RETURNS_SUBDIR), RETURN_FILE_PATTERN, now, maxAgeDays);
+}
+
+function pruneDated(dir: string, pattern: RegExp, now: Date, maxAgeDays: number): number {
   let entries: string[];
   try {
     entries = readdirSync(dir);
   } catch {
-    return 0; // no record directory yet — nothing to prune
+    return 0; // no such directory yet — nothing to prune
   }
   // Calendar-date comparison: the file name is a UTC calendar date, so the
   // cutoff is now's UTC calendar date minus maxAgeDays (a file exactly at
@@ -157,7 +178,7 @@ export function pruneRecords(dir: string, now: Date, maxAgeDays = 90): number {
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) - maxAgeDays * 24 * 60 * 60 * 1000;
   let removed = 0;
   for (const entry of entries) {
-    const match = RECORD_FILE_PATTERN.exec(entry);
+    const match = pattern.exec(entry);
     if (!match) continue;
     const fileDateMs = Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
     if (fileDateMs < cutoffMs) {

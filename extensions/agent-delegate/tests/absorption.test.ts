@@ -1,13 +1,14 @@
 /**
  * Absorption proof: twelve concurrent typed children each saturating the
  * complete 24 KiB model-visible result stay within the 12 × 24 KiB = 288 KiB
- * parent-side total. The bound includes the separate assessment-id text block;
- * oversize is a typed failure, never a truncation. Stub children
- * via the AGENT_DELEGATE_CHILD_CMD seam; zero live network calls.
+ * parent-side total. The bound includes the separate assessment-id text block.
+ * A larger object is saved to disk and returned as a short notice, so it
+ * shrinks the parent-side total. Stub children via the
+ * AGENT_DELEGATE_CHILD_CMD seam; zero live network calls.
  *
  * The falsification witness runs against this file: with
  * AGENT_DELEGATE_STUB_TARGET_BYTES=25600 exported, every stub returns 25 KiB
- * and the run must fail with typed-oversize errors — not parent-side growth.
+ * and the equality assertions must fail because each result is a notice.
  */
 
 import assert from "node:assert/strict";
