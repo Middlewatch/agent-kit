@@ -1,265 +1,184 @@
 ---
 name: deep-review
 disable-model-invocation: true
-description: "Read a bounded region of a codebase with a skeptic's eye and produce a findings artifact whose every entry survived a written refutation attempt, with any finding that later fails scrutiny withdrawn in the open. An honest clean report is a good outcome. Review only: it never edits product code. Use when the owner asks for a deep review or deep audit, an independent or critical review, a security or correctness sweep, a pre-handoff review, or a hard look at AI-generated code."
+description: "Independent findings artifact over a bounded code region, every finding refuted in writing first. Use when the owner asks for a deep review, audit, or a security or correctness sweep. Review only; the report is the deliverable."
 ---
 
 # Deep review
 
-You are an independent reviewer. Your deliverable is a findings artifact that
-tells the owner plainly what does not work: real defects, proven, with nothing
-invented to fill space. Remediation is a separate decision the owner makes after
-reading the findings, and it goes through the `spec` and `build` skills or an
-explicit fix request.
+The deliverable is a findings report: real defects in a bounded region, each one
+traced to exact lines and refuted in writing before it ships. Remediation is the
+owner's decision after reading it, through `spec` and `build` or an explicit fix
+request. A clean report is a good outcome. A finding invented to justify the run
+is the failure mode, because one bad finding taxes trust in every other one.
 
-## Rules
+The report accumulates on disk as each step completes (scope contract, per-file
+dismissals, findings), because a long review outlives the context window.
 
-**Precision is the priority, and withdrawal is the procedure.** A fabricated,
-exaggerated, or benign finding taxes trust in every other finding, because the
-owner can no longer take any of them at face value. The refutation and refine
-passes below exist to control that risk before the report ships. When a finding
-is discovered to be wrong after it entered the artifact (on a re-check, at
-apply time, or on the owner's read), withdraw it in place: mark it withdrawn
-with the reason, re-check every finding that shared its evidence or reasoning,
-and say so in the report summary. A quietly deleted finding is worse than a
-withdrawn one.
+## 1. Scope contract
 
-**An honest clean report is a good outcome.** If nothing survived scrutiny,
-report that the region is clean and stop. Manufacturing a finding to justify the
-run is the only real failure mode here.
+Write it at the top of the report file before reading anything:
 
-## 1. Declare the scope contract
-
-Before reading anything, write the scope contract at the top of the findings
-artifact. It has four parts:
-
-- **Paths**: the exact files or directories under review, as globs or a list.
-- **Depth**: full-read (every line of every file in scope) or seam-read
-  (the boundaries, contracts, and error paths, with bodies read on demand).
+- **Paths**: the exact files or directories under review.
+- **Depth**: `full-read` (every line of every file) or `seam-read` (boundaries,
+  contracts, and error paths whole; bodies on demand).
 - **Exclusions**: what is deliberately out, and why. Vendored code, generated
-  code, and fixtures are ordinary exclusions. Stating exclusions clearly makes
-  follow-up traces simpler.
-- **Baseline**: commit hash from `git log --oneline -1`, plus the gate script
-  result (pass/fail counts) if the project has one, otherwise a statement that
-  it has none, so a later reader knows what state was reviewed.
+  code, and fixtures are ordinary exclusions.
+- **Baseline**: `git log --oneline -1`, plus the gate result (pass/fail counts)
+  or a statement that the project has no gate.
 
-The contract exists because "review the whole project, no exceptions" is a
-promise no run can keep on a real codebase. A narrow region read
-properly beats a wide region skimmed, and the contract is what makes the
-narrowing visible instead of accidental. If the region is too large for one run,
-say so and propose a split before starting.
+When the region is too large for one run at the declared depth, say so and
+propose a split before starting.
 
-## 2. Read for the depth you declared
+## 2. Read at the declared depth
 
-At full-read depth, read whole files. Reading in small windows to force
-thoroughness is a trap. It burns the context you need for the cross-file
-reasoning where the real bugs live, and a model that has lost the top of the
-file cannot check the invariant established there. At seam-read depth, read
-the boundaries and error paths whole and pull bodies on demand. Depth comes
-from the interrogation and the artifacts below.
+At full-read depth, read whole files. The global guide's rule to script a flood
+instead of reading it yields here: the reading is the work, and the scope
+contract is what keeps it affordable. At seam-read depth, read the boundaries
+and error paths whole and open bodies as a trace needs them.
 
-What does stay non-negotiable is the artifact rule: **a step is done when you
-have produced its artifact.** A read is done when you have stated what you
-read. A verification is done when you have stated what you verified. If you
-cannot produce the artifact, the step did not happen.
+A file that looks like glue, config, or boilerplate gets the same read. It is
+the file everyone else skipped.
 
-Artifacts accumulate on disk as you go rather than in your head. Append the scope
-contract, per-file dismissal lists, and confirmed findings to the report file
-as each step completes. A long review outlives the context window, and anything
-held only in context is lost to compaction.
+When `~/.agents/reference/coding-languages/<lang>/CONVENTIONS.md` exists for
+the region's language, read it first. Each rule there is a bug class the estate
+has already reviewed and resolved.
 
-When a file looks boring or trivial (glue, config, imports, boilerplate), that is not
-permission to skim. It is the signal that you are about to skip the file
-everybody else skipped too, which implies an important finding may be hiding.
+A step is done when its artifact exists: a read when you have written what you
+read, a verification when you have written what you verified.
 
-## 3. Interrogate against the following axes
+## 3. Interrogate
 
-These do not name bug classes. They force reasoning about how code behaves
-under conditions it was not written for, and the bug surfaces as a consequence.
+Ask of each unit, in writing where the answer is not obvious:
 
-1. **Control flow**: for each branch, true, false, or errors while being
-   evaluated. Are both sides reachable? Does each path leave consistent state?
-2. **State**: who else touches this state, in what order, and what if they
-   touch it while execution is paused here (`await`, yield, callback, signal
-   handler, context switch)? What survives across calls, sessions, restarts?
-3. **Resources**: for everything opened, allocated, locked, or subscribed, is
-   it released on *every* path out, including error paths and early returns?
-   Garbage collection is not an escape hatch.
-4. **Failure**: after each error, is state safe or half-mutated? And where
-   does the code swallow a failure and substitute a default (`||`, `??`,
-   `catch {}`, empty handler, logged-and-ignored)? What is that default hiding?
-5. **Origins**: where did each value come from (user input, external system,
-   internal computation)? What values break this line, and can an untrusted
-   source actually reach it?
-6. **Types**: where is a type asserted without proof (a cast, an `as`, an
-   `any`, `.?`, `unreachable`, an unchecked coercion)? What if it is wrong?
-7. **Assumptions**: what must be true for this line to be correct, and is
-   each of those things actually guaranteed by a caller, a type, a check, or
-   an invariant? An assumption nothing enforces is a bug waiting for its input.
-8. **Outside the frame**: what would break here that none of the seven above
-   prompted? A bare "nothing outside the frame" is invalid. Either name
-   something specific you followed, or give a reason grounded in this line's
-   actual content. A justification that cannot be wrong is ceremony.
-9. **Boundaries and ownership**: does this depend on code elsewhere, or does code
-   elsewhere depend on it? Open the other side and check the contract: the
-   precondition the caller assumes, the type the consumer expects, ownership
-   of shared state, the error the other side will see. A contract assumed on
-   one side and unenforced on the other is a finding, and it is invisible to
-   any single-file read.
+1. **Control flow**: is each branch reachable, including the path where the
+   condition itself throws, and does each path leave consistent state?
+2. **State**: who else touches this, in what order, and what if they touch it
+   while execution is paused here (`await`, yield, callback, signal handler)?
+   What survives across calls, sessions, restarts?
+3. **Resources**: is everything opened, allocated, locked, or subscribed
+   released on every exit, including error paths and early returns?
+4. **Failure**: after each error, is state safe or half-mutated? Where does the
+   code swallow a failure and substitute a default (`||`, `??`, `catch {}`,
+   logged-and-ignored), and what is the default hiding?
+5. **Origins**: where did each value come from, what values break this line,
+   and can an untrusted source reach it?
+6. **Types**: where is a type asserted without proof (cast, `as`, `any`,
+   `unreachable`, unchecked coercion), and what if it is wrong?
+7. **Assumptions**: what must be true for this line to be correct, and what
+   enforces each of those things? An assumption nothing enforces is a finding
+   waiting for its input.
+8. **Outside the frame**: what would break here that the seven above did not
+   prompt? Name something specific, or give a reason grounded in this line's
+   content.
+9. **Boundaries**: open the other side of every cross-file dependency and check
+   the contract: the precondition the caller assumes, the type the consumer
+   expects, ownership of shared state, the error the other side sees.
 
-Alongside the axes, five criteria earned from incidents in this estate. Each
-is a finding when it fails:
-
-- **Every new file lands with direct tests on its own layer.** A 1,400-line
-  row-assembly file with zero direct tests hid behind green integration gates.
-- **Dropped or ported-away tests get written deferral notes.** Thirty-eight
-  test blocks vanished silently in a port, and the review had to reconstruct
-  what coverage was lost.
-- **Gate the real path, not a miniature.** A latency gate measured a toy
-  reimplementation while the app path went unmeasured.
-- **Test through the construction path, not just the leaf type.** A by-field
-  struct clone on an enforcement path dropped three security fields; unit
-  tests built the struct directly and stayed green over the hole.
-- **Notice other writers.** A second session widened a shared type, updated
-  one of three call sites, and broke a sibling package invisibly to its own
-  gate. When another session is active, commits stay surgical and affected
-  gates are rerun before green is trusted.
-
-Language packs are an important resource. If `~/.agents/reference/coding-languages/<lang>/` exists,
-read its `CONVENTIONS.md`. Every rule in it is a bug class that the estate has
-already reviewed and resolved.
+When the region is a recent change (a diff, a port, a new package), also apply
+`references/change-review-criteria.md`: five incident-backed rules for new
+files, dropped tests, gates, construction paths, and concurrent writers. On
+settled code the last three still apply and the first two are NOTEs at most.
 
 ## 4. Review your dismissals
 
-Margin bugs are rarely lost unseen. They are lost in the "probably fine"
-moment: you saw it, something felt off, you moved on. That moment is the
-signal to stop and review again.
+Before leaving a file, list every candidate you considered and discarded, each
+with its reason. The depth of the list scales with the file's risk: a trust
+boundary or hot state path gets the full accounting, a re-export file gets a
+line. An empty list on a non-trivial file gets one sentence naming what you
+almost dismissed and confirmed safe. Candidates that come back at this step
+(because the written reason turned out weak) go to step 5.
 
-Before leaving a file, list everything you considered and discarded, each with
-its reason. A dismissal with no reason is drift rather than a decision. Writing
-the reason down is what forces re-engagement, and a meaningful fraction of
-dismissed candidates come back at this step because "I dismissed this because
-X" makes it obvious when X is weak.
+## 5. Prove or refute each candidate
 
-The inventory's depth scales with the file's risk rather than uniformly. A file
-on a trust boundary or a hot state path gets the full accounting, and a trivial
-re-export file gets a line. Uniform ceremony on every file spends the
-re-engagement where it cannot pay.
+Presume the candidate is a real defect, then argue the code's side as hard as
+you can: hunt for the check, type, or invariant that makes it impossible. A
+candidate is a finding only when that argument fails.
 
-An empty dismissal list on a non-trivial file is suspect. If nothing was
-dismissed, say so and name what you almost dismissed and confirmed safe.
-
-## 5. Prove or refute every candidate
-
-Presume every candidate is a real defect, then argue the code's side as hard
-as you can. Hunt for the concrete check, type, or invariant that would make
-it impossible. Only a candidate that survives that argument is a finding.
-
-- Point at exact lines rather than the function.
-- Write the chain out end to end: entry point → precondition 1 → precondition
-  2 → impact, each link verified against the actual code. A missing link means
-  the trace is incomplete.
-- Keep tracing until something concrete stops you: a check that actually
-  blocks, a type that will not coerce, a state that cannot exist. Stopping
-  because it felt done means you stopped early.
+- Point at exact lines.
+- Write the chain end to end: entry point → precondition → precondition →
+  impact, each link checked against the code.
+- Trace until something concrete stops you: a check that blocks, a type that
+  will not coerce, a state that cannot exist.
 - Ask whether the author did this deliberately, and look for the reason.
 
-The survival bar in practice:
-
-- **Finding:** "the `u32` cast of `len` truncates uploads past 4 GiB.
-  Survived because the only upstream bound is a config *default* rather than
-  an enforced limit, and a caller can raise it."
-- **Not a finding:** "this handler has no logging" has no defect chain from
-  entry to impact. It is at most a NOTE, and only if the region's invariants
-  actually need the trace.
+The bar: "the `u32` cast of `len` truncates uploads past 4 GiB; survived
+because the only upstream bound is a config default, and a caller can raise
+it" is a finding. "This handler has no logging" has no chain from entry to
+impact and is at most a NOTE.
 
 ## 6. Refine
 
-Step 5 was still run in a bug-hunting frame, so confirmation bias survives
-it. This pass flips the frame. Read each finding as the author who knows
-something the reviewer does not, and answer in writing:
+Step 5 ran in a bug-hunting frame. Flip it: read each finding as the author who
+knows something the reviewer does not, and answer in writing:
 
-- **Is the line real?** Open the file at that offset. Does the code say what
-  the finding claims?
-- **Is the type what I claimed?** Check the actual signature.
-- **Does the precondition hold?** Is the caller actually constrained that way?
-- **Does the thing I relied on exist?** If you cited a test, does it exist? If
-  you cited a runtime behavior, did you verify it?
+- Is the line real? Open the file at that offset.
+- Is the type what I claimed? Check the signature.
+- Does the precondition hold? Is the caller constrained that way?
+- Does what I relied on hold? A cited test exists and covers the claim; a
+  cited runtime behavior was observed, not inferred.
 
-A finding that stands without these answers was rubber-stamped.
+For each load-bearing finding (every CRITICAL and MAJOR, plus any finding whose
+chain rests on a single inference), delegate one `agent: "refuter"` child:
+task is the claim and its chain, scope is the reviewed region, `resultSchema`
+is the verbatim content of `references/verdict.schema.json`. Its verdict is
+evidence for this pass, and you stay accountable for the finding (root
+obligations: `~/.agents/kit/extensions/agent-delegate/README.md`). Findings
+outside that set get the written frame-flip only.
 
-On Pi, the frame-flip gets independent help: for each load-bearing finding,
-delegate one `agent: "refuter"` child over the agent-delegate surface with
-the finding's claim, the reviewed region as scope, and a small verdict
-schema. A fresh judge-tier context that had no hand in producing the finding
-attempts the disproof. Its verdict is evidence for this pass rather than a
-replacement for it; the root stays accountable (the extension's README,
-`~/.agents/kit/extensions/agent-delegate/README.md`, states the root's
-obligations). The same surface
-serves the read side: a `critic` child can independently review a region you
-have already reviewed, and disagreement between the two reads is itself a
-signal worth chasing.
+When a finding proves wrong after it entered the report (on a re-check, at
+apply time, or on the owner's read), mark it withdrawn in place with the
+reason, re-check every finding that shared its evidence or reasoning, and say
+so in the summary.
 
-## 7. Try to demonstrate
+## 7. Demonstrate
 
-Reasoning is not evidence. Before marking anything theoretical, attempt the
-demonstration (write the input, run the test, make the call) and state in
-the finding what you attempted and why it failed to trigger.
+Before marking a finding theoretical, attempt the demonstration (write the
+input, run the test, make the call) and record in the finding what you tried
+and why it did not trigger. Scripts go to the scratchpad and run against a
+copy or a scratch instance; the reviewed tree, live services, and persisted
+data stay untouched.
 
-Demonstrations are non-destructive. Scripts go to the scratchpad rather than
-into the reviewed tree, and run against a copy or a scratch instance. A
-demonstration that mutates the state under review, live services, or
-persisted data has itself become the incident.
+## 8. Gate every tool
 
-## 8. Tools
-
-A recurring failure is leaning on the existing test corpus and estate tooling
-to prove conformance cheaply. Static analyzers are welcome and encouraged
-but, before admitting any tool's output as evidence:
-
-1. Run it on a file you have already read and understood in this review.
-2. Compare its findings against what you know is true.
-3. Record the result in the artifact, including the false positives.
-
-A tool that misreads the language fails the gate and its output stays out of
-the report. `references/tool-gate-incidents.md` holds the documented cases, including a syntactic analyzer that flagged 71
-live functions as dead on one estate codebase. Read it when a tool's output
-looks too good to gate.
+Before admitting any tool's output as evidence (a static analyzer, a dead-code
+sweep, a test corpus, a generated map): run it on a file you have already read,
+compare its findings with what you know is true, and record the result in the
+report including the false positives. A tool that fails the comparison stays
+out of the report. When a tool's output looks too good, read
+`references/tool-gate-incidents.md` before trusting it.
 
 ## 9. Reconcile
 
-The review is done when it is accounted for rather than when you run out of
-findings.
-Before reporting, reconcile against the scope contract from step 1:
+The review is done when it balances against the scope contract:
 
-- **Every file in scope**: reviewed at the declared depth, or named as not
-  reviewed with a reason.
-- **Every cross-file thread you opened**: traced to where the contract is
-  established, or dismissed with a written reason.
-- **Every dismissed candidate**: still accounted for, none lost between the
-  per-file dismissal review and the final report.
-- **Every tool run**: gated per step 8, with the gate result recorded.
+- Every file in scope: reviewed at the declared depth, or named with a reason.
+- Every cross-file thread opened: traced to where the contract is established,
+  or dismissed with a written reason.
+- Every dismissed candidate: still in the Dismissed table.
+- Every tool run: gated per step 8, result recorded.
 
-A defect noticed outside the scope contract is neither reviewed nor discarded.
-Record it in a one-line "Out of scope, observed" list in the report and move
-on. Expanding scope mid-run breaks the contract, and dropping the observation
-wastes it.
+At full-read depth on a region where a CRITICAL is plausible (a trust boundary,
+a persistence path, an enforcement path), run one `agent: "critic"` child over
+the scope contract before reconciling. A finding it raises that you dismissed,
+or a dismissal it makes of a finding you kept, goes back through step 5.
 
-If the reconciliation exposes a gap, close it and account again. Report only
-when it balances.
+A defect noticed outside the scope contract goes in the "Out of scope,
+observed" list, one line, unreviewed. Close any gap the reconciliation exposes,
+then report.
 
 ## Output
 
-Write to `.local/artifacts/review-<YYYY-MM-DD>-<slug>/REPORT.md` in the
-reviewed project, per `~/.agents/kit/skills/project-scaffold/references/project-layout.md`.
-The report carries:
+Write `.local/artifacts/review-<YYYY-MM-DD>-<slug>/REPORT.md` in the reviewed
+project (layout per
+`~/.agents/kit/skills/project-scaffold/references/project-layout.md`):
 
 ```markdown
-# Deep review — <project> / <region>
+# Deep review: <project> / <region>
 
 **Scope contract**: <paths> · depth: <full-read|seam-read>
 **Excluded**: <what, and why>
-**Baseline**: `<commit>` — gate: <pass/fail counts>
+**Baseline**: `<commit>`, gate: <pass/fail counts>
 **Date**: <YYYY-MM-DD>
 
 ## Findings
@@ -268,9 +187,9 @@ The report carries:
 - **Where**: `path/to/file.ext:120-134`
 - **Class**: <CWE or plain-language class>
 - **Chain**: entry → precondition → precondition → impact
-- **Survived because**: <the refutation you attempted, and why it failed>
-- **Evidence**: <demonstrated: how | theoretical: what you tried, why it didn't trigger>
-- **Fix direction**: <one or two sentences — not a patch>
+- **Survived because**: <the refutation attempted, and why it failed>
+- **Evidence**: <demonstrated: how | theoretical: what was tried, why it did not trigger>
+- **Fix direction**: <one or two sentences, direction only>
 
 ## Dismissed
 
@@ -279,7 +198,7 @@ The report carries:
 
 ## Out of scope, observed
 
-- <one line each — noticed outside the scope contract, recorded, not reviewed>
+- <one line each>
 
 ## Tool gate
 
@@ -293,31 +212,26 @@ The report carries:
 - Dismissed candidates: N raised, N accounted for
 ```
 
-Severity uses the house register:
+Severity:
 
 - **CRITICAL**: wrong behavior, data loss, or a security hole reachable in
   normal use, or a gate that passes over a defect it claims to cover.
-- **MAJOR**: wrong behavior reachable under a realistic but uncommon
-  condition, or a contract violated across a boundary.
-- **MINOR**: a defect with a bounded, recoverable effect, or a correct path
-  that depends on an assumption nothing enforces.
-- **NOTE**: a missing direct test or a maintainability concern. Held to the
-  same refutation standard as any finding but carries no fix obligation. Assign the severity the definition
-supports rather than the one that justifies the run. An honestly labeled MINOR
-is worth more than an inflated MAJOR. Code smells and style are not findings.
-If the region needs a maintainability pass, record that as a single NOTE
-naming `structural-review`, and a disagreement with a ratified `DESIGN.md`
-gets a one-line note naming the governing document. The seam stays one line
-in each direction, and the owner decides whether to open either.
+- **MAJOR**: wrong behavior under a realistic but uncommon condition, or a
+  contract violated across a boundary.
+- **MINOR**: a bounded, recoverable defect, or a correct path that depends on
+  an assumption nothing enforces.
+- **NOTE**: a missing direct test or a maintainability concern; same
+  refutation standard, no fix obligation.
 
-For a clean region, the Findings section reads "none survived scrutiny" and
-the Dismissed table and Reconciliation carry the weight of proof. A clean
-report with an empty Dismissed table is a skipped review rather than a clean
-one.
+Assign the severity the definition supports. Style and code smells are not
+findings: a region that needs a maintainability pass gets one NOTE naming
+`structural-review`, and a disagreement with a ratified `DESIGN.md` gets one
+line naming the document. For a clean region, Findings reads "none survived
+scrutiny" and the Dismissed table and Reconciliation carry the proof; an empty
+Dismissed table means the review was skipped.
 
-## Report back in product terms
+## Report back
 
-Close with what the review means rather than what it did: which findings change
-behavior the owner can observe, which are latent, what the region's overall health
-looks like, and what you deliberately left out of scope. Name the single most
-important thing first.
+Close in product terms, most important thing first: which findings change
+behavior the owner can observe, which are latent, the region's overall health,
+and what was deliberately left out of scope.

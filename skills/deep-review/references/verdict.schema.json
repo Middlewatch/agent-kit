@@ -1,0 +1,21 @@
+{
+  "type": "object",
+  "required": ["verdict", "checked"],
+  "properties": {
+    "verdict": { "enum": ["refuted", "survived", "undetermined"] },
+    "disproof": {
+      "type": "string",
+      "description": "Strongest counter-evidence; empty when survived."
+    },
+    "citations": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "path:line for each claim in disproof."
+    },
+    "checked": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "What was examined, so the search's bounds are known."
+    }
+  }
+}

@@ -41,6 +41,10 @@
       "target": "~/.pi/agent/themes/modus-vivendi-tinted.json"
     },
     {
+      "source": "~/.agents/kit/extensions/pi-tui/themes/ef-dark.json",
+      "target": "~/.pi/agent/themes/ef-dark.json"
+    },
+    {
       "source": "~/.agents/skills",
       "target": "~/.codex/skills"
     }

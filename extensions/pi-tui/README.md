@@ -56,11 +56,12 @@ real paths. Spec:
   real path by suspending the TUI, and reloads the runtime when the
   file changed.
 
-## Theme
+## Themes
 
-`themes/modus-vivendi-tinted.json` maps all pi color tokens from the
-published modus-vivendi-tinted palette; `deployments.json` links it
-into `~/.pi/agent/themes/` so `/settings` can select it and edits hot
+`themes/modus-vivendi-tinted.json` and `themes/ef-dark.json` map all pi
+color tokens from Protesilaos Stavrou's published modus-vivendi-tinted
+and ef-dark palettes; `deployments.json` links them into
+`~/.pi/agent/themes/` so `/settings` can select them and edits hot
 reload.
 
 ## Probes

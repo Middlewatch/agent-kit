@@ -8,6 +8,8 @@ semver.
 
 ### Added
 
+- `extensions/pi-tui`: an `ef-dark` theme alongside modus-vivendi-tinted,
+  linked into `~/.pi/agent/themes/` by `deployments.json`.
 - `extensions/sysprompt-editor`: a `{{LOCAL_TOOLS}}` slot renders the
   `## Advertised` section of the machine's `~/.agents/system-tools-index.md`
   into the prompt, minus names not on PATH; the shipped templates place it

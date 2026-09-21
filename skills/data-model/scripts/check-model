@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+# check-model: every `path: Type` pointer in a data-model doc resolves, and every
+# indexed structure carries its record.
+#
+# usage: check-model [doc]      run from the repo root; doc defaults to docs/DATA_MODEL.md
+#
+# With "Code: ours" in the doc, the record (an "Owner:" line) must sit in the comment
+# above the declaration. With "Code: upstream", it must sit in the doc under "## <Type>".
+# Rows with status `unmapped` need only a pointer that resolves.
+# Every function-shaped name on a Boundary line must exist in the tree's code;
+# an invented function name is the commonest error in a generated record.
+set -u
+
+doc="${1:-docs/DATA_MODEL.md}"
+[ -f "$doc" ] || { echo "check-model: no $doc" >&2; exit 2; }
+
+grep -q '^Code: upstream' "$doc" && mode=upstream || mode=ours
+decl='(type|struct|class|enum|union|interface|trait|const|typedef)'
+fail=0 n=0 mapped=0
+
+# search <name>: whole-word hits in source files; git grep skips ignored and binary files.
+search() {
+    if git rev-parse --git-dir >/dev/null 2>&1; then
+        git grep -Iw --untracked -- "$1" -- ':!*.md' 2>/dev/null
+    else
+        grep -rIw --exclude-dir=.git --exclude='*.md' -- "$1" . 2>/dev/null
+    fi
+}
+
+# names_exist <label> : reads Boundary text on stdin, checks each qualified name's last segment.
+names_exist() {
+    # qualified (pkg.Func, type::method), CamelCase with two humps, or snake_case names
+    grep -o -E '[A-Za-z_][A-Za-z0-9_]*((\.|::)[A-Za-z_][A-Za-z0-9_]*)+|[A-Z][a-z0-9]+[A-Z][A-Za-z0-9]*|[a-z][a-z0-9]*(_[a-z0-9]+)+' |
+    sed -E 's/.*(\.|::)//' | sort -u |
+    while IFS= read -r name; do
+        case "$name" in go|md|h|c|cpp|rs|zig|ts|py|json|jsonl|toml|yaml) continue ;; esac
+        # a hit on a comment line does not count: the record itself names it
+        search "$name" | grep -q -v -E '^[^:]*:[[:space:]]*(//|#|\*|/\*)' ||
+            echo "UNKNOWN NAME  $name (Boundary of $1)"
+    done
+}
+
+# Index rows only: a table line holding a backticked `path: Type`.
+while IFS= read -r row; do
+    ptr=$(printf '%s\n' "$row" | grep -o '`[^` ]*: [A-Za-z_][A-Za-z0-9_.:]*`' | head -1 | tr -d '`')
+    [ -n "$ptr" ] || continue
+    n=$((n + 1))
+    path="${ptr%%: *}" type="${ptr##*: }"
+    if [ ! -f "$path" ]; then
+        echo "MISSING FILE  $ptr"; fail=1; continue
+    fi
+    line=$(grep -n -E "$decl[^;]*\\b$type\\b" "$path" | head -1 | cut -d: -f1)
+    if [ -z "$line" ]; then
+        echo "MISSING TYPE  $ptr"; fail=1; continue
+    fi
+    case "$row" in *'| unmapped |'*) continue ;; esac
+    mapped=$((mapped + 1))
+    if [ "$mode" = ours ]; then
+        start=$((line > 25 ? line - 25 : 1))
+        rec=$(sed -n "${start},${line}p" "$path")
+        printf '%s\n' "$rec" | grep -q 'Owner:' ||
+            { echo "NO RECORD     $ptr (line $line)"; fail=1; }
+        bad=$(printf '%s\n' "$rec" | sed -n '/Boundary:/,/Why:/p' | grep -v 'Why:' | names_exist "$type")
+    else
+        awk -v t="$type" '
+            /^## /  { in_entry = ($0 == "## " t) }
+            in_entry && /^Owner:/ { found = 1 }
+            END { exit !found }' "$doc" ||
+            { echo "NO ENTRY      $ptr"; fail=1; }
+        bad=$(awk -v t="$type" '
+            /^## /  { in_entry = ($0 == "## " t) }
+            in_entry && /^Boundary:/ { print }' "$doc" | names_exist "$type")
+    fi
+    [ -z "$bad" ] || { echo "$bad"; fail=1; }
+done < <(grep '^|' "$doc")
+
+[ "$n" -gt 0 ] || { echo "check-model: no index pointers in $doc" >&2; exit 2; }
+[ "$fail" -eq 0 ] && echo "ok: $n rows, $mapped with records ($mode)"
+exit "$fail"
