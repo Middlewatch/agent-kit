@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { discoverEditRoots, filterTargets, scanMarkdown, type EditRoots } from "../src/edit-targets.ts";
 
-/** Full fixture: skills, prompts, system, a sysprompt-style package, config roots. */
+/** Full fixture: skills, prompts, system files, config roots. */
 function fixtureRoots(): EditRoots {
 	const base = mkdtempSync(join(tmpdir(), "pitui-roots-"));
 	const roots: EditRoots = {
@@ -29,19 +29,7 @@ function fixtureRoots(): EditRoots {
 	mkdirSync(join(roots.cwd, ".pi", "prompts"), { recursive: true });
 	writeFileSync(join(roots.cwd, ".pi", "prompts", "local.md"), "local");
 
-	// A settings package with a guidance/sysprompt/ dir (the kit shape).
-	const pkg = join(base, "kit");
-	mkdirSync(join(pkg, "guidance", "sysprompt"), { recursive: true });
-	writeFileSync(join(pkg, "guidance", "sysprompt", "default.md"), "core");
-	writeFileSync(join(pkg, "guidance", "sysprompt", "owner.md"), "core");
-	writeFileSync(join(pkg, "guidance", "sysprompt", ".active"), "owner"); // pointer, not a target
-	// A second package without templates: contributes no root.
-	const bare = join(base, "bare-pkg");
-	mkdirSync(bare, { recursive: true });
-	writeFileSync(
-		join(roots.piAgentDir, "settings.json"),
-		JSON.stringify({ packages: [pkg, bare] }),
-	);
+	writeFileSync(join(roots.agentsDir, "RULES.md"), "- rule");
 
 	// Config-mapped root with nested files and excluded noise.
 	const wiki = join(base, "wiki");
@@ -66,13 +54,12 @@ describe("discoverEditRoots", () => {
 	const specs = discoverEditRoots(roots);
 	const byLabel = new Map(specs.map((s) => [s.label, s]));
 
-	it("offers skills, prompts, system, sysprompt package, config, and mapped roots", () => {
+	it("offers skills, prompts, system, config, and mapped roots", () => {
 		expect([...byLabel.keys()]).toEqual([
 			"skills",
 			"prompts: global",
 			"prompts: project",
 			"system",
-			"sysprompt: kit",
 			"wiki",
 			"config",
 		]);
@@ -98,9 +85,12 @@ describe("discoverEditRoots", () => {
 		expect(system.get("project append")?.exists).toBe(false);
 	});
 
-	it("probes settings packages for guidance/sysprompt/*.md", () => {
-		const templates = byLabel.get("sysprompt: kit")!.targets;
-		expect(templates.map((t) => t.label)).toEqual(["default", "owner"]);
+	it("offers the estate's prompt files beside pi's slots", () => {
+		const system = new Map(byLabel.get("system")!.targets.map((t) => [t.label, t]));
+		expect(system.get("rules")?.path).toBe(join(roots.agentsDir, "RULES.md"));
+		expect(system.get("rules")?.exists).toBe(true);
+		expect(system.get("rules drop list")?.exists).toBe(false);
+		expect(system.get("global guide")?.path).toBe(join(roots.agentsDir, "AGENTS.md"));
 	});
 
 	it("scans config-mapped roots recursively, excluding dotdirs, node_modules, and non-markdown", () => {

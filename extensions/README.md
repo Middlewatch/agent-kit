@@ -28,7 +28,7 @@ repo and is installed separately.
   prompts, and themes in global or project scope, writing what `pi config`
   writes, then reloads.
 - `prompt-sections`: appends the local CLI roster to pi's stock `<tools>`
-  section and the owner's `guidance/prompt/RULES.md` to `<rules>`, in place.
+  section and the owner's `guidance/RULES.md` to `<rules>`, in place.
   `/sysprompt` shows the prompt as sent, or a preview before the first turn.
 
 Each extension keeps its README in its directory, with tests and a design
@@ -37,5 +37,5 @@ extension's directory:
 
 - `npm run test:unit` for pi-interlock
 - `npm test` for pi-scratchpad, pageview, agent-delegate, and pi-tui
-- `node --test lib.test.ts` for prompt-picker, skill-inline, pi-config, and
-  prompt-sections (which adds `local-tools.test.ts`)
+- `node --test lib.test.ts` for prompt-picker, skill-inline, and pi-config
+- `npm test` and `npm run typecheck` for prompt-sections

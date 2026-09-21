@@ -4,8 +4,8 @@
  *
  * On `before_agent_start` the handler takes the two section bodies from pi's
  * own rendering (`event.systemPrompt`), appends the local CLI roster to
- * `<tools>`, removes the rules listed in `rules-drop.txt` and appends
- * `RULES.md` to `<rules>`, then sets both through `options.sections`, where a
+ * `<tools>`, removes the rules listed in `~/.agents/rules-drop.txt` and
+ * appends `~/.agents/RULES.md` to `<rules>`, then sets both through `options.sections`, where a
  * stock name replaces the section in place. Pi still builds, diffs, and
  * persists every section.
  *
@@ -36,7 +36,8 @@ import {
 import { DEFAULT_INDEX_PATH, readLocalTools } from "./local-tools.ts";
 import { type PromptView, PromptViewer } from "./viewer-ui.ts";
 
-const PROMPT_DIR = join(homedir(), ".agents", "kit", "guidance", "prompt");
+/** The owner's files sit beside the global guide, linked from the kit's `guidance/` by `bin/install`. */
+const AGENTS_DIR = join(homedir(), ".agents");
 
 function readOptional(path: string): string {
 	try {
@@ -49,8 +50,8 @@ function readOptional(path: string): string {
 function readInputs(): SectionInputs {
 	return {
 		roster: readLocalTools(),
-		drop: parseDropList(readOptional(join(PROMPT_DIR, "rules-drop.txt"))),
-		rules: readOptional(join(PROMPT_DIR, "RULES.md")),
+		drop: parseDropList(readOptional(join(AGENTS_DIR, "rules-drop.txt"))),
+		rules: readOptional(join(AGENTS_DIR, "RULES.md")),
 	};
 }
 
@@ -58,7 +59,7 @@ function buildView(ctx: ExtensionCommandContext): PromptView {
 	const inputs = readInputs();
 	const options = ctx.getSystemPromptOptions();
 	const records = ctx.sessionManager
-		.buildSessionContext()
+		.buildSessionProjection()
 		.messages.filter((message) => message.role === "system") as unknown as SystemRecord[];
 	const sent = foldSections(records);
 	const hasSent = Object.keys(sent).length > 0;
@@ -70,8 +71,8 @@ function buildView(ctx: ExtensionCommandContext): PromptView {
 		`Context files\n${(options.contextFiles ?? []).map((file) => `${file.path}  ${file.content.length} chars`).join("\n") || "(none)"}`,
 		[
 			"prompt-sections inputs",
-			`${join(PROMPT_DIR, "RULES.md")}  ${inputs.rules ? `${inputs.rules.length} chars` : "absent"}`,
-			`${join(PROMPT_DIR, "rules-drop.txt")}  ${inputs.drop.length} rule(s)`,
+			`${join(AGENTS_DIR, "RULES.md")}  ${inputs.rules ? `${inputs.rules.length} chars` : "absent"}`,
+			`${join(AGENTS_DIR, "rules-drop.txt")}  ${inputs.drop.length} rule(s)`,
 			`${DEFAULT_INDEX_PATH}  ${inputs.roster ? inputs.roster.split("\n").length : 0} tool(s) on PATH`,
 		].join("\n"),
 	].join("\n\n");

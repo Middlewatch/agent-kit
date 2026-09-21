@@ -1,15 +1,13 @@
 /**
  * Discovery for /edit: estate files grouped into roots for the two-level
- * picker. Built-in roots (skills, prompt templates, system prompt slots)
- * are joined by settings packages that ship a guidance/sysprompt/ dir (the
- * kit's system prompt templates) and by owner-mapped folders from the untracked
+ * picker. Built-in roots (skills, prompt templates, system prompt files)
+ * are joined by owner-mapped folders from the untracked
  * ~/.pi/agent/pi-tui-edit.json, so no machine path lives in this repo.
  */
 import { type Dirent, existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { homedir } from "node:os";
-import { basename, join, resolve } from "node:path";
+import { join, resolve } from "node:path";
 import { fuzzyFilter } from "@earendil-works/pi-tui";
-import { resolvePackageRef } from "./estate.ts";
 
 export interface EditTarget {
 	label: string;
@@ -91,27 +89,16 @@ function fileTarget(label: string, path: string): EditTarget {
 	return { label, path, exists, description: exists ? undefined : "new file" };
 }
 
-function systemTargets(piAgentDir: string, cwd: string): EditTarget[] {
+function systemTargets(agentsDir: string, piAgentDir: string, cwd: string): EditTarget[] {
 	return [
 		fileTarget("global", join(piAgentDir, "SYSTEM.md")),
 		fileTarget("global append", join(piAgentDir, "APPEND_SYSTEM.md")),
 		fileTarget("project", join(cwd, ".pi", "SYSTEM.md")),
 		fileTarget("project append", join(cwd, ".pi", "APPEND_SYSTEM.md")),
+		fileTarget("global guide", join(agentsDir, "AGENTS.md")),
+		fileTarget("rules", join(agentsDir, "RULES.md")),
+		fileTarget("rules drop list", join(agentsDir, "rules-drop.txt")),
 	];
-}
-
-/** User-settings packages that ship guidance/sysprompt/*.md become roots. */
-function packageTemplateRoots(piAgentDir: string, cwd: string): EditRootSpec[] {
-	const settings = readJson(join(piAgentDir, "settings.json"));
-	const entries = Array.isArray(settings?.packages) ? settings.packages : [];
-	const roots: EditRootSpec[] = [];
-	for (const entry of entries) {
-		const ref = resolvePackageRef(entry, piAgentDir, cwd);
-		if (!ref || ref.disabled) continue;
-		const targets = markdownNames(join(ref.root, "guidance", "sysprompt"));
-		if (targets.length > 0) roots.push({ label: `sysprompt: ${basename(ref.root)}`, targets });
-	}
-	return roots;
 }
 
 export interface ScanOptions {
@@ -172,8 +159,7 @@ export function discoverEditRoots(roots: EditRoots): EditRootSpec[] {
 		{ label: "skills", targets: skillTargets(agentsDir) },
 		{ label: "prompts: global", targets: markdownNames(join(piAgentDir, "prompts")) },
 		{ label: "prompts: project", targets: markdownNames(join(cwd, ".pi", "prompts")) },
-		{ label: "system", targets: systemTargets(piAgentDir, cwd) },
-		...packageTemplateRoots(piAgentDir, cwd),
+		{ label: "system", targets: systemTargets(agentsDir, piAgentDir, cwd) },
 		...configRoots(configPath, cwd),
 		{ label: "config", targets: [fileTarget(CONFIG_NAME, configPath)] },
 	];

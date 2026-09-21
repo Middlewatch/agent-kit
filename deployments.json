@@ -17,12 +17,28 @@
       "target": "~/.agents/CLAUDE.md"
     },
     {
+      "source": "kit/guidance/RULES.md",
+      "target": "~/.agents/RULES.md"
+    },
+    {
+      "source": "kit/guidance/rules-drop.txt",
+      "target": "~/.agents/rules-drop.txt"
+    },
+    {
+      "source": "kit/guidance/APPEND_SYSTEM.md",
+      "target": "~/.agents/APPEND_SYSTEM.md"
+    },
+    {
       "source": "kit/skills",
       "target": "~/.agents/skills"
     },
     {
       "source": "~/.agents/AGENTS.md",
       "target": "~/.pi/agent/AGENTS.md"
+    },
+    {
+      "source": "~/.agents/APPEND_SYSTEM.md",
+      "target": "~/.pi/agent/APPEND_SYSTEM.md"
     },
     {
       "source": "~/.agents/CLAUDE.md",

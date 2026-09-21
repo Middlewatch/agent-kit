@@ -1,6 +1,6 @@
 /**
  * /edit — two-level picker over estate files: choose a root (skills,
- * prompts, system slots, sysprompt templates, mapped folders), then a
+ * prompts, system prompt files, mapped folders), then a
  * file within it, with type-to-filter. Opens neovim on the real path
  * (project-relative LSP and git context intact), resuming the session
  * on exit. Changed files trigger a runtime reload so skills and

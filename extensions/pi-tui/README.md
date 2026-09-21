@@ -44,9 +44,9 @@ real paths. Spec:
   backs out to the roots). The roots are:
   - the skills
   - global and project prompt templates
-  - the four canonical system prompt slots
-  - any user-settings package shipping `guidance/sysprompt/*.md` (the
-    kit's sysprompt-editor templates, so edits apply on the next message)
+  - the system prompt files: pi's four `SYSTEM.md` / `APPEND_SYSTEM.md`
+    slots, plus `~/.agents/AGENTS.md`, `~/.agents/RULES.md`, and
+    `~/.agents/rules-drop.txt`
   - any folders mapped in the untracked `~/.pi/agent/pi-tui-edit.json`,
     for example `{"roots": [{"label": "wiki", "path": "~/.agents/wiki"}]}`
 

@@ -6,9 +6,12 @@ prompt is built from named sections.
 
 - `<tools>` gains the local CLI roster: the `## Advertised` bullets of
   `~/.agents/system-tools-index.md`, keeping only names found on PATH.
-- `<rules>` loses the rules listed in
-  `~/.agents/kit/guidance/prompt/rules-drop.txt` and gains the text of
-  `~/.agents/kit/guidance/prompt/RULES.md`. Either file may be absent.
+- `<rules>` loses the rules listed in `~/.agents/rules-drop.txt` and gains
+  the text of `~/.agents/RULES.md`. Either file may be absent or empty.
+
+`bin/install` links both from the kit's `guidance/`, beside `AGENTS.md`, and
+links `guidance/APPEND_SYSTEM.md` through to `~/.pi/agent/APPEND_SYSTEM.md`,
+which pi renders as `<addendum>` with no help from this extension.
 
 Both files are read on every prompt, so an edit takes effect on the next one.
 On a model that accepts mid-conversation system messages the edit arrives as
@@ -56,5 +59,7 @@ added or removed by other extensions flow through without a change here.
 ## Tests
 
 ```bash
-node --test lib.test.ts local-tools.test.ts
+node --test lib.test.ts local-tools.test.ts   # no install needed
+npm install && npm test                        # adds the viewer test (needs pi-tui)
+npm run typecheck
 ```

@@ -9,6 +9,7 @@ import {
 	liftSection,
 	parseDropList,
 	previewPrompt,
+	type SystemRecord,
 	withLocalTools,
 	withRules,
 } from "./lib.ts";
@@ -67,7 +68,7 @@ test("previewPrompt writes both overrides back in place and leaves later text al
 });
 
 test("foldSections applies patches in order and keeps a section's first position", () => {
-	const records = [
+	const records: SystemRecord[] = [
 		{ timestamp: 1, sections: { preamble: "p", rules: "<rules>a</rules>", cwd: "<cwd>/x</cwd>", scratchpad: "s" } },
 		{ timestamp: 2, sections: { rules: "<rules>b</rules>", scratchpad: null }, toolsRemoved: ["write"] },
 	];

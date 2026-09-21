@@ -66,11 +66,13 @@ the root), since `deployments.json` does not list workspace overlays. Managing
 the overlays here keeps every workspace instruction in one editable place.
 Which roots exist on a given machine is a `MACHINE.md` fact.
 
-## prompt/: rules added to pi's system prompt
+## RULES.md, rules-drop.txt, APPEND_SYSTEM.md: pi's system prompt
 
-The `prompt-sections` extension reads two files here on every prompt.
-`RULES.md` is appended to pi's stock `<rules>` section as written; it is the
-owner's voice and, like `AGENTS.md`, yours to rewrite if you fork the kit.
-`rules-drop.txt` names stock rules to remove, one per line. Either file may
-be absent. Only Pi reads these; Claude Code and Codex keep their own system
-prompts.
+Three files beside `AGENTS.md` that shape pi's system prompt, linked into
+`~/.agents/` by `bin/install`. The `prompt-sections` extension appends
+`RULES.md` to pi's stock `<rules>` section as written and removes the stock
+rules named in `rules-drop.txt`, one per line. `APPEND_SYSTEM.md` is linked
+on to `~/.pi/agent/`, where pi reads it and renders it as `<addendum>` after
+its `<docs>` section. All three ship empty or minimal; like `AGENTS.md` they
+are the owner's voice and yours to rewrite if you fork the kit. Only Pi reads
+these; Claude Code and Codex keep their own system prompts.
