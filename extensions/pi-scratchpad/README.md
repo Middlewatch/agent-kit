@@ -10,9 +10,8 @@ for installation and the smoke test.
 ## What a session gets
 
 - `$PI_SCRATCHPAD` in the environment of every bash command.
-- A system-prompt bullet naming the directory and what belongs in it, rendered
-  by sysprompt-editor's `{{PI_SCRATCHPAD}}` placeholder from the same
-  variable.
+- A `<scratchpad>` system prompt section naming the directory and what belongs
+  in it, placed after pi's `<cwd>` (pi 0.86 and later).
 - `/scratchpad` to print the path.
 - Session directories are reaped after 7 idle days, and an unused one is
   removed at shutdown rather than left behind.

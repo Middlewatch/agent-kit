@@ -12,8 +12,8 @@ This directory loads through the kit's pi package
 ```
 
 Every session then gets `$PI_SCRATCHPAD` in its bash environment. `/scratchpad` prints the path in a
-TUI session. The sysprompt-editor extension's `{{PI_SCRATCHPAD}}` template placeholder renders
-a system-prompt bullet naming the directory from the same variable.
+TUI session. On pi 0.86 and later the system prompt gains a `<scratchpad>` section naming the
+directory.
 
 ## Configuration
 

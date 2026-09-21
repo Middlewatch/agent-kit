@@ -84,15 +84,14 @@ The path reaches the agent through two channels and no tool:
   environment by spreading `process.env` at spawn time, so setting the variable
   at `session_start` reaches every command without overriding the bash tool or
   colliding with `pi-interlock`.
-- **A system-prompt bullet** rendered by the prompt owner. sysprompt-editor
-  fills its `{{PI_SCRATCHPAD}}` placeholder from `process.env.PI_SCRATCHPAD`
-  on every `before_agent_start`. This extension no longer appends its own
-  section. Extension load order is filesystem readdir order, so an append
-  here could land before or after the template splice and either duplicate
-  the bullet or leave the placeholder unfilled. Publishing the path at
-  `session_start`, which fires before any `before_agent_start`, has no
-  ordering dependence. When the editor stands down (custom SYSTEM.md, drifted
-  stock shape), the environment variable and `/scratchpad` are the channels.
+- **A `<scratchpad>` system prompt section**, set on every
+  `before_agent_start` through `systemPromptOptions.sections`. Pi 0.86 builds
+  the prompt from named sections and places a new name after `<cwd>`, so
+  handler order cannot move or duplicate it, and the per-session path sits at
+  the end of the prompt where it cannot split a prefix shared across
+  sessions. An extension that renders the whole prompt itself (a forced
+  `systemPrompt` replaces every section) reads `process.env.PI_SCRATCHPAD`
+  instead.
 
 A registered tool was rejected because its schema would sit in the context
 window of every session forever, and the existing `bash`/`write` tools already

@@ -1,0 +1,4 @@
+# Stock pi rules removed from <rules> by the prompt-sections extension.
+# One rule per line, exactly as pi renders it; a rule pi is not emitting is ignored.
+Be concise in your responses
+Show file paths clearly when working with files

@@ -6,12 +6,13 @@ import { resolveTtlMs } from "./paths.ts";
 export const SCRATCHPAD_ENV_VAR = "PI_SCRATCHPAD";
 
 /**
- * This extension does not touch the system prompt. It publishes the path in
- * `process.env.PI_SCRATCHPAD` at session_start, and the prompt owner
- * (sysprompt-editor's `{{PI_SCRATCHPAD}}` placeholder) reads it from there.
- * Extension load order is filesystem readdir order, so a before_agent_start
- * append here could land before or after the template splice; the env var is
- * the only channel with no ordering dependence.
+ * The path reaches the model two ways. `process.env.PI_SCRATCHPAD` is set at
+ * session_start for bash and for any extension that renders the prompt
+ * itself. On pi 0.86 and later, where the prompt is built from named
+ * sections, a `<scratchpad>` section is added on before_agent_start. Sections
+ * are keyed by name and a new name lands after `<cwd>`, so handler order does
+ * not move it, and the per-session path stays at the end of the prompt where
+ * it cannot split a prefix shared across sessions.
  */
 export default function scratchpadExtension(pi: ExtensionAPI): void {
   let scratchpad: string | undefined;
@@ -43,6 +44,10 @@ export default function scratchpadExtension(pi: ExtensionAPI): void {
       .catch(() => {});
   });
 
+  pi.on("before_agent_start", (event) => {
+    if (scratchpad) event.systemPromptOptions.sections.scratchpad = scratchpadSection(scratchpad);
+  });
+
   pi.on("session_shutdown", async () => {
     const ending = scratchpad;
     scratchpad = undefined;
@@ -61,6 +66,15 @@ export default function scratchpadExtension(pi: ExtensionAPI): void {
       ctx.ui.notify(scratchpad ?? "scratchpad unavailable for this session", "info");
     },
   });
+}
+
+function scratchpadSection(path: string): string {
+  return (
+    `\`${path}\` (also \`$PI_SCRATCHPAD\` in bash) is a private scratch directory for this session. ` +
+    "Write bulky intermediate output there instead of into the conversation: full gate and test logs, " +
+    "raw command output, generated data, analysis scripts, then read back the summary. " +
+    "Cite the path when you tell the user where the detail lives. It is deleted after a period of disuse."
+  );
 }
 
 function describe(err: unknown): string {
