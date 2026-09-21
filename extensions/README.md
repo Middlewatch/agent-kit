@@ -22,6 +22,8 @@ repo and is installed separately.
   modus-vivendi-tinted theme; spec at `docs/specs/2026-08-30-pi-tui.md`.
 - `prompt-picker`: `/prompt` picker over the kit's `prompts/` library with
   live preview; inserts the chosen template into the editor.
+- `skill-inline`: expands `/skill:name` on any line of a prompt, several per
+  prompt, so text can frame a skill before and after it.
 - `pi-config`: `/config` picker that enables or disables extensions, skills,
   prompts, and themes in global or project scope, writing what `pi config`
   writes, then reloads.
@@ -35,5 +37,5 @@ extension's directory:
 
 - `npm run test:unit` for pi-interlock
 - `npm test` for pi-scratchpad, pageview, agent-delegate, and pi-tui
-- `node --test lib.test.ts` for prompt-picker, pi-config, and
+- `node --test lib.test.ts` for prompt-picker, skill-inline, pi-config, and
   prompt-sections (which adds `local-tools.test.ts`)

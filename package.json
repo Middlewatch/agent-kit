@@ -35,6 +35,7 @@
         "./extensions/pageview/src/index.ts",
       "./extensions/pi-tui/src/index.ts",
       "./extensions/prompt-picker/index.ts",
+      "./extensions/skill-inline/index.ts",
       "./extensions/pi-config/index.ts",
       "./extensions/prompt-sections/index.ts"
     ],
