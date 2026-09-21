@@ -14,6 +14,24 @@ Both files are read on every prompt, so an edit takes effect on the next one.
 On a model that accepts mid-conversation system messages the edit arrives as
 a patch of that one section.
 
+## /sysprompt
+
+Opens a scrollable overlay of the system prompt (TUI only).
+
+- Once the session has a turn, it shows the sections pi recorded in the
+  transcript: every extension's sections, in the order sent, plus a
+  `changes` tab listing each mid-session patch and tool change.
+- Before the first turn, it shows pi's rendering of the loaded inputs with
+  this extension's two overrides applied. Sections other extensions add on
+  `before_agent_start` (pi-scratchpad's `<scratchpad>`) appear after the
+  first turn.
+- The `sources` tab lists section sizes, the loaded context files, and the
+  three input files.
+
+An extension that forces a whole prompt string makes pi send that string
+while the transcript keeps the structured sections, so the view would not
+match; nothing in the kit does that.
+
 ## How it works
 
 On `before_agent_start` the handler takes the `<tools>` and `<rules>` bodies

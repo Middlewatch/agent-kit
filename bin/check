@@ -189,7 +189,7 @@ ADVERTISED_LINE = re.compile(r"^- `([^`/\s]+)`: \S")
 
 
 def advertised_tools(index_text: str) -> list[str]:
-    """Tool names in the index's `## Advertised` section, the sysprompt-editor's {{LOCAL_TOOLS}} source."""
+    """Tool names in the index's `## Advertised` section, the source of the prompt-sections CLI roster."""
     names: list[str] = []
     in_section = False
     for line in index_text.splitlines():

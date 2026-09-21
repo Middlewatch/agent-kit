@@ -45,3 +45,74 @@ export function withRules(rulesBody: string, drop: string[], custom: string): st
 	const extra = custom.trim();
 	return extra ? `${kept.join("\n")}\n${extra}` : kept.join("\n");
 }
+
+export interface SectionInputs {
+	roster: string;
+	drop: string[];
+	rules: string;
+}
+
+/** The two overridden bodies for a rendered prompt, or undefined when either wrapper is missing. */
+export function overrides(prompt: string, inputs: SectionInputs): { tools: string; rules: string } | undefined {
+	const tools = liftSection(prompt, "tools");
+	const rules = liftSection(prompt, "rules");
+	if (tools === undefined || rules === undefined) return undefined;
+	return { tools: withLocalTools(tools, inputs.roster), rules: withRules(rules, inputs.drop, inputs.rules) };
+}
+
+/** The rendered prompt with the two overrides written back, as the next request would carry them. */
+export function previewPrompt(prompt: string, inputs: SectionInputs): string | undefined {
+	const next = overrides(prompt, inputs);
+	if (!next) return undefined;
+	let out = prompt;
+	for (const [name, body] of Object.entries(next)) {
+		const old = liftSection(out, name) as string;
+		const at = out.indexOf(`\n\n<${name}>\n`) + name.length + 5;
+		out = out.slice(0, at) + body + out.slice(at + old.length);
+	}
+	return out;
+}
+
+/** A transcript system message, reduced to what the viewer reads. */
+export interface SystemRecord {
+	timestamp: number;
+	sections?: Record<string, string | null>;
+	toolsAdded?: { name: string }[];
+	toolsRemoved?: string[];
+}
+
+/** Sections as the model currently has them: each record's patch applied in order. */
+export function foldSections(records: SystemRecord[]): Record<string, string> {
+	const current = new Map<string, string>();
+	for (const record of records) {
+		for (const [name, value] of Object.entries(record.sections ?? {})) {
+			if (value === null) current.delete(name);
+			else current.set(name, value);
+		}
+	}
+	return Object.fromEntries(current);
+}
+
+/** One paragraph per system message after the first: when, which sections, which tools. */
+export function describePatches(records: SystemRecord[]): string {
+	if (records.length < 2) return "No changes since the first system message.";
+	return records
+		.slice(1)
+		.map((record, i) => {
+			const lines = [`#${i + 1}  ${new Date(record.timestamp).toLocaleTimeString()}`];
+			for (const [name, value] of Object.entries(record.sections ?? {})) {
+				lines.push(value === null ? `  removed <${name}>` : `  updated <${name}>  ${value.length} chars`);
+			}
+			if (record.toolsAdded?.length) lines.push(`  tools added: ${record.toolsAdded.map((t) => t.name).join(", ")}`);
+			if (record.toolsRemoved?.length) lines.push(`  tools removed: ${record.toolsRemoved.join(", ")}`);
+			return lines.join("\n");
+		})
+		.join("\n\n");
+}
+
+/** Name and size of each section, in prompt order. */
+export function sectionSizes(sections: Record<string, string>): string {
+	return Object.entries(sections)
+		.map(([name, text]) => `${name.padEnd(18)} ${String(text.length).padStart(7)} chars`)
+		.join("\n");
+}

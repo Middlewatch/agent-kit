@@ -1,7 +1,7 @@
 # 0004: Pin template names per session and keep contents live
 
 Date: 2026-09-04
-Status: accepted
+Status: superseded by 0007
 
 ## Context
 

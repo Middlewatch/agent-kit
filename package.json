@@ -19,13 +19,12 @@
   "files": [
     "extensions",
     "prompts",
-    "guidance/sysprompt",
+    "guidance/prompt",
     "CHANGELOG.md",
     "!**/node_modules",
     "!**/artifacts",
     "!**/test-artifacts",
     "!**/__pycache__",
-    "!guidance/sysprompt/.active",
     "!**/*.log"
   ],
   "pi": {
@@ -36,7 +35,6 @@
         "./extensions/pageview/src/index.ts",
       "./extensions/pi-tui/src/index.ts",
       "./extensions/prompt-picker/index.ts",
-      "./extensions/sysprompt-editor/index.ts",
       "./extensions/pi-config/index.ts",
       "./extensions/prompt-sections/index.ts"
     ],

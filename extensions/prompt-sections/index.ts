@@ -12,14 +12,29 @@
  * It changes nothing when a custom or forced prompt is in effect (pi builds
  * no stock sections then), and nothing, with one warning, when either
  * wrapper is missing from the rendering.
+ *
+ * `/sysprompt` shows the prompt. Once the session has a turn it reads the
+ * system messages pi recorded in the transcript, so every extension's
+ * sections and every mid-session patch are there. Before that it shows pi's
+ * rendering of the loaded inputs with this extension's two overrides applied.
  */
 
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { liftSection, parseDropList, withLocalTools, withRules } from "./lib.ts";
-import { readLocalTools } from "./local-tools.ts";
+import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
+import {
+	describePatches,
+	foldSections,
+	overrides,
+	parseDropList,
+	previewPrompt,
+	type SectionInputs,
+	type SystemRecord,
+	sectionSizes,
+} from "./lib.ts";
+import { DEFAULT_INDEX_PATH, readLocalTools } from "./local-tools.ts";
+import { type PromptView, PromptViewer } from "./viewer-ui.ts";
 
 const PROMPT_DIR = join(homedir(), ".agents", "kit", "guidance", "prompt");
 
@@ -29,6 +44,48 @@ function readOptional(path: string): string {
 	} catch {
 		return "";
 	}
+}
+
+function readInputs(): SectionInputs {
+	return {
+		roster: readLocalTools(),
+		drop: parseDropList(readOptional(join(PROMPT_DIR, "rules-drop.txt"))),
+		rules: readOptional(join(PROMPT_DIR, "RULES.md")),
+	};
+}
+
+function buildView(ctx: ExtensionCommandContext): PromptView {
+	const inputs = readInputs();
+	const options = ctx.getSystemPromptOptions();
+	const records = ctx.sessionManager
+		.buildSessionContext()
+		.messages.filter((message) => message.role === "system") as unknown as SystemRecord[];
+	const sent = foldSections(records);
+	const hasSent = Object.keys(sent).length > 0;
+	const prompt = hasSent
+		? Object.values(sent).join("\n\n")
+		: (previewPrompt(ctx.getSystemPrompt(), inputs) ?? ctx.getSystemPrompt());
+	const sources = [
+		hasSent ? `Sections\n${sectionSizes(sent)}` : `Prompt  ${prompt.length} chars`,
+		`Context files\n${(options.contextFiles ?? []).map((file) => `${file.path}  ${file.content.length} chars`).join("\n") || "(none)"}`,
+		[
+			"prompt-sections inputs",
+			`${join(PROMPT_DIR, "RULES.md")}  ${inputs.rules ? `${inputs.rules.length} chars` : "absent"}`,
+			`${join(PROMPT_DIR, "rules-drop.txt")}  ${inputs.drop.length} rule(s)`,
+			`${DEFAULT_INDEX_PATH}  ${inputs.roster ? inputs.roster.split("\n").length : 0} tool(s) on PATH`,
+		].join("\n"),
+	].join("\n\n");
+	return {
+		title: hasSent ? "System prompt as sent" : "System prompt preview",
+		boundary: hasSent
+			? `SENT · from this session's transcript · ${records.length - 1} change(s) since the first message`
+			: "PREVIEW · not sent · pi's loaded inputs + prompt-sections; other extensions' sections appear after the first turn",
+		tabs: [
+			{ name: "prompt", text: prompt },
+			{ name: "sources", text: sources },
+			...(hasSent ? [{ name: "changes", text: describePatches(records) }] : []),
+		],
+	};
 }
 
 export default function (pi: ExtensionAPI) {
@@ -42,22 +99,30 @@ export default function (pi: ExtensionAPI) {
 		const options = event.systemPromptOptions;
 		if (!options?.sections || options.customPrompt || options.forceSystemPrompt !== undefined) return;
 
-		const prompt = event.systemPrompt;
-		const tools = liftSection(prompt, "tools");
-		const rules = liftSection(prompt, "rules");
-		if (tools === undefined || rules === undefined) {
+		const next = overrides(event.systemPrompt, readInputs());
+		if (!next) {
 			if (!warned && ctx.hasUI) {
 				ctx.ui.notify("prompt-sections: pi's <tools>/<rules> wrapper not found; stock prompt left as is", "warning");
 			}
 			warned = true;
 			return;
 		}
+		options.sections.tools = next.tools;
+		options.sections.rules = next.rules;
+	});
 
-		options.sections.tools = withLocalTools(tools, readLocalTools());
-		options.sections.rules = withRules(
-			rules,
-			parseDropList(readOptional(join(PROMPT_DIR, "rules-drop.txt"))),
-			readOptional(join(PROMPT_DIR, "RULES.md")),
-		);
+	pi.registerCommand("sysprompt", {
+		description: "View the system prompt: as sent, or a preview before the first turn",
+		handler: async (_args, ctx) => {
+			if (ctx.mode !== "tui") {
+				ctx.ui.notify("/sysprompt needs the interactive TUI", "warning");
+				return;
+			}
+			const view = buildView(ctx);
+			await ctx.ui.custom<void>(
+				(tui, theme, _keys, done) => new PromptViewer(view, theme, () => Math.max(1, tui.terminal.rows - 2), done),
+				{ overlay: true, overlayOptions: { width: "100%", maxHeight: "100%" } },
+			);
+		},
 	});
 }

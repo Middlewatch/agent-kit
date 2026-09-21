@@ -25,12 +25,9 @@ repo and is installed separately.
 - `pi-config`: `/config` picker that enables or disables extensions, skills,
   prompts, and themes in global or project scope, writing what `pi config`
   writes, then reloads.
-- `sysprompt-editor`: rebuilds Pi's core system prompt from the owner-authored
-  templates in `guidance/sysprompt/`, with live harness data spliced in.
-  `/sysprompt` switches, scaffolds, inspects (byte-exact provider capture),
-  and output-tests templates. It fails open to the stock prompt.
 - `prompt-sections`: appends the local CLI roster to pi's stock `<tools>`
   section and the owner's `guidance/prompt/RULES.md` to `<rules>`, in place.
+  `/sysprompt` shows the prompt as sent, or a preview before the first turn.
 
 Each extension keeps its README in its directory, with tests and a design
 doc where the extension is large enough to need them. Tests run in the
@@ -40,4 +37,3 @@ extension's directory:
 - `npm test` for pi-scratchpad, pageview, agent-delegate, and pi-tui
 - `node --test lib.test.ts` for prompt-picker, pi-config, and
   prompt-sections (which adds `local-tools.test.ts`)
-- `scripts/verify.sh` for sysprompt-editor

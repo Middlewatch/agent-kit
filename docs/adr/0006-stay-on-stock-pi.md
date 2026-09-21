@@ -1,7 +1,7 @@
 # 0006: Stay on stock Pi and rebuild the core from its inputs
 
 Date: 2026-09-05
-Status: accepted; supersedes the patch requirement in 0005
+Status: superseded by 0007
 
 ## Context
 

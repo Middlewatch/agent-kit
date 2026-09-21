@@ -2,7 +2,16 @@
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { LOCAL_TOOLS_LEAD, liftSection, parseDropList, withLocalTools, withRules } from "./lib.ts";
+import {
+	describePatches,
+	foldSections,
+	LOCAL_TOOLS_LEAD,
+	liftSection,
+	parseDropList,
+	previewPrompt,
+	withLocalTools,
+	withRules,
+} from "./lib.ts";
 
 const PROMPT = [
 	"You are an expert coding assistant.",
@@ -43,4 +52,33 @@ test("withRules drops exact bullets only and appends the owner's rules", () => {
 		"- Use read to examine files\n- Be concise in your responses, mostly\n- State what success means.",
 	);
 	assert.equal(withRules(body, [], ""), body);
+});
+
+test("previewPrompt writes both overrides back in place and leaves later text alone", () => {
+	const out = previewPrompt(PROMPT, { roster: "- `sess`: y", drop: ["Be concise in your responses"], rules: "- Mine." });
+	assert.equal(
+		out,
+		PROMPT.replace("more may exist.\n</tools>", `more may exist.\n\n${LOCAL_TOOLS_LEAD}\n- \`sess\`: y\n</tools>`).replace(
+			"- Use read to examine files\n- Be concise in your responses\n</rules>\n\n<project_context>",
+			"- Use read to examine files\n- Mine.\n</rules>\n\n<project_context>",
+		),
+	);
+	assert.equal(previewPrompt("no sections here", { roster: "", drop: [], rules: "" }), undefined);
+});
+
+test("foldSections applies patches in order and keeps a section's first position", () => {
+	const records = [
+		{ timestamp: 1, sections: { preamble: "p", rules: "<rules>a</rules>", cwd: "<cwd>/x</cwd>", scratchpad: "s" } },
+		{ timestamp: 2, sections: { rules: "<rules>b</rules>", scratchpad: null }, toolsRemoved: ["write"] },
+	];
+	assert.deepEqual(Object.entries(foldSections(records)), [
+		["preamble", "p"],
+		["rules", "<rules>b</rules>"],
+		["cwd", "<cwd>/x</cwd>"],
+	]);
+	const text = describePatches(records);
+	assert.match(text, /updated <rules> {2}16 chars/);
+	assert.match(text, /removed <scratchpad>/);
+	assert.match(text, /tools removed: write/);
+	assert.equal(describePatches(records.slice(0, 1)), "No changes since the first system message.");
 });

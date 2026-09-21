@@ -120,12 +120,12 @@ bin/lint-exempt.txt  history dirs the lint skips
 docs/                adr/ (decision records) and specs/ (completed build specs)
 guidance/            AGENTS.md (global guide), CLAUDE.md, LOCATIONS.md,
                      seed templates (*.example), workspaces/ (overlays),
-                     sysprompt/ (system prompt templates)
+                     prompt/ (rules added to pi's system prompt)
 skills/              one directory per skill, plus AUTHORING.md and the index
 prompts/             prompt templates (/prompt picker library)
 extensions/          pi extensions: pi-interlock, pi-scratchpad, agent-delegate,
                      pageview, pi-tui, prompt-picker, pi-config,
-                     sysprompt-editor
+                     prompt-sections
 tools/               sess, prefixdiff, portaudit, introspect-scan
 tests/               test_check.py and the fixture kit it installs
 ```

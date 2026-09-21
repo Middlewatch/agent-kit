@@ -1,7 +1,7 @@
 # 0002: Fold sysprompt-editor into the kit; its templates are guidance
 
 Date: 2026-09-02
-Status: accepted
+Status: superseded by 0007
 
 ## Context
 

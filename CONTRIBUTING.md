@@ -30,9 +30,9 @@ Component suites run in their own directories:
 
 | component | command |
 |---|---|
-| `extensions/pi-interlock`, `extensions/sysprompt-editor` | `npm run test:unit` (`scripts/verify.sh` for the full interlock and sysprompt gates) |
+| `extensions/pi-interlock` | `npm run test:unit` (`scripts/verify.sh` for the full interlock gate) |
 | `extensions/agent-delegate`, `pageview`, `pi-scratchpad`, `pi-tui` | `npm test` |
-| `extensions/prompt-picker`, `extensions/pi-config` | `node --test lib.test.ts` |
+| `extensions/prompt-picker`, `extensions/pi-config`, `extensions/prompt-sections` | `node --test lib.test.ts` (prompt-sections adds `local-tools.test.ts`) |
 | `tools/sess`, `tools/prefixdiff` | `zig build test` |
 | `tools/portaudit`, `tools/introspect-scan` | `tests/run.sh` |
 | `skills/evoker-mode/tools/trail` | `test_trail.sh` |

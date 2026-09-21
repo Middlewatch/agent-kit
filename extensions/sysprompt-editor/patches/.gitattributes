@@ -1,2 +1,0 @@
-# A patch's leading context space is syntax, including on blank lines.
-*.patch -whitespace

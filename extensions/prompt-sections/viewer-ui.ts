@@ -9,13 +9,12 @@ import {
   type TuiMouseEvent,
   type TuiMouseEventResult,
 } from "@earendil-works/pi-tui";
-export interface PromptPreview {
-  instructions: string;
-  sources: string;
+/** What the overlay shows: a title, a one-line statement of where the text came from, and named tabs. */
+export interface PromptView {
+  title: string;
+  boundary: string;
+  tabs: { name: string; text: string }[];
 }
-const SECTIONS = ["instructions", "sources"] as const;
-export const PREVIEW_BOUNDARY =
-  "Current preview, not a captured request. Uses Pi's currently loaded inputs and the live selected template. Per-turn extension and provider changes are absent. Reload Pi to refresh loaded instruction files.";
 
 // Instruction files may contain terminal control sequences.
 function terminalText(text: string): string {
@@ -27,15 +26,15 @@ export class PromptViewer implements Component {
   private theme: Theme;
   private height: () => number;
   private done: () => void;
-  private section: keyof PromptPreview = "instructions";
-  private sections: PromptPreview;
+  private tab = 0;
+  private view: PromptView;
   private offset = 0;
   private body: { width: number; lines: string[] } | null = null;
   private pageHeight = 1;
   private maxOffset = 0;
 
   constructor(
-    preview: PromptPreview,
+    view: PromptView,
     theme: Theme,
     height: () => number,
     done: () => void,
@@ -43,7 +42,7 @@ export class PromptViewer implements Component {
     this.theme = theme;
     this.height = height;
     this.done = done;
-    this.sections = preview;
+    this.view = view;
   }
 
   invalidate(): void {
@@ -56,17 +55,16 @@ export class PromptViewer implements Component {
 
   handleInput(data: string): void {
     if (matchesKey(data, Key.escape) || data === "q") return this.done();
-    const index = SECTIONS.indexOf(this.section);
-    const chosen = /^[1-2]$/.test(data)
+    const count = this.view.tabs.length;
+    const chosen = /^[1-9]$/.test(data)
       ? Number(data) - 1
       : matchesKey(data, Key.tab) || matchesKey(data, Key.right)
-        ? (index + 1) % SECTIONS.length
+        ? (this.tab + 1) % count
         : matchesKey(data, Key.shift("tab")) || matchesKey(data, Key.left)
-          ? (index + SECTIONS.length - 1) % SECTIONS.length
+          ? (this.tab + count - 1) % count
           : -1;
-    const next = SECTIONS[chosen];
-    if (next) {
-      this.section = next;
+    if (chosen >= 0 && chosen < count) {
+      this.tab = chosen;
       this.offset = 0;
       this.invalidate();
     } else if (matchesKey(data, Key.down) || data === "j") this.move(1);
@@ -87,21 +85,18 @@ export class PromptViewer implements Component {
     const height = Math.max(1, this.height());
     this.pageHeight = Math.max(1, height - 4);
     if (this.body?.width !== width) {
-      const text = new Text(terminalText(this.sections[this.section]), 0, 0);
+      const text = new Text(terminalText(this.view.tabs[this.tab].text), 0, 0);
       this.body = { width, lines: text.render(width) };
     }
     const body = this.body.lines;
     this.maxOffset = Math.max(0, body.length - this.pageHeight);
     this.offset = Math.min(this.offset, this.maxOffset);
     const clip = (text: string) => truncateToWidth(terminalText(text), width);
-    const title = this.theme.fg("accent", clip("Current preview (not sent)"));
-    const boundary = this.theme.fg(
-      "dim",
-      clip("PREVIEW · not sent · loaded Pi inputs + live template"),
-    );
-    const tabs = SECTIONS.map(
-      (name, i) => `${i + 1} ${name === this.section ? `[${name}]` : name}`,
-    ).join("  ");
+    const title = this.theme.fg("accent", clip(this.view.title));
+    const boundary = this.theme.fg("dim", clip(this.view.boundary));
+    const tabs = this.view.tabs
+      .map(({ name }, i) => `${i + 1} ${i === this.tab ? `[${name}]` : name}`)
+      .join("  ");
     const lines = [
       title,
       boundary,
@@ -113,7 +108,7 @@ export class PromptViewer implements Component {
       this.theme.fg(
         "dim",
         clip(
-          `↑↓/PgUp/PgDn scroll · Tab section · Esc close · ${this.offset + 1}/${body.length}`,
+          `↑↓/PgUp/PgDn scroll · Tab next · Esc close · ${this.offset + 1}/${body.length}`,
         ),
       ),
     );

@@ -66,15 +66,11 @@ the root), since `deployments.json` does not list workspace overlays. Managing
 the overlays here keeps every workspace instruction in one editable place.
 Which roots exist on a given machine is a `MACHINE.md` fact.
 
-## sysprompt/: core system prompt templates
+## prompt/: rules added to pi's system prompt
 
-The owner-authored replacements for Pi's stock core prompt, rendered each
-turn by the `sysprompt-editor` extension with the live tool list, guidelines,
-and documentation routing spliced in through placeholders (see the
-extension's README for the placeholder list). `default.md` ships with the
-kit; `owner.md` is the owner's voice and, like `AGENTS.md`, is yours to
-rewrite if you fork the kit. The gitignored `.active` pointer names the
-template in use; `/sysprompt switch` writes it and the next message renders
-from the new template with no restart. Only Pi reads these; Claude Code and
-Codex keep their own system prompts.
-
+The `prompt-sections` extension reads two files here on every prompt.
+`RULES.md` is appended to pi's stock `<rules>` section as written; it is the
+owner's voice and, like `AGENTS.md`, yours to rewrite if you fork the kit.
+`rules-drop.txt` names stock rules to remove, one per line. Either file may
+be absent. Only Pi reads these; Claude Code and Codex keep their own system
+prompts.
