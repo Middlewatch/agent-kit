@@ -1,6 +1,6 @@
 ---
 name: data-model
-description: "Map or settle a codebase's core data structures: real declarations carrying an ownership record, indexed in docs/DATA_MODEL.md. Use when starting a project, reading an unfamiliar codebase, or preparing to patch a third-party fork. Not for local types or a single decision (adr)."
+description: "Use when starting a project, reading an unfamiliar codebase, or preparing to patch a third-party fork. Not for local types or a single decision (adr)."
 disable-model-invocation: true
 ---
 

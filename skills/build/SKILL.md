@@ -33,8 +33,9 @@ Read (or if not present then skip): the spec, `docs/adr/`,
 `docs/DATA_MODEL.md`, and the real code before the first edit. 
 
 When the spec exists and the build is sufficiently complex: Build to the
-data-model entry; a slice that would change an entry's owner, lifetime, or
-boundary is a stop per that skill. Check the principle index
+structure's record (indexed in `docs/DATA_MODEL.md`, written on the type); a
+slice that would change a record's Owner, Lifetime, or Boundary is a stop per
+`~/.agents/kit/skills/data-model/SKILL.md`. Check the principle index
 (`../evoker-mode/SKILL.md`) and read the principle file whose rule a slice's
 data shape or boundary triggers, under the index's stakes clause. Note the base
 commit for the review diff.
