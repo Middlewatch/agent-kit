@@ -13,9 +13,9 @@ where" has one answer.
 
 ## Advertised
 
-The rows the system prompt carries every turn (pi's `{{LOCAL_TOOLS}}` slot
-reads this section and drops any name not on PATH; `bin/check` warns about
-the same). One single-line bullet per tool, `- \`name\`: when to reach for
+The rows the system prompt carries every turn (the `prompt-sections`
+extension appends this section to pi's `<tools>` and drops any name not on
+PATH; `bin/check` warns about the same). One single-line bullet per tool, `- \`name\`: when to reach for
 it`. A slot here is for tools built in-house and tools a model would not know
 from training; `rg`, `git`, and the language toolchains get used without it.
 Each row costs about fifteen tokens per request, so keep the list short.
