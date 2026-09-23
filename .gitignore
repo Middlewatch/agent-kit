@@ -25,9 +25,6 @@ node_modules/
 artifacts/
 **/test-artifacts/
 
-# Active system prompt template pointer is machine-local.
-guidance/sysprompt/.active
-
 # Scratch and throwaway work.
 notes/
 scratch/
