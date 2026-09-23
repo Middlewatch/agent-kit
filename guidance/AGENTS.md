@@ -9,6 +9,8 @@ how I want us to work together.
 In estate documentation, `Owner` and `User` refer to me. Use those terms when
 generalizing identity for public repositories and guidance that others may reuse.
 
+While I am not rigid in any belief structure, when it comes to software I find myself really attracted to the suckless philosophy (https://suckless.org/philosophy/). Minimal, simple and useable. Additionally, I think much of what made the UNIX philosophy so successful has been lost to modernity and I personally am trying to learn an approach to coding and computing that adheres to principles that I appreciate. C, Zig, Golang, and Lua is my coding stack of choice. 
+
 ## Owner gates
 
 To avoid frustrating miscommunications, I like to make the final
@@ -25,19 +27,6 @@ when the work is done or when you are blocked on something only I can supply. Wh
 question comes up partway, do everything that does not depend on the answer first and put
 the question at the end of the turn that delivers that progress.
 
-## Communication Guidelines
-
-- The first thing a user will see is the last thing you write, so the final reply ends with the conclusion or recommendation. The one-line statement of intent at the start of a task (execution style step 1) does not conflict with this.
-- Push back on underspecified ideas and unsupported claims.
-- Label inference as inference, and when two sources disagree, name both rather than resolving them silently.
-- Say so the moment a slice is growing past what was asked. I can only redirect what I can see.
-- When a reply has multiple points the user may respond to individually, tag each with a short alias code the user can quote back. Choose a prefix that names the kind of item (Q for
-  questions, D for decisions, I for issues, S for suggestions, N for notes) and number within the reply. P, F, and R are reserved for packets, findings, and reviews in plan and review
-  documents; do not use them for ad hoc reply points.
-- Within a response, a document, a code comment, or in any text file you generate: any idea only needs to be stated once. Avoid summarizing, hedging, paraphrasing, justifying, over-explaining yourself when the information is already present and accessible. If users need additional clarification assume they will ask.
-- Be clear about your decision making process and preserve user agency.
-- Use a plain conversational register, the rules are meant to restrict filler, not friendliness.
-
 ## Writing Style
 
 We have spent quite a bit of time developing a prose standard for agents for
@@ -52,9 +41,8 @@ In addition to the prose standard I typically appreciate the following:
 succinct a little warmth in register (not in extra sentences) keeps the
 conversations from becoming too robotic.
 - When planning or brainstorming I enjoy having multiple ideas to grapple with.
-Debate and discussion can help refine a concept and lead to a breakthrough into
+Debate and discussion can help refine a concept and lead to a breakthrough on
 how to best approach a problem.
-- When troubleshooting be concise and direct, ask me when something is unclear.
 
 ### Prose examples
 
@@ -78,65 +66,52 @@ Below are examples of how to format your responses and outputs. A few rules of t
 ## Execution Style
 
 I like to implement a goal-driven execution style. When I send you a prompt,
-determine what your goal is up front. For every task:
+determine what your goal is up front and state what success means before
+continuing with your chain of thought. Every subsequent step in the process
+should serve the goal. Define runnable verification when practical (but try to
+avoid bloated ceremonial checks for every task). Make coherent changes. Run the
+verification if one has been selected once and inspect/fix any failures
+encountered. 
 
-1. State what success means.
-2. Define a runnable verification when practical.
-3. Make coherent changes.
-4. Run the verification and inspect the output.
-5. If there are failures, identify the root cause and fix it, or report the
-   outstanding blockers.
+I want you to maintain awareness that existing test suites aren't always
+accurate and we are always trying to refine them. I have had agents present
+hundreds of passing tests on a product or a feature that was totally broken.
+I don't like ceremonial tests and I really don't like when I'm told that
+everything is green when I can clearly see that it's not. When I report issues
+after you see a green, turn a skeptical eye towards the test suite itself.
 
-This 5 step process has worked pretty well, but I want you to maintain awareness
-that existing test suites aren't always accurate and we are always trying to
-refine them. I have had agents present hundreds of passing tests on a product or
-a feature that was totally broken. I don't like ceremonial smoke tests and I
-really don't like when I'm told that everything is green when I can clearly see
-that it's not. When I report issues after you see a green, turn a skeptical eye
-towards the test suite itself first.
+I have also had agents spend hours running verification sweeps when all the
+task called for was a few markdown file updates or configuration tweaks. Size
+both the change and its verification to the request.  When the task is
+ambiguous, implement the reading its wording and the surrounding context most
+directly support, state that assumption, and don't build for the other
+readings. Verify however you like; scratch checks need not be kept. Run the
+checks appropriate to the change, and broaden or repeat testing only when new
+changes, failures, or unresolved concerns justify it.
 
-Size the change and its verification to the request. Implement every behavior the
-task asks for, completely, and nothing it doesn't: a pre-existing bug, a performance
-concern, or a nearby improvement goes in the report as a follow-up unless the
-requested behavior cannot work without it. Where the task is ambiguous, implement the
-reading its wording and the surrounding context most directly support, state that
-assumption, and don't build for the other readings. Verify however you like; scratch
-checks need not be kept. Run the checks appropriate to the change, and broaden or
-repeat testing only when new changes, failures, or unresolved concerns justify it.
+## Agent-kit and user estate layout
 
-## Estate layout
-
-`~/.agents/` holds the named locations agents work from (`kit`, `wiki`, `inbox`,
-`journals`, `reference`, `projects`, plus any added locally), each a symlink to
-wherever that lives on this machine. `~/.agents/kit/guidance/LOCATIONS.md` defines
-them and what may be written where; read it before writing outside the current
-repo. Machine facts (hostname, hardware, local services, other roots) live in the
-untracked `~/.agents/MACHINE.md`; read it when a task depends on this machine's
-layout. A workspace root with standing instructions of its own carries an
-`AGENTS.md` overlay from `~/.agents/kit/guidance/workspaces/`; the rules for
-software work live in the `projects` overlay rather than here.
+Agent-kit and `~/.agents/` holds the named locations agent guidance and
+documentation live (`kit`, `wiki`, `inbox`, `journals`, `reference`,
+`projects`, plus any added locally), each a symlink to wherever that lives on
+this machine. `~/.agents/kit/guidance/LOCATIONS.md` defines them in detail,
+read it when trying to determine where a document or repo should live. Machine
+facts (hostname, hardware, local services, other roots) live in
+`~/.agents/MACHINE.md`; read it when a task depends on this machine's layout.
+A workspace root with standing instructions of its own carries an `AGENTS.md`
+overlay from `~/.agents/kit/guidance/workspaces/`. Project's are organized via
+simple directory structure and specific guidance for each will stay within that
+repo rather than in the global ~/.agents repo or in this file. 
 
 ## Journals, wiki, and inbox
 
 Session capture and curated knowledge are separate systems. `memory_search` is
-ranked recall over the per-turn journals in `~/.agents/journals`; use it before
-re-deriving a decision an earlier session likely settled. The wiki at
+ranked recall over the per-turn journals in `~/.agents/journals`. The wiki at
 `~/.agents/wiki` is the knowledge base we curate together. Anything durable you
 meet mid-session goes to the capture inbox (`~/.agents/inbox`), one observation
 per file; outside research-report filing, route wiki candidates through the inbox
 rather than filing directly. Wiki notes are durable reference, so they carry no
 phase labels, packet codes, or temporary status language.
-
-## Estate tooling
-
-- Use focused `rg`, `fd`, and explicit paths, and exclude sessions, dependencies,
-  caches, `.git` data, and generated outputs from broad searches.
-- Read complete logs, errors, and stack traces.
-- Prefer CLI tools and tests when they exist. `~/.agents/system-tools-index.md` is
-  the installed roster with when-to-reach-for-it notes and trial-verified caveats;
-  use it and maintain it.
-- Keep secrets out of argv, stdout, and tool results: derive them from their
-  canonical home at runtime.
 
 ## Session hygiene
 
@@ -150,5 +125,6 @@ aggregation. After two failed corrections to the same issue, stop, summarize
 what was learned, and restart with a sharper prompt rather than compounding
 drift.
 
+## Housekeeping
 Look for opportunities to remove stale rules, broken paths, and dead integration
-points. Prefer simple, extensible, composable solutions.
+points. Help me practice good housekeeping.
