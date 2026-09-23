@@ -56,15 +56,18 @@ machine facts this public-ready tree keeps out.
   each tool its place. Skills and project guides read the filled copy when
   planning gates and harnesses.
 
-## workspaces/: overlays for roots outside projects
+## workspaces/: overlays for workspace roots
 
-One directory per workspace root that wants standing instructions (research,
-experiments, day-job work). Each holds that root's `AGENTS.md`. Link it by
-hand (`ln -s ~/.agents/kit/guidance/workspaces/research/AGENTS.md
+One directory per workspace root that wants standing instructions. Each holds
+that root's `AGENTS.md`. The `projects` overlay carries the rules for software
+work (git habits, language packs, committed tests) so the global guide stays
+domain-free; `deployments.json` links it into the `projects` binding with a
+`CLAUDE.md -> AGENTS.md` companion, so it travels with the kit. The other
+overlays (research, experiments, day-job work) describe machine-specific roots,
+so link them by hand (`ln -s ~/.agents/kit/guidance/workspaces/research/AGENTS.md
 ~/research/AGENTS.md` plus a relative `CLAUDE.md -> AGENTS.md` companion in
-the root), since `deployments.json` does not list workspace overlays. Managing
-the overlays here keeps every workspace instruction in one editable place.
-Which roots exist on a given machine is a `MACHINE.md` fact.
+the root). Managing the overlays here keeps every workspace instruction in one
+editable place. Which roots exist on a given machine is a `MACHINE.md` fact.
 
 ## RULES.md, rules-drop.txt, APPEND_SYSTEM.md: pi's system prompt
 
@@ -73,6 +76,10 @@ Three files beside `AGENTS.md` that shape pi's system prompt, linked into
 `RULES.md` to pi's stock `<rules>` section as written and removes the stock
 rules named in `rules-drop.txt`, one per line. `APPEND_SYSTEM.md` is linked
 on to `~/.pi/agent/`, where pi reads it and renders it as `<addendum>` after
-its `<docs>` section. All three ship empty or minimal; like `AGENTS.md` they
-are the owner's voice and yours to rewrite if you fork the kit. Only Pi reads
-these; Claude Code and Codex keep their own system prompts.
+its `<docs>` section. `RULES.md` carries the task-class and precedence rules,
+which govern how the model reads everything rendered after them, plus pi-only
+mechanics such as the progress-widget line syntax; `AGENTS.md` carries every
+rule that is about the work itself, and states each idea once across the two.
+Like `AGENTS.md` they are the owner's voice and yours to rewrite if you fork
+the kit. Only Pi reads these; Claude Code and Codex keep their own system
+prompts.

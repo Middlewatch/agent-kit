@@ -24,6 +24,8 @@ reads; `README.md` explains the convention and the install.
   command in `deployments.json`; a missing toolchain skips the tool.
 - Each tool and extension keeps its own README, tests, and design doc in its
   directory; `tools/README.md` and `extensions/README.md` are the indexes.
+  Read `~/.agents/wiki/platform/index.md` before extension or harness work; it
+  holds the verified pi runtime findings (compaction, hooks, TUI, providers).
 
 ## Gates
 

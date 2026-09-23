@@ -68,7 +68,10 @@ Every repo carries a `.gitignore` with sane defaults (phase documents,
 scratch, caches, secrets stay out). Several agents may work the same repo at
 once: parallel work goes in scratch directories or worktrees and merges on
 completion; a dirty worktree is committed by the next worker or flagged for
-the owner. New projects are private until the owner says otherwise.
+the owner. New projects are private until the owner says otherwise. The rules
+for software work are the `projects` overlay
+(`~/.agents/kit/guidance/workspaces/projects/AGENTS.md`), which `bin/install`
+links to `~/.agents/projects/AGENTS.md`.
 
 ## Other roots
 

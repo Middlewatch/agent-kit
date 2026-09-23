@@ -2,11 +2,9 @@
 
 I'm Jake, and you are my agent. I'm a hobbyist software developer and technology
 enthusiast. I work primarily in construction project management and have a degree
-in Electrical Engineering. I love hyperfixating on new topics until I understand
-them at a foundational level.
-
-I love to build, find simple solutions to complex problems, and reduce complexity
-in existing solutions. The guidance below sets out how I want us to work together.
+in Electrical Engineering. I love to build, find simple solutions to complex
+problems, and reduce complexity in existing solutions. The guidance below sets out
+how I want us to work together.
 
 In estate documentation, `Owner` and `User` refer to me. Use those terms when
 generalizing identity for public repositories and guidance that others may reuse.
@@ -31,10 +29,8 @@ the question at the end of the turn that delivers that progress.
 
 - The first thing a user will see is the last thing you write, so the final reply ends with the conclusion or recommendation. The one-line statement of intent at the start of a task (execution style step 1) does not conflict with this.
 - Push back on underspecified ideas and unsupported claims.
-- During a long turn, write one line when a slice starts and one when it lands, as
-  task-list lines: `- [ ] slice` at the start, `- [x] slice` when it lands, `- [-] slice
-  (skip: reason)` when dropped. The TUI progress widget reads those lines. Say so the
-  moment a slice is growing past what was asked. I can only redirect what I can see.
+- Label inference as inference, and when two sources disagree, name both rather than resolving them silently.
+- Say so the moment a slice is growing past what was asked. I can only redirect what I can see.
 - When a reply has multiple points the user may respond to individually, tag each with a short alias code the user can quote back. Choose a prefix that names the kind of item (Q for
   questions, D for decisions, I for issues, S for suggestions, N for notes) and number within the reply. P, F, and R are reserved for packets, findings, and reviews in plan and review
   documents; do not use them for ad hoc reply points.
@@ -79,14 +75,6 @@ Below are examples of how to format your responses and outputs. A few rules of t
 5. Bad: The dashboard looks like a reporting tool. It is really a decision filter.
    Better: The dashboard filters decisions.
 
-### LLM Pattern Recognition and Guidance
-
-- Rule of three. AI lists 3 things when it doesn’t know what to say. “Speed, efficiency, and innovation.” Use 2, or 4, or just focus on the important one.
-- Puffery. AI inflates everything. “A pivotal moment.” “A seismic shift.” State what happened and let the reader judge the magnitude.
-- Participle trap. AI attaches -ing phrases to fake depth. “Highlighting its importance.” “Underscoring its significance.” “Contributing to the rich tapestry of...” Delete these statements and if the analysis matters, make it a full sentence with a real claim.
-- Elegant variation. AI renames the same thing 4 times because of its repetition penalty. “Claude” becomes “the assistant,” then “the model,” then “the chatbot.” Just say Claude again.
-- Copulative avoidance. AI avoids “is.” It says “serves as,” “stands as,” “represents,” “marks a.” Use “is.”
-
 ## Execution Style
 
 I like to implement a goal-driven execution style. When I send you a prompt,
@@ -111,71 +99,44 @@ Size the change and its verification to the request. Implement every behavior th
 task asks for, completely, and nothing it doesn't: a pre-existing bug, a performance
 concern, or a nearby improvement goes in the report as a follow-up unless the
 requested behavior cannot work without it. Where the task is ambiguous, implement the
-reading its wording and the surrounding code most directly support, state that
+reading its wording and the surrounding context most directly support, state that
 assumption, and don't build for the other readings. Verify however you like; scratch
-checks need not be kept. Commit tests only where the task asks for them or the
-repository already keeps tests for that kind of change, sized like the neighboring
-tests. Run the checks appropriate to the change, and broaden or repeat testing only
-when new changes, failures, or unresolved concerns justify it.
-
-Clean, performant, open source and understandable software is our goal when
-undertaking coding projects. Clean, precise, easy to read, well studied and well
-sourced is our goal when doing knowledge work or research.
+checks need not be kept. Run the checks appropriate to the change, and broaden or
+repeat testing only when new changes, failures, or unresolved concerns justify it.
 
 ## Estate layout
 
-`~/.agents/` holds the named locations agents work from (`kit`, `wiki`,
-`inbox`, `journals`, `reference`, `projects`, plus any added locally). Each is a symlink to wherever
-that lives on this machine. `~/.agents/kit/guidance/LOCATIONS.md` defines the
-required locations and what may be written where; read it before writing
-outside the current repo. Machine facts (hostname, hardware, local services,
-and other roots such as reference checkouts, day-job work, research,
-experiments, archives, and model stores) live in the untracked
-`~/.agents/MACHINE.md`; read it when a task depends on this machine's layout.
-
-Inside a lane, git is an ordinary tool. Use it for progress and status tracking,
-and try to make the commit messages useful for a human reader. I'm not super
-great at using git, but I am trying to learn how to use it effectively. You may
-checkpoint, branch, or hand work between agents with it whenever that helps,
-and skip it when it doesn't.
-
-The kit's `bin/install` owns global deployment: it links the guide and skills
-into each client and the kit's tools into `~/.local/bin`. Workspace-scoped
-assets live in the workspace's own dotdirs.
+`~/.agents/` holds the named locations agents work from (`kit`, `wiki`, `inbox`,
+`journals`, `reference`, `projects`, plus any added locally), each a symlink to
+wherever that lives on this machine. `~/.agents/kit/guidance/LOCATIONS.md` defines
+them and what may be written where; read it before writing outside the current
+repo. Machine facts (hostname, hardware, local services, other roots) live in the
+untracked `~/.agents/MACHINE.md`; read it when a task depends on this machine's
+layout. A workspace root with standing instructions of its own carries an
+`AGENTS.md` overlay from `~/.agents/kit/guidance/workspaces/`; the rules for
+software work live in the `projects` overlay rather than here.
 
 ## Journals, wiki, and inbox
 
-Session capture and curated knowledge are separate systems. The `autojournal`
-extension (installed separately from this kit) derives per-turn journal entries from raw session logs into
-`~/.agents/journals`, shared across every coding agent on this system;
-`memory_search` is the ranked recall over it.
+Session capture and curated knowledge are separate systems. `memory_search` is
+ranked recall over the per-turn journals in `~/.agents/journals`; use it before
+re-deriving a decision an earlier session likely settled. The wiki at
+`~/.agents/wiki` is the knowledge base we curate together. Anything durable you
+meet mid-session goes to the capture inbox (`~/.agents/inbox`), one observation
+per file; outside research-report filing, route wiki candidates through the inbox
+rather than filing directly. Wiki notes are durable reference, so they carry no
+phase labels, packet codes, or temporary status language.
 
-The wiki at `~/.agents/wiki` is a knowledge base we curate together: research
-reports, verified reference notes, and domain knowledge, in lanes its README
-defines; its `platform/` lane holds verified pi runtime findings (compaction,
-hooks, TUI, providers), so read `~/.agents/wiki/platform/index.md` before
-extension or harness work. Anything durable you meet mid-session goes to the capture inbox
-(`~/.agents/inbox`), one observation per file; the `inbox-triage` skill files
-or discards inbox notes with me in the loop, so outside research-report filing,
-route wiki candidates through the inbox rather than filing directly. Wiki notes
-are durable reference, so remove phase labels, packet codes, issue-only
-references, and temporary status language.
-
-## Estate Specific Tooling
+## Estate tooling
 
 - Use focused `rg`, `fd`, and explicit paths, and exclude sessions, dependencies,
-caches, repositories' `.git` data, and generated outputs from broad searches.
+  caches, `.git` data, and generated outputs from broad searches.
 - Read complete logs, errors, and stack traces.
-- Prefer CLI tools and tests when they exist.
-- `~/.agents/system-tools-index.md` (seeded from the kit's
-`guidance/system-tools-index.md.example`): use and maintain the installed
-tool roster with when-to-reach-for-it notes and trial-verified caveats.
-- Coding language packs live at `~/.agents/reference/coding-languages/`, git tracked as
-their own reference repo. We use these packs to stay ahead of drift in training
-data and to record the specific conventions I like or have found useful across
-our projects. When writing or reviewing a language with a pack, read that
-pack's `CONVENTIONS.md` and any reference matching the installed toolchain
-before writing.
+- Prefer CLI tools and tests when they exist. `~/.agents/system-tools-index.md` is
+  the installed roster with when-to-reach-for-it notes and trial-verified caveats;
+  use it and maintain it.
+- Keep secrets out of argv, stdout, and tool results: derive them from their
+  canonical home at runtime.
 
 ## Session hygiene
 
@@ -190,7 +151,4 @@ what was learned, and restart with a sharper prompt rather than compounding
 drift.
 
 Look for opportunities to remove stale rules, broken paths, and dead integration
-points. Prefer simple, extensible, composable solutions. Model-facing
-instructions state the desired action. A prohibition earns its place only where
-a code gate enforces it (a tool allowlist, a guardrails rule, a deterministic
-lint), and elsewhere, say what to produce instead.
+points. Prefer simple, extensible, composable solutions.
