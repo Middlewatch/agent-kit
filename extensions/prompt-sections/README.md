@@ -1,17 +1,17 @@
 # prompt-sections
 
-Adds the owner's material to two of pi's stock system prompt sections and
-leaves the rest of pi's construction alone. Needs pi 0.86 or later, where the
+Edits two of pi's stock system prompt sections in place and leaves the rest
+of pi's construction alone. Needs pi 0.86 or later, where the
 prompt is built from named sections.
 
 - `<tools>` gains the local CLI roster: the `## Advertised` bullets of
   `~/.agents/system-tools-index.md`, keeping only names found on PATH.
-- `<rules>` loses the rules listed in `~/.agents/rules-drop.txt` and gains
-  the text of `~/.agents/RULES.md`. Either file may be absent or empty.
+- `<rules>` loses the rules listed in `~/.agents/rules-drop.txt`, which may
+  be absent or empty.
 
-`bin/install` links both from the kit's `guidance/`, beside `AGENTS.md`, and
-links `guidance/APPEND_SYSTEM.md` through to `~/.pi/agent/APPEND_SYSTEM.md`,
-which pi renders as `<addendum>` with no help from this extension.
+`bin/install` links the drop list from the kit's `guidance/`, beside
+`AGENTS.md`. The owner's own rules live in `AGENTS.md`, which every harness
+reads; this extension adds no rules of its own.
 
 Both files are read on every prompt, so an edit takes effect on the next one.
 On a model that accepts mid-conversation system messages the edit arrives as
@@ -29,7 +29,7 @@ Opens a scrollable overlay of the system prompt (TUI only).
   `before_agent_start` (pi-scratchpad's `<scratchpad>`) appear after the
   first turn.
 - The `sources` tab lists section sizes, the loaded context files, and the
-  three input files.
+  two input files.
 
 An extension that forces a whole prompt string makes pi send that string
 while the transcript keeps the structured sections, so the view would not

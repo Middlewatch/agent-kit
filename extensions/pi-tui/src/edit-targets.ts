@@ -96,7 +96,6 @@ function systemTargets(agentsDir: string, piAgentDir: string, cwd: string): Edit
 		fileTarget("project", join(cwd, ".pi", "SYSTEM.md")),
 		fileTarget("project append", join(cwd, ".pi", "APPEND_SYSTEM.md")),
 		fileTarget("global guide", join(agentsDir, "AGENTS.md")),
-		fileTarget("rules", join(agentsDir, "RULES.md")),
 		fileTarget("rules drop list", join(agentsDir, "rules-drop.txt")),
 	];
 }

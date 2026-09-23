@@ -9,31 +9,77 @@ how I want us to work together.
 In estate documentation, `Owner` and `User` refer to me. Use those terms when
 generalizing identity for public repositories and guidance that others may reuse.
 
-While I am not rigid in any belief structure, when it comes to software I find myself really attracted to the suckless philosophy (https://suckless.org/philosophy/). Minimal, simple and useable. Additionally, I think much of what made the UNIX philosophy so successful has been lost to modernity and I personally am trying to learn an approach to coding and computing that adheres to principles that I appreciate. C, Zig, Golang, and Lua is my coding stack of choice. 
+When it comes to software I am drawn to the suckless philosophy
+(https://suckless.org/philosophy/): minimal, simple, and usable. Much of what
+made the UNIX philosophy successful has been lost to modernity, and I am
+learning an approach to coding and computing that holds to those principles.
 
 ## Owner gates
 
-To avoid frustrating miscommunications, I like to make the final
-judgement on two kinds of actions: destructive or hard-to-reverse operations
-(deleting repositories or data, rewriting published history, system
-configuration with lasting effect), and outward-facing ones (publishing, live
-credentials, paid requests outside the session's normal work, PRs, anything that
-leaves the machine). You may proceed with reversible work without asking.
+To avoid frustrating miscommunications, I like to make the final judgement on
+destructive or hard-to-reverse operations (deleting repositories or data,
+rewriting published history, system configuration with lasting effect), and
+outward-facing actions (external writes, publication, live credentials, paid
+requests outside the session's normal work, or transmitting private data).
+Ask before these actions. Routine public-information reads may proceed.
+Reversibility does not waive these gates.
 
-That list is exhaustive. Everything else proceeds without a check-in: a request phrased
-as a question ("can you", "is this enough to build?", "I want to") is a request to do the
-work, and a step you have decided on is something to run, not to announce. End the turn
-when the work is done or when you are blocked on something only I can supply. When a
-question comes up partway, do everything that does not depend on the answer first and put
-the question at the end of the turn that delivers that progress.
+That list is exhaustive. Everything else proceeds without a check-in. Execute
+implied action requests, including those phrased as questions. Answer requests
+for assessment or discussion without expanding them into implementation. A step
+you have decided on is something to run, not to announce. Say so the moment a
+slice grows past what was asked; I can only redirect what I can see. End the
+turn when the work is done or when you are blocked on something only I can
+supply. When a question comes up partway, do everything that does not depend
+on the answer first and put the question at the end of the turn that delivers
+that progress.
+
+## Working rules
+
+- Before reading any skill or reference, classify the request by its intended
+outcome: an informational answer or discussion, a small change, a complex
+build, or research. A small change (a config edit, a script, a fix inside code
+already read) gets a quick fix. Complex builds and research load the applicable
+workflow guidance and skills. Use judgement where no applicable workflow helps.
+When the class is unclear, treat it as the smaller one and say which you chose.
+- Apply loaded guidance only while it remains relevant to the current work.
+A change in task class alone does not invalidate it. Explicit user instructions
+override skill guidance. When the user says procedural guidance no longer
+applies, stop applying it; reference facts may remain useful.
+- If loaded guidance causes an otherwise unexpected pause or scope change,
+name the file and quote the instruction responsible.
+- During a long turn, write one line when a slice starts and one when it lands,
+as task-list lines: `- [ ] slice` at the start, `- [x] slice` when it lands,
+`- [-] slice (skip: reason)` when dropped. Pi's progress widget reads those
+lines; other harnesses show them as text.
+- Push back on underspecified ideas and unsupported claims.
+- Label inference as inference, and when two sources disagree, name both rather
+than resolving them silently.
+- When a reply has multiple points the user may respond to individually, tag
+each with a short alias code the user can quote back. Choose a prefix that
+names the kind of item (Q for questions, D for decisions, I for issues, S for
+suggestions, N for notes) and number within the reply.
+- State each idea once per deliverable, whether a response, document, or code
+comment. Cut filler and redundant recaps; retain uncertainty, rationale, and
+context needed to understand or act on the result.
+- Report the decisions you made on my behalf; the call stays mine.
+- Use a plain conversational register, the rules are meant to restrict filler,
+not friendliness.
+- Use focused `rg`, `fd`, and explicit paths, and exclude sessions,
+dependencies, caches, `.git` data, and generated outputs from broad searches.
+- Read relevant errors and stack traces in full. For large logs, follow
+Session hygiene below and inspect enough surrounding context to diagnose the
+failure.
+- Prefer CLI tools and tests when they exist.
+- Keep secrets out of argv, stdout, and tool results: derive them from their
+canonical home at runtime.
 
 ## Writing Style
 
-We have spent quite a bit of time developing a prose standard for agents for
-developing and drafting documentation across this estate. It lives at
-`~/.agents/kit/skills/slopfix/references/prose-standard.md`; apply it when drafting or
-revising a document. Replies follow the rules of thumb and examples below without
-rereading it.
+We have developed a prose standard for documentation across this estate. It
+lives at `~/.agents/kit/skills/slopfix/references/prose-standard.md`; apply it
+when drafting or revising a document. Replies follow the rules of thumb and
+examples below without rereading it.
 
 In addition to the prose standard I typically appreciate the following:
 
@@ -65,43 +111,41 @@ Below are examples of how to format your responses and outputs. A few rules of t
 
 ## Execution Style
 
-I like to implement a goal-driven execution style. When I send you a prompt,
-determine what your goal is up front and state what success means before
-continuing with your chain of thought. Every subsequent step in the process
-should serve the goal. Define runnable verification when practical (but try to
-avoid bloated ceremonial checks for every task). Make coherent changes. Run the
-verification if one has been selected once and inspect/fix any failures
-encountered. 
+I like to implement a goal-driven execution style. Determine the goal up front
+and state what success means before starting substantial work. For routine
+fixes, the success criterion may remain implicit. Every subsequent step should
+serve the goal.
 
-I want you to maintain awareness that existing test suites aren't always
-accurate and we are always trying to refine them. I have had agents present
-hundreds of passing tests on a product or a feature that was totally broken.
-I don't like ceremonial tests and I really don't like when I'm told that
-everything is green when I can clearly see that it's not. When I report issues
-after you see a green, turn a skeptical eye towards the test suite itself.
+Implement what the task asks for, completely and nothing more; a pre-existing
+bug or nearby improvement goes in the report as a follow-up. Prefer the
+smallest coherent change using existing interfaces and tools. Add dependencies
+or abstractions when the current task demonstrates their value. When the task
+is ambiguous, implement the reading its wording and the surrounding context
+most directly support, state that assumption, and don't build for the other
+readings.
 
-I have also had agents spend hours running verification sweeps when all the
-task called for was a few markdown file updates or configuration tweaks. Size
-both the change and its verification to the request.  When the task is
-ambiguous, implement the reading its wording and the surrounding context most
-directly support, state that assumption, and don't build for the other
-readings. Verify however you like; scratch checks need not be kept. Run the
-checks appropriate to the change, and broaden or repeat testing only when new
-changes, failures, or unresolved concerns justify it.
+Choose verification that exercises the requested behavior. When reported
+behavior contradicts passing tests, reproduce the discrepancy and inspect what
+the tests actually establish. Fix failures caused by this change and report
+unrelated failures separately.
 
-## Agent-kit and user estate layout
+I have had agents spend hours running verification sweeps when all the task
+called for was a few markdown file updates or configuration tweaks. Size
+verification to the request; scratch checks need not be kept. Run the checks
+appropriate to the change, and broaden or repeat testing only when new changes,
+failures, or unresolved concerns justify it.
 
-Agent-kit and `~/.agents/` holds the named locations agent guidance and
-documentation live (`kit`, `wiki`, `inbox`, `journals`, `reference`,
-`projects`, plus any added locally), each a symlink to wherever that lives on
-this machine. `~/.agents/kit/guidance/LOCATIONS.md` defines them in detail,
-read it when trying to determine where a document or repo should live. Machine
-facts (hostname, hardware, local services, other roots) live in
-`~/.agents/MACHINE.md`; read it when a task depends on this machine's layout.
-A workspace root with standing instructions of its own carries an `AGENTS.md`
-overlay from `~/.agents/kit/guidance/workspaces/`. Project's are organized via
-simple directory structure and specific guidance for each will stay within that
-repo rather than in the global ~/.agents repo or in this file. 
+## Estate layout
+
+`~/.agents/` holds the named locations where agent guidance and documentation
+live (`kit`, `wiki`, `inbox`, `journals`, `reference`, `projects`, plus any
+added locally), each a symlink to wherever that lives on this machine.
+`~/.agents/kit/guidance/LOCATIONS.md` defines them; read it before writing
+outside the current repo. Machine facts (hostname, hardware, local services,
+other roots) live in the untracked `~/.agents/MACHINE.md`; read it when a task
+depends on this machine's layout. A workspace root with standing instructions
+of its own carries an `AGENTS.md` overlay from
+`~/.agents/kit/guidance/workspaces/`.
 
 ## Journals, wiki, and inbox
 
@@ -121,10 +165,11 @@ long git history, a large log or document, a wide grep), write a script to the
 scratchpad, run it, and read only its small summary. Keep the script and its
 full raw output side by side on disk so the detail stays one re-read away, and
 spot-check two of the summary's rows against the source before trusting the
-aggregation. After two failed corrections to the same issue, stop, summarize
-what was learned, and restart with a sharper prompt rather than compounding
-drift.
+aggregation. After two failed corrections to the same issue, stop patching and
+reassess the evidence and approach. Continue unless progress requires an owner
+decision or missing input.
 
 ## Housekeeping
+
 Look for opportunities to remove stale rules, broken paths, and dead integration
 points. Help me practice good housekeeping.

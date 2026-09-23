@@ -38,18 +38,18 @@ export function parseDropList(text: string): string[] {
 		.map((line) => line.replace(/^- /, ""));
 }
 
-/** The stock rules body minus the dropped bullets, with the owner's rules after it. */
-export function withRules(rulesBody: string, drop: string[], custom: string): string {
+/** The stock rules body minus the dropped bullets. */
+export function withRules(rulesBody: string, drop: string[]): string {
 	const dropped = new Set(drop.map((rule) => `- ${rule}`));
-	const kept = rulesBody.split("\n").filter((line) => !dropped.has(line.trimEnd()));
-	const extra = custom.trim();
-	return extra ? `${kept.join("\n")}\n${extra}` : kept.join("\n");
+	return rulesBody
+		.split("\n")
+		.filter((line) => !dropped.has(line.trimEnd()))
+		.join("\n");
 }
 
 export interface SectionInputs {
 	roster: string;
 	drop: string[];
-	rules: string;
 }
 
 /** The two overridden bodies for a rendered prompt, or undefined when either wrapper is missing. */
@@ -57,7 +57,7 @@ export function overrides(prompt: string, inputs: SectionInputs): { tools: strin
 	const tools = liftSection(prompt, "tools");
 	const rules = liftSection(prompt, "rules");
 	if (tools === undefined || rules === undefined) return undefined;
-	return { tools: withLocalTools(tools, inputs.roster), rules: withRules(rules, inputs.drop, inputs.rules) };
+	return { tools: withLocalTools(tools, inputs.roster), rules: withRules(rules, inputs.drop) };
 }
 
 /** The rendered prompt with the two overrides written back, as the next request would carry them. */

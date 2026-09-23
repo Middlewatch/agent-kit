@@ -69,17 +69,11 @@ so link them by hand (`ln -s ~/.agents/kit/guidance/workspaces/research/AGENTS.m
 the root). Managing the overlays here keeps every workspace instruction in one
 editable place. Which roots exist on a given machine is a `MACHINE.md` fact.
 
-## RULES.md, rules-drop.txt, APPEND_SYSTEM.md: pi's system prompt
+## rules-drop.txt: pi's stock rules
 
-Three files beside `AGENTS.md` that shape pi's system prompt, linked into
-`~/.agents/` by `bin/install`. The `prompt-sections` extension appends
-`RULES.md` to pi's stock `<rules>` section as written and removes the stock
-rules named in `rules-drop.txt`, one per line. `APPEND_SYSTEM.md` is linked
-on to `~/.pi/agent/`, where pi reads it and renders it as `<addendum>` after
-its `<docs>` section. `RULES.md` carries the task-class and precedence rules,
-which govern how the model reads everything rendered after them, plus pi-only
-mechanics such as the progress-widget line syntax; `AGENTS.md` carries every
-rule that is about the work itself, and states each idea once across the two.
-Like `AGENTS.md` they are the owner's voice and yours to rewrite if you fork
-the kit. Only Pi reads these; Claude Code and Codex keep their own system
-prompts.
+`AGENTS.md` is the one rule set, read by every harness. The only pi-specific
+file beside it is `rules-drop.txt`, linked into `~/.agents/` by `bin/install`:
+the `prompt-sections` extension removes each stock rule it names, one per
+line, from pi's `<rules>` section, so a stock line that pulls against the
+guide ("Be concise", "ask whenever underspecified") stops reaching the model.
+Claude Code and Codex keep their own system prompts and read the guide alone.

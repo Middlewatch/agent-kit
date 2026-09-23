@@ -46,25 +46,25 @@ test("parseDropList skips blanks and comments and accepts an optional bullet", (
 	]);
 });
 
-test("withRules drops exact bullets only and appends the owner's rules", () => {
+test("withRules drops exact bullets only", () => {
 	const body = "- Use read to examine files\n- Be concise in your responses\n- Be concise in your responses, mostly";
 	assert.equal(
-		withRules(body, ["Be concise in your responses", "Not present"], "\n- State what success means.\n"),
-		"- Use read to examine files\n- Be concise in your responses, mostly\n- State what success means.",
+		withRules(body, ["Be concise in your responses", "Not present"]),
+		"- Use read to examine files\n- Be concise in your responses, mostly",
 	);
-	assert.equal(withRules(body, [], ""), body);
+	assert.equal(withRules(body, []), body);
 });
 
 test("previewPrompt writes both overrides back in place and leaves later text alone", () => {
-	const out = previewPrompt(PROMPT, { roster: "- `sess`: y", drop: ["Be concise in your responses"], rules: "- Mine." });
+	const out = previewPrompt(PROMPT, { roster: "- `sess`: y", drop: ["Be concise in your responses"] });
 	assert.equal(
 		out,
 		PROMPT.replace("more may exist.\n</tools>", `more may exist.\n\n${LOCAL_TOOLS_LEAD}\n- \`sess\`: y\n</tools>`).replace(
 			"- Use read to examine files\n- Be concise in your responses\n</rules>\n\n<project_context>",
-			"- Use read to examine files\n- Mine.\n</rules>\n\n<project_context>",
+			"- Use read to examine files\n</rules>\n\n<project_context>",
 		),
 	);
-	assert.equal(previewPrompt("no sections here", { roster: "", drop: [], rules: "" }), undefined);
+	assert.equal(previewPrompt("no sections here", { roster: "", drop: [] }), undefined);
 });
 
 test("foldSections applies patches in order and keeps a section's first position", () => {

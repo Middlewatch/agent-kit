@@ -16,7 +16,6 @@ reads; `README.md` explains the convention and the install.
   history directories it skips. Machine facts live in the untracked
   `~/.agents/MACHINE.md`.
 - Always-loaded files (`guidance/AGENTS.md`, `guidance/CLAUDE.md`,
-  `guidance/RULES.md`, `guidance/APPEND_SYSTEM.md`,
   `guidance/workspaces/*/AGENTS.md`, this file) stay at or under 240 lines;
   procedures go into skills or linked documentation.
 - Skills are served by the `~/.agents/skills -> kit/skills` link; the pi

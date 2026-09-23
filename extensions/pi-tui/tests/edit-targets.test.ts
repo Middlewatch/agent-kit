@@ -29,7 +29,7 @@ function fixtureRoots(): EditRoots {
 	mkdirSync(join(roots.cwd, ".pi", "prompts"), { recursive: true });
 	writeFileSync(join(roots.cwd, ".pi", "prompts", "local.md"), "local");
 
-	writeFileSync(join(roots.agentsDir, "RULES.md"), "- rule");
+	writeFileSync(join(roots.agentsDir, "rules-drop.txt"), "Be concise");
 
 	// Config-mapped root with nested files and excluded noise.
 	const wiki = join(base, "wiki");
@@ -87,9 +87,8 @@ describe("discoverEditRoots", () => {
 
 	it("offers the estate's prompt files beside pi's slots", () => {
 		const system = new Map(byLabel.get("system")!.targets.map((t) => [t.label, t]));
-		expect(system.get("rules")?.path).toBe(join(roots.agentsDir, "RULES.md"));
-		expect(system.get("rules")?.exists).toBe(true);
-		expect(system.get("rules drop list")?.exists).toBe(false);
+		expect(system.get("rules drop list")?.path).toBe(join(roots.agentsDir, "rules-drop.txt"));
+		expect(system.get("rules drop list")?.exists).toBe(true);
 		expect(system.get("global guide")?.path).toBe(join(roots.agentsDir, "AGENTS.md"));
 	});
 

@@ -4,9 +4,9 @@
  *
  * On `before_agent_start` the handler takes the two section bodies from pi's
  * own rendering (`event.systemPrompt`), appends the local CLI roster to
- * `<tools>`, removes the rules listed in `~/.agents/rules-drop.txt` and
- * appends `~/.agents/RULES.md` to `<rules>`, then sets both through `options.sections`, where a
- * stock name replaces the section in place. Pi still builds, diffs, and
+ * `<tools>`, removes the rules listed in `~/.agents/rules-drop.txt` from
+ * `<rules>`, then sets both through `options.sections`, where a stock name
+ * replaces the section in place. Pi still builds, diffs, and
  * persists every section.
  *
  * It changes nothing when a custom or forced prompt is in effect (pi builds
@@ -36,7 +36,7 @@ import {
 import { DEFAULT_INDEX_PATH, readLocalTools } from "./local-tools.ts";
 import { type PromptView, PromptViewer } from "./viewer-ui.ts";
 
-/** The owner's files sit beside the global guide, linked from the kit's `guidance/` by `bin/install`. */
+/** The drop list sits beside the global guide, linked from the kit's `guidance/` by `bin/install`. */
 const AGENTS_DIR = join(homedir(), ".agents");
 
 function readOptional(path: string): string {
@@ -51,7 +51,6 @@ function readInputs(): SectionInputs {
 	return {
 		roster: readLocalTools(),
 		drop: parseDropList(readOptional(join(AGENTS_DIR, "rules-drop.txt"))),
-		rules: readOptional(join(AGENTS_DIR, "RULES.md")),
 	};
 }
 
@@ -71,7 +70,6 @@ function buildView(ctx: ExtensionCommandContext): PromptView {
 		`Context files\n${(options.contextFiles ?? []).map((file) => `${file.path}  ${file.content.length} chars`).join("\n") || "(none)"}`,
 		[
 			"prompt-sections inputs",
-			`${join(AGENTS_DIR, "RULES.md")}  ${inputs.rules ? `${inputs.rules.length} chars` : "absent"}`,
 			`${join(AGENTS_DIR, "rules-drop.txt")}  ${inputs.drop.length} rule(s)`,
 			`${DEFAULT_INDEX_PATH}  ${inputs.roster ? inputs.roster.split("\n").length : 0} tool(s) on PATH`,
 		].join("\n"),

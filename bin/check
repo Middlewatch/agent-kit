@@ -43,8 +43,6 @@ BUDGETED_GLOBS = (
     "AGENTS.md",
     "guidance/AGENTS.md",
     "guidance/CLAUDE.md",
-    "guidance/RULES.md",
-    "guidance/APPEND_SYSTEM.md",
     "guidance/workspaces/*/AGENTS.md",
 )
 

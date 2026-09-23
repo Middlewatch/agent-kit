@@ -9,6 +9,8 @@ work, which apply in every repository below it.
 ## Contract
 
 - Clean, performant, open source, understandable software is the goal.
+- C, Zig, Go, and Lua are the owner's languages of choice; pick from them
+  unless the task or the repository dictates otherwise.
 - Git is an ordinary tool here: use it for progress and status tracking, write
   commit messages a human can read, and checkpoint, branch, or hand work between
   agents whenever that helps.
