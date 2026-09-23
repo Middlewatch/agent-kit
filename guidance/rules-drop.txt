@@ -2,4 +2,3 @@
 # One rule per line, exactly as pi renders it; a rule pi is not emitting is ignored.
 Be concise in your responses
 Show file paths clearly when working with files
-Use ask_user_question whenever the user's request is underspecified and you cannot proceed without concrete decisions. Each question should have 2-4 options with a label (1-5 words) and a description explaining what the choice means. The user can additionally type a custom answer via the automatically appended "Type something." row on every question.
