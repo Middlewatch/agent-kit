@@ -370,3 +370,24 @@ pi --no-extensions -e ./index.ts --no-session --model openai-codex/gpt-6-astra \
   --thinking low --tools delegate -p \
   'Use delegate with profile research and a resultSchema requiring {finding, sourceUrl} to answer: what is the current stable Node.js LTS major version?'
 ```
+
+Caveat on the usefulness score (`src/usefulness-eval.ts`, verified 2026-09-11
+at kit commit `48ca15b`): the scorer matches expected defect IDs and exact
+source locations and ignores the finding's explanation, and it sets
+`correctedProvisionalClaim` on any ID/location match. A finding that names
+the right line while denying the defect scores as full recall with a
+corrected claim:
+
+```bash
+node --experimental-strip-types --input-type=module -e '
+import {scoreUsefulness} from "./src/usefulness-eval.ts";
+const oracle=[{id:"AUTH_ASSIGNMENT",path:"src/auth.ts",line:2}];
+const finding={...oracle[0],citation:"src/auth.ts:2",
+  evidence:"This line is safe and has no functional defect."};
+console.log(JSON.stringify(scoreUsefulness([finding],oracle)));'
+# {"defectRecall":1,"falsePositives":0,"supportedCitations":1,"unsupportedCitations":0,"correctedProvisionalClaim":true}
+```
+
+The live runner also names the expected defect IDs in its prompt and asks the
+root to return the child's JSON unchanged, so it measures finding-location
+recovery, not semantic correctness or whether the root changed a belief.
