@@ -1,6 +1,6 @@
 ---
 name: structural-review
-description: "Review code for structure against the structural standard. Use when the owner asks whether the code makes sense, reads well, is well organized or structured, whether the names are right, whether something can be simplified, or asks for a cleanup, readability, or maintainability pass."
+description: "Review code structure, naming, and readability against the structural standard. Owner-invoked."
 disable-model-invocation: true
 ---
 
@@ -19,7 +19,7 @@ A run has two passes.
 ## Seams
 
 - Record any structural finding that is a true product defect in "Observed, out
-  of axis" and say it wants a `deep-review` pass. You do not own the fix.
+  of axis" and say it wants a `deep-review` pass; the fix belongs to that pass.
 - Any disagreement between the code and its spec, README, or an accepted ADR
   is a finding here: name the document and line.
 - Stale phase codes and build-time language in docs and comments are `as-built`
@@ -127,8 +127,8 @@ Every finding carries a concrete before/after block the owner can rule on by num
   type redesign, a layout change trading legibility for throughput, or a challenge to the
   project's own dominant pattern), mark it **YOUR CALL** and give the trade-off in one
   sentence rather than a diff. These are the owner's to decide.
-- An idiom challenge is always **YOUR CALL** and is never approvable by number, because
-  its remedy is a migration. Give the site count with it.
+- An idiom challenge is **YOUR CALL** rather than approvable by number, because its
+  remedy is a migration. Give the site count with it.
 
 Then stop and present. Edit product code only after the owner rules.
 

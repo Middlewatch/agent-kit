@@ -5,6 +5,7 @@ Each program or named process has one `<topic>/TUTORIAL.md` here. Read its check
 ## Topics
 
 - [Dolphin](dolphin/TUTORIAL.md): file navigation, Git and chezmoi integration, and a deferred appearance experiment.
+- [sca (Zig)](sca-zig/TUTORIAL.md): source walkthrough of the sca agent, Zig 0.16 syntax and design decisions.
 - [Neovim](neovim/TUTORIAL.md): modal editing, configured navigation, language tools, and the pending configuration-ownership task.
 - [Yazi](yazi/TUTORIAL.md): terminal file navigation, organization, search, and editor handoff.
 

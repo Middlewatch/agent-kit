@@ -1,6 +1,6 @@
 ---
 name: walkthrough
-description: "Coach a hands-on learning conversation one verified task at a time. Use for interactive walkthroughs, guided practice, learning by doing, getting a feel for a tool or concept, looking up a previously practiced workflow, or resuming that practice after a short confirmation. Not for a standalone tutorial document, a full course workspace (teach), a setup wizard (wizard), or an explanation-only question (why)."
+description: "Hands-on learning conversation, one verified task at a time. Use for guided practice or getting a feel for a tool. Not for a tutorial document (teach), a setup wizard (wizard), or an explanation (why)."
 ---
 
 # Walkthrough

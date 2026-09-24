@@ -1,6 +1,6 @@
 ---
 name: glossary
-description: "Build and sharpen a project's domain glossary in CONTEXT.md: Use when naming a new concept, when the owner and the code use different words for one thing, when a term turns out to be overloaded, or when writing docs or tests in a project or workspace. Update inline, not batched, create CONTEXT.md lazily if it does not exist."
+description: "Maintain the project's domain glossary in CONTEXT.md. Use when a term is overloaded or the owner and the code name one thing differently. Not for every doc or test edit."
 ---
 
 # Glossary

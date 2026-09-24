@@ -75,10 +75,13 @@ why these references should be read and when the next step should be ran.
 
 ## Choose the right degree of rigidity
 
-Use an unconditional imperative (DO NOT, NEVER, etc.) when it protects safety, evidence
-integrity, interoperability, an owner decision, or a recurring demonstrated failure. Make
-the enforcement or reason visible. Often, overly prescriptive imperatives lead to edge
-cases that run counter to the intended outcome.
+State the action to take rather than the one to avoid. A prohibition (DO NOT, NEVER)
+earns its place where a code gate enforces it (a tool allowlist, an interlock rule, a
+deterministic lint) or where it states a boundary the reader might otherwise cross:
+safety, evidence integrity, an owner decision, or a recurring demonstrated failure. Make
+the gate or the reason visible beside the rule. Elsewhere, write the conditional procedure
+instead: "when X, do Y". Prescriptive imperatives without enforcement age into edge cases
+that run counter to the intended outcome.
 
 Call a method a default when another method can satisfy the same procedure, this will help
 you and the agent understand why to choose this one over that one. Examples include

@@ -1,6 +1,6 @@
 ---
 name: why
-description: "Use for 'why does X work this way', 'why did we pick Y', design rationale, the history of a decision, dead code, or 'where did this number come from'."
+description: "Design rationale and history: why X works this way, why we picked Y, where a number came from, dead code. Not for how a mechanism works today."
 ---
 
 # Why
@@ -98,7 +98,7 @@ If there's nothing to infer, skip this section.
 
 ### Competing Hypotheses
 
-**If the evidence fits multiple stories, present them.** Don't force a winner when the record doesn't support one. For each hypothesis:
+**If the evidence fits multiple stories, present them.** For each hypothesis:
 
 - **Hypothesis:** {one-sentence statement}
 - **Evidence for:** {specific items}
@@ -134,8 +134,8 @@ capture it: an ADR via the `adr` skill if it is a decision, a wiki note otherwis
 
 ## Failure modes to avoid
 
-- **Confident storytelling.** An uncited claim goes in inferred or hypotheses, never in
-  the record section.
+- **Confident storytelling.** An uncited claim goes in inferred or hypotheses; the
+  record section holds cited claims only.
 - **Code as evidence of its own intent.** "It checks for null to handle the null case"
   is mechanics. Motivation comes from an external source or is labeled inference.
 - **Recency bias.** The current shape is often an accretion of earlier decisions; trace

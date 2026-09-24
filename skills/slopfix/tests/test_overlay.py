@@ -2,9 +2,9 @@
 """External contract harness for profiles and lexicon overlays.
 
 Drives the real binary by path and keeps the overlay wire format independent
-of the Go implementation.
+of the implementation.
 
-    python3 tests/test_overlay.py ./bin/slopcheck
+    python3 tests/test_overlay.py ./slopcheck.py
 """
 
 import pathlib
@@ -52,15 +52,16 @@ class TestProfileOverlay(unittest.TestCase):
             "slopcheck: unknown profile 'nope' (known: house, technical)\n",
         )
 
-    def test_overlay_add_flags_new_word(self):
+    def test_overlay_add_reports_new_word(self):
         # This fixture dependency is deliberate: clean.md uses "cache" in
         # ordinary prose while the base house profile leaves it unflagged.
         path = FIXTURES / "clean.md"
         bare = run(path)
         self.assertEqual(bare.returncode, 0, bare.stdout + bare.stderr)
         r = run("--overlay", OVERLAYS / "add_cache.lex", path)
-        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
-        self.assertIn("FLAG", row(r.stdout, "focal vocabulary"))
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("NOTE", row(r.stdout, "focal vocabulary"))
+        self.assertGreater(hits(r.stdout, "focal vocabulary"), 0)
 
     def test_directive_suppresses_overlay(self):
         r = run(
@@ -77,9 +78,11 @@ class TestProfileOverlay(unittest.TestCase):
     def test_overlay_drop_suppresses_entry(self):
         path = FIXTURES / "one_tell.md"
         bare = run(path)
-        self.assertEqual(bare.returncode, 1, bare.stdout + bare.stderr)
+        self.assertEqual(bare.returncode, 0, bare.stdout + bare.stderr)
+        self.assertEqual(hits(bare.stdout, "focal vocabulary"), 1)
         r = run("--overlay", OVERLAYS / "drop_delve.lex", path)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(hits(r.stdout, "focal vocabulary"), 0)
 
     def test_overlay_demote_moves_hit_to_soft(self):
         r = run(
@@ -95,8 +98,10 @@ class TestProfileOverlay(unittest.TestCase):
         b = OVERLAYS / "order_b.lex"
         dropped = run("--overlay", a, "--overlay", b, path)
         self.assertEqual(dropped.returncode, 0, dropped.stdout + dropped.stderr)
+        self.assertEqual(hits(dropped.stdout, "focal vocabulary"), 0)
         added = run("--overlay", b, "--overlay", a, path)
-        self.assertEqual(added.returncode, 1, added.stdout + added.stderr)
+        self.assertEqual(added.returncode, 0, added.stdout + added.stderr)
+        self.assertGreater(hits(added.stdout, "focal vocabulary"), 0)
 
     def test_add_replaces_existing_text(self):
         r = run(
@@ -154,7 +159,7 @@ class TestProfileOverlay(unittest.TestCase):
             "-v", "--overlay", OVERLAYS / "kinds.lex",
             FIXTURES / "kinds.md",
         )
-        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertEqual(hits(r.stdout, "focal vocabulary"), 6)
 
 

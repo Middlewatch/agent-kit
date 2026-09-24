@@ -1,6 +1,6 @@
 ---
 name: no-comments
-description: "Spawn Comment Sicko, fix accepted findings, and offer encodings for claimed constraints."
+description: "Run the comment audit, fix accepted findings, and offer encodings for claimed constraints. Owner-invoked."
 disable-model-invocation: true
 ---
 
@@ -34,9 +34,9 @@ Use the caller's files or diff. Otherwise use the current diff against the base 
    the sketch.
 4. Implement the smallest root-cause fix in scope and remove every named workaround. If
    the root cause is out of scope, land the smallest in-scope fix and report the rest
-   open. The guiding intent: fix real causes, redesign as if the requirements always
-   existed, never bolt on symptom guards. That intent authorizes neither widening the
-   fence nor fixing instances outside it.
+   open. The guiding intent: fix real causes and redesign as if the requirements had
+   existed from the start, rather than adding a symptom guard. That intent stops at the
+   fence: instances outside it stay untouched.
 5. Constraint comments say `do not remove`, `do not change wording`, or `talk to X before
    changing`. Leave keeps about things we cannot change. For the rest, offer the cheapest
    in-scope type, runtime check, test, or CI lint, and wait for interactive approval

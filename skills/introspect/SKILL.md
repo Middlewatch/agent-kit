@@ -1,6 +1,6 @@
 ---
 name: introspect
-description: "Run the periodic outcome-review sweep over the estate's steering artifacts: skills and wiki notes. Use when the owner invokes introspect, asks for the monthly sweep, an outcome review, or a skill/wiki health pass. Not for triaging ordinary inbox notes (inbox-triage) or authoring a single skill on request (skill-author)."
+description: "Periodic outcome review over the estate's skills and wiki notes. Owner-invoked. Not for inbox triage or authoring one skill."
 disable-model-invocation: true
 ---
 
@@ -18,8 +18,8 @@ Every proposal cites its evidence (episode IDs, touch counts, or a friction note
 every proposal reaches an owner ruling; accepted edits are applied before the session
 ends; skill changes get ledger entries and wiki-side rulings land in the dated snapshot.
 The owner rules on every proposal; nothing is applied, retired, or archived on the
-agent's own judgment. Usage numbers are trend signal, never per-artifact verdicts (the
-bias notes in the scanner's README govern).
+agent's own judgment. Read usage numbers as trend signal; the bias notes in the
+scanner's README govern how far a single artifact's count can be trusted.
 
 ## Preconditions
 
@@ -66,7 +66,7 @@ chat: proposals ruled, edits landed, outcomes closed, and what was deferred.
 
 - A month with thin evidence produces a short sweep, not padded proposals. Say so and
   stop.
-- Retiring a skill or note is executed only on an explicit ruling naming it, never
-  bundled into a batch ruling.
+- Retiring a skill or note is executed only on an explicit ruling that names it; a
+  batch ruling does not cover retirement.
 - Scope today is skills and wiki notes; always-loaded guidance joins by owner decision
   (open question in the spec).

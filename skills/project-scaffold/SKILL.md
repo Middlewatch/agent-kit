@@ -1,6 +1,6 @@
 ---
 name: project-scaffold
-description: "Stand up the day-one skeleton for a new project."
+description: "Stand up a new project's day-one skeleton. Owner-invoked."
 disable-model-invocation: true
 ---
 
@@ -44,8 +44,8 @@ missing flag back to the owner that you cannot proceed.
    runnable locally and in CI from the first commit. Where the gate battery is genuinely
    per-package, the script may be a thin dispatcher over named sub-gates, but one command
    must still reproduce CI locally.
-4. **CI**: a workflow that only runs the gate script on every push, so local and CI can
-   never disagree. Add it when the remote exists. Until then, name it in the deferred line
+4. **CI**: a workflow that only runs the gate script on every push, so local and CI
+   agree by construction. Add it when the remote exists. Until then, name it in the deferred line
    of the report and in AGENTS.md.
 5. **Pins**: pin the toolchain so the gate can enforce it rather than just record it,
    either through a `scripts/<lang>.sh` wrapper that asserts the exact version and execs

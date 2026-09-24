@@ -2,10 +2,9 @@
 """External contract harness for the technical profile.
 
 Drives the real binary by path. The technical profile is a strict superset
-of house: every house rule at house policy, plus the three corpus-approved
-rules as flags.
+of house: every house rule at house policy, plus three notation advisories.
 
-    python3 tests/test_technical.py ./bin/slopcheck
+    python3 tests/test_technical.py ./slopcheck.py
 """
 
 import pathlib
@@ -48,8 +47,11 @@ class TestTechnicalProfile(unittest.TestCase):
             r = run("-p", name, path)
             self.assertEqual(r.returncode, 0, f"{name}: " + r.stdout + r.stderr)
             self.assertNotIn("[FLAG]", r.stdout, f"{name}: " + r.stdout)
+            if name == "technical":
+                for label in SURVIVORS:
+                    self.assertEqual(hits(r.stdout, label), 0, r.stdout)
 
-    def test_slop_fixture_flags_each_survivor_once_under_technical_only(self):
+    def test_fixture_reports_each_survivor_once_under_technical_only(self):
         path = FIXTURES / "technical-slop.md"
         house = run("-p", "house", path)
         self.assertEqual(house.returncode, 0, house.stdout + house.stderr)
@@ -57,22 +59,20 @@ class TestTechnicalProfile(unittest.TestCase):
             self.assertNotIn(label, house.stdout)
 
         tech = run("-p", "technical", path)
-        self.assertEqual(tech.returncode, 1, tech.stdout + tech.stderr)
-        flag_rows = [l for l in tech.stdout.splitlines() if "[FLAG]" in l]
-        self.assertEqual(len(flag_rows), len(SURVIVORS), tech.stdout)
+        self.assertEqual(tech.returncode, 0, tech.stdout + tech.stderr)
+        self.assertNotIn("[FLAG]", tech.stdout)
         for label in SURVIVORS:
-            self.assertIn("[FLAG]", row(tech.stdout, label))
+            self.assertIn("[NOTE]", row(tech.stdout, label))
             self.assertEqual(hits(tech.stdout, label), 1, tech.stdout)
 
     def test_overlay_composes_with_technical_profile(self):
-        # The overlay adds a house-class focal word; the technical rules keep
-        # flagging beside it, so overlay merge and profile selection compose.
+        # Lexicon overlays and technical notation advisories compose.
         r = run("-p", "technical", "--overlay", OVERLAYS / "add_cache.lex",
                 FIXTURES / "technical-slop.md")
-        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
-        self.assertIn("[FLAG]", row(r.stdout, "focal vocabulary"))
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("[NOTE]", row(r.stdout, "focal vocabulary"))
         for label in SURVIVORS:
-            self.assertIn("[FLAG]", row(r.stdout, label))
+            self.assertIn("[NOTE]", row(r.stdout, label))
 
     def test_em_dash_flag_inherited_from_house(self):
         doc = "One em dash — lands here.\n"
@@ -82,16 +82,22 @@ class TestTechnicalProfile(unittest.TestCase):
             self.assertIn("[FLAG]", row(r.stdout, "em dashes"))
             self.assertEqual(hits(r.stdout, "em dashes"), 1, r.stdout)
 
-    def test_directive_preserves_technical_flag(self):
-        # The lexicon directive suppresses lexicon rules only: the focal word
-        # goes unscored while the surviving technical flag still raises.
+    def test_math_and_abbreviation_are_not_notation_findings(self):
+        doc = "## U.S.\n\nThe transfer function H(s) has one pole.\n"
+        r = run("-p", "technical", "-", stdin=doc)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(hits(r.stdout, "optional-plurals"), 0, r.stdout)
+        self.assertEqual(hits(r.stdout, "heading-period"), 0, r.stdout)
+
+    def test_directive_preserves_technical_advisory(self):
+        # The directive suppresses vocabulary, not notation.
         doc = ("<!-- slopcheck: ignore lexicon -->\n\n"
                "Delve into the port(s) table.\n")
         r = run("-p", "technical", "-", stdin=doc)
-        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertIn("note: file directive suppressed lexicon rules", r.stdout)
         self.assertNotIn("focal vocabulary", r.stdout)
-        self.assertIn("[FLAG]", row(r.stdout, "optional-plurals"))
+        self.assertIn("[NOTE]", row(r.stdout, "optional-plurals"))
         self.assertEqual(hits(r.stdout, "optional-plurals"), 1, r.stdout)
 
 

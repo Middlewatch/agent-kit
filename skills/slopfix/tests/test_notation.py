@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """External harness for the two house typography rules: curly quotes and
-emoji. Both are absolute flags on the natural-language surface, so code
-spans and fences never count, and both close with the notation advice
-rather than the substance advice.
+emoji. Curly quotes flag a convention; possible emoji invite review.
+Code spans and fences do not count.
 
     python3 tests/test_notation.py ./slopcheck.py
 """
@@ -36,20 +35,35 @@ def hits(out, label):
 
 
 class TestNotationRules(unittest.TestCase):
-    def test_fixture_flags_both_rules_with_exclusions(self):
+    def test_fixture_reports_both_rules_with_exclusions(self):
         # The fixture carries four curly quotes and two emoji on the surface,
         # plus one of each inside a code span and a fence that must not count.
         r = run("-w", FIXTURES / "notation.md")
         self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
         self.assertIn("[FLAG]", row(r.stdout, "curly quotes"))
         self.assertEqual(hits(r.stdout, "curly quotes"), 4, r.stdout)
-        self.assertIn("[FLAG]", row(r.stdout, "emoji"))
+        self.assertIn("[NOTE]", row(r.stdout, "emoji"))
         self.assertEqual(hits(r.stdout, "emoji"), 2, r.stdout)
 
-    def test_notation_only_closing_advice(self):
+    def test_report_closes_with_counts_only(self):
         r = run(FIXTURES / "notation.md")
-        self.assertIn("notation flag(s). These are mechanical", r.stdout)
+        self.assertEqual(r.stdout.rstrip().splitlines()[-1].strip(),
+                         "1 convention flag(s); 1 advisory rule(s) matched.")
+        self.assertNotIn("These are mechanical", r.stdout)
         self.assertNotIn("injecting substance", r.stdout)
+
+    def test_meaningful_symbols_are_not_emoji(self):
+        r = run("-", stdin="The symbol ♔ denotes the white king. Use ⬆ for up; ☎ is a phone.")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(hits(r.stdout, "emoji"), 0, r.stdout)
+
+    def test_emoji_alone_is_advisory(self):
+        for text in ("A ⭐ marks the result.", "A ⚠️ marks the warning."):
+            with self.subTest(text=text):
+                r = run("-", stdin=text)
+                self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+                self.assertIn("[NOTE]", row(r.stdout, "emoji"))
+                self.assertEqual(hits(r.stdout, "emoji"), 1, r.stdout)
 
     def test_clean_fixture_scores_zero(self):
         r = run(FIXTURES / "clean.md")

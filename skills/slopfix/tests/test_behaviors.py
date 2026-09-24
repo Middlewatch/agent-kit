@@ -23,9 +23,9 @@ BIN = None
 FIXTURES = pathlib.Path(__file__).parent / "fixtures"
 
 
-def run(*args):
+def run(*args, input_text=None):
     return subprocess.run(
-        [BIN, *args], capture_output=True, text=True, timeout=30
+        [BIN, *args], capture_output=True, text=True, input=input_text, timeout=30
     )
 
 
@@ -82,6 +82,52 @@ class TestPartition(unittest.TestCase):
         self.assertEqual(code, 0, out)
 
 
+    def test_inline_exclusions_shared_with_surface(self):
+        for text in (
+            "<!-- delve — --> The check passed.",
+            "Run ``echo delve — now``.",
+            "Run ```echo `delve` — now```.",
+            "See [the result](https://example.org/(delve)—).",
+            "See [the result](<https://example.org/(delve—>).",
+            'See [the result](https://example.org/ "delve (—").',
+            "See [the result](https://example.org/ 'delve )—').",
+        ):
+            with self.subTest(text=text):
+                r = run("-v", "-", input_text=text)
+                self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+                self.assertEqual(hits(r.stdout, "focal vocabulary"), 0, r.stdout)
+                self.assertEqual(hits(r.stdout, "em dashes"), 0, r.stdout)
+                self.assertTrue(row(r.stdout, "words / sentences").endswith("/ 1"))
+
+    def test_escaped_comment_opener_does_not_hide_prose(self):
+        text = "Use \\<!-- literally.\nThis — is prose."
+        r = run("-w", "-", input_text=text)
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertEqual(hits(r.stdout, "em dashes"), 1, r.stdout)
+        self.assertIn("where: 2:6", r.stdout)
+
+    def test_backslash_run_in_destination_is_bounded(self):
+        text = "Read [the result](https://example.org/" + "\\" * 100_000 + ")."
+        r = run("-v", "-", input_text=text)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertTrue(row(r.stdout, "words / sentences").endswith("/ 1"))
+
+    def test_multiline_comment_cannot_open_a_fence(self):
+        text = "<!-- hidden\n```\ndelve —\n-->\nFoster checked the result.\n"
+        r = run("-w", "-v", "-", input_text=text)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(hits(r.stdout, "focal vocabulary"), 1, r.stdout)
+        self.assertEqual(hits(r.stdout, "em dashes"), 0, r.stdout)
+        self.assertIn("where: 5", r.stdout)
+        self.assertTrue(row(r.stdout, "words / sentences").endswith("/ 1"))
+
+    def test_vocabulary_coverage_is_paragraphs_only(self):
+        text = "# Delve\n\n- Delve\n  into setup.\n\n| Delve |\n\nDelve here."
+        r = run("-w", "-", input_text=text)
+        self.assertEqual(hits(r.stdout, "focal vocabulary"), 1, r.stdout)
+        self.assertIn("where: 8", r.stdout)
+
+
 class TestSurface(unittest.TestCase):
     def test_surface_em_dash_regions(self):
         result = run(str(FIXTURES / "surface.md"))
@@ -132,7 +178,8 @@ class TestDirective(unittest.TestCase):
             result = run(path)
             self.assertEqual(hits(result.stdout, "focal vocabulary"), 1, result.stdout)
             self.assertNotIn("file directive suppressed", result.stdout)
-            self.assertEqual(result.returncode, 1, result.stdout)
+            self.assertEqual(result.returncode, 0, result.stdout)
+            self.assertIn("[NOTE]", row(result.stdout, "focal vocabulary"))
 
     def test_directive_is_per_input(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -150,6 +197,13 @@ class TestDirective(unittest.TestCase):
 
 
 class TestSegmentation(unittest.TestCase):
+    def test_code_parentheses_and_unicode_sentence_starts(self):
+        for second in ("`slopcheck` reports no flags.", "``slopcheck`` reports no flags.",
+                       "(The check ran.)", "Élise checked it.", "“The check ran.”"):
+            with self.subTest(second=second):
+                r = run("-v", "-", input_text="The check passed. " + second)
+                self.assertTrue(row(r.stdout, "words / sentences").endswith("/ 2"), r.stdout)
+
     def test_segmentation_golden(self):
         # A decimal point and an abbreviation's period are not sentence
         # boundaries: the fixture holds exactly two sentences.
@@ -174,7 +228,8 @@ class TestMatchBoundaries(unittest.TestCase):
         # the log" is an infinitive with an object and does not.
         out, code = verbose("closing_initial.md")
         self.assertEqual(hits(out, "closing ritual"), 1, out)
-        self.assertEqual(code, 1, out)
+        self.assertIn("[NOTE]", row(out, "closing ritual"))
+        self.assertEqual(code, 0, out)
 
     def test_discourse_marker_needs_comma(self):
         # "Overall," and "Ultimately," count; "the overall latency" and
@@ -184,15 +239,15 @@ class TestMatchBoundaries(unittest.TestCase):
 
     def test_bedrock_casing_and_soft_focal(self):
         # "Amazon Bedrock" is a product name; "the bedrock of" is the tell.
-        # Soft-focal words are reported and never flagged.
+        # Both focal classes are advisory, never convention failures.
         out, code = verbose("casing_soft.md")
         self.assertEqual(hits(out, "focal vocabulary"), 1, out)
-        self.assertIn("FLAG", row(out, "focal vocabulary"), out)
-        self.assertEqual(code, 1, out)
+        self.assertIn("NOTE", row(out, "focal vocabulary"), out)
+        self.assertEqual(code, 0, out)
 
         soft = row(out, "soft focal")
         self.assertEqual(hits(out, "soft focal"), 2, out)
-        self.assertIn("[--", soft, out)
+        self.assertIn("[NOTE]", soft, out)
 
 
 if __name__ == "__main__":

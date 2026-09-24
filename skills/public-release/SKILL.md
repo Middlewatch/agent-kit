@@ -1,6 +1,6 @@
 ---
 name: public-release
-description: "Use when the owner asks to prepare a public release, publish a repo, or cut a public export."
+description: "Prepare a public release, publish a repo, or cut a public export. Owner-invoked."
 disable-model-invocation: true
 ---
 

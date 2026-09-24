@@ -88,8 +88,8 @@ link-map so future agents can find every source by grep alone:
 - Section per run:
 
 ```markdown
-## <report slug> — <date>
-- <URL> — <title> — <date or accessed> — <one line: what this source is good for>
+## <report slug>: <date>
+- <URL> | <title> | <date or accessed> | <one line: what this source is good for>
 ```
 
 Every source from the report's Sources list gets a line. The one-liner is the retrieval hook,

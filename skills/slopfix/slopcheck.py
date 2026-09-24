@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""slopcheck: score markdown or plain text against the mechanical half of the
-house prose standard.
+"""slopcheck: locate prose patterns for review and check house typography.
 
 This is the slopfix skill's own tool, stdlib-only. The external harnesses in
 tests/ drive this script by
@@ -29,8 +28,9 @@ import sys
 # Partitioning is the whole reason this is not a one-pass regex. A
 # command-heavy README legitimately has almost no prose, and scoring its
 # bullet list for burstiness produces a confident wrong answer. Fenced code
-# is dropped entirely; inline code spans become the placeholder word "code"
+# is dropped entirely; inline code spans become the placeholder word "Code"
 # so they count toward sentence length without polluting a lexicon scan.
+# The capital preserves a possible sentence start after terminal punctuation.
 
 EM_DASH = b"\xe2\x80\x94"
 MID_BAND_LOW, MID_BAND_HIGH = 14, 22
@@ -177,82 +177,88 @@ def _matching_backtick_end(line, start, want):
 
 
 def _link_destination_end(line, start):
-    for i in range(start, len(line)):
-        if line[i] == ord(")") and not _is_escaped(line, i):
-            return i + 1
+    """End of a same-line destination, including an optional quoted title."""
+    depth = 1
+    angle = False
+    quote = None
+    i = start
+    while i < len(line) and line[i] in b" \t":
+        i += 1
+    destination_start = i
+    while i < len(line):
+        c = line[i]
+        if c == ord("\\"):
+            i += 2
+            continue
+        if angle:
+            if c == ord(">"):
+                angle = False
+        elif quote is not None:
+            if c == quote:
+                quote = None
+        elif i == destination_start and c == ord("<"):
+            angle = True
+        elif c in b"\"'" and i > start and line[i - 1] in b" \t":
+            quote = c
+        elif c == ord("("):
+            depth += 1
+        elif c == ord(")"):
+            depth -= 1
+            if depth == 0:
+                return i + 1
+        i += 1
     return None
 
 
 def copy_surface_line(dst, base, line, include, state):
-    """Copy one line's natural-language bytes into the source-sized mask.
-    Excluded bytes stay NUL. HTML comments are inline state because they may
-    open or close mid-line; `state` is a one-element list holding the
-    in-comment flag."""
+    """Mask excluded bytes and return the same line for prose measurement.
+    Both views share comment, code-span, and link-destination exclusions.
+    Prose substitutes one word per code span and drops emphasis markers;
+    the surface preserves source offsets for typography locations.
+    `state` holds the cross-line HTML-comment flag."""
+    prose = bytearray()
     i = 0
     while i < len(line):
         if state[0]:
             rel = line.find(b"-->", i)
             if rel < 0:
-                return
+                break
             i = rel + 3
             state[0] = False
             if not include:
-                return
+                break
+            prose.append(ord(" "))
             continue
         if not include:
-            return
+            break
 
-        if line.startswith(b"<!--", i):
+        if line.startswith(b"<!--", i) and not _is_escaped(line, i):
             state[0] = True
+            prose.append(ord(" "))
             i += 4
-        elif line[i] == ord("`"):
+        elif line[i] == ord("`") and not _is_escaped(line, i):
             run = _byte_run(line, i, ord("`"))
             end = _matching_backtick_end(line, i + run, run)
             if end is not None:
+                prose += b"Code"
                 i = end
                 continue
             dst[base + i : base + i + run] = line[i : i + run]
+            prose += line[i : i + run]
             i += run
-        elif line[i] == ord("]") and i + 1 < len(line) and line[i + 1] == ord("(") \
-                and not _is_escaped(line, i):
+        elif line[i:i + 2] == b"](" and not _is_escaped(line, i):
             end = _link_destination_end(line, i + 2)
             if end is not None:
                 i = end
                 continue
             dst[base + i] = line[i]
+            prose.append(line[i])
             i += 1
         else:
             dst[base + i] = line[i]
+            prose.append(line[i])
             i += 1
-
-
-def append_stripped(out, line):
-    """Append one prose line with inline code spans replaced by the
-    placeholder word "code", link targets dropped, link text and emphasis
-    content kept."""
-    i = 0
-    while i < len(line):
-        c = line[i]
-        if c == ord("`"):
-            rel = line.find(b"`", i + 1)
-            if rel < 0:
-                out.append(c)
-                i += 1
-                continue
-            out += b"code"
-            i = rel + 1
-        elif c == ord("(") and i > 0 and line[i - 1] == ord("]"):
-            rel = line.find(b")", i + 1)
-            if rel < 0:
-                out.append(c)
-                i += 1
-                continue
-            i = rel + 1  # drop the URL entirely
-        elif c in (ord("["), ord("]"), ord("*"), ord("_")):
-            i += 1  # drop emphasis and link brackets, keep the text
-        else:
-            out.append(c)
-            i += 1
+    return bytes(prose).translate(None, b"[]*_")
 
 
 def partition(text):
@@ -263,10 +269,8 @@ def partition(text):
     comment_state = [False]
 
     # The open fence, or None. CommonMark: only a line of the same character,
-    # at least as long, and with no info string closes it — a ``` line inside
-    # a ~~~ fence is content, not a toggle. Surface fence state is tracked
-    # independently of the legacy prose partition.
-    open_fence = None
+    # at least as long, and with no info string closes it. A ``` line inside
+    # a ~~~ fence is content, not a toggle. Both views share this state.
     surface_fence = None
     # A list item's wrapped continuation lines are indented and carry no
     # marker of their own. Without this state they read as prose, which both
@@ -301,26 +305,16 @@ def partition(text):
             if m:
                 surface_fence = m
                 surface_excluded = True
-        if not surface_excluded:
-            include_surface = not indented_code
-            copy_surface_line(surface, line_start, line, include_surface, comment_state)
-            if include_surface:
-                content_start = atx_heading_content(line)
-                if content_start is not None:
-                    lo = line_start + content_start
-                    headings[lo:line_end] = surface[lo:line_end]
-
-        if open_fence is not None:
-            m = fence_marker(t)
-            if m and m[0] == open_fence[0] and m[1] >= open_fence[1] and m[1] == len(t):
-                open_fence = None
+        if surface_excluded:
             st.nonprose_lines += 1
             continue
-        m = fence_marker(t)
-        if m:
-            open_fence = m
-            st.nonprose_lines += 1
-            continue
+        include_surface = not indented_code
+        natural = copy_surface_line(surface, line_start, line, include_surface, comment_state)
+        if include_surface:
+            content_start = atx_heading_content(line)
+            if content_start is not None:
+                lo = line_start + content_start
+                headings[lo:line_end] = surface[lo:line_end]
 
         if not t:
             continue
@@ -336,10 +330,14 @@ def partition(text):
             continue
         in_list = False
 
+        natural = natural.strip(b" \t\r")
+        if not natural:
+            st.nonprose_lines += 1
+            continue
         st.prose_lines += 1
         seg_starts.append(len(prose))
         seg_lines.append(st.total_lines)
-        append_stripped(prose, t)
+        prose += natural
         prose.append(ord(" "))
 
     nonblank = st.prose_lines + st.nonprose_lines
@@ -396,11 +394,20 @@ def _is_terminator(s, i):
         if _is_abbreviation(s, i):
             return False  # "U.S. Army", "etc. The"
     j = i + 1
-    while j < len(s) and s[j] in (ord(" "), ord('"'), ord(")"), ord("'")):
-        j += 1
+    while j < len(s):
+        if s[j] in b" \t\r\n\"'()[]":
+            j += 1
+        elif s[j:j + 3] in (b"\xe2\x80\x98", b"\xe2\x80\x99",
+                             b"\xe2\x80\x9c", b"\xe2\x80\x9d"):
+            j += 3
+        else:
+            break
     if j >= len(s):
         return True
-    return s[j] in UPPER or s[j] in DIGITS
+    if s[j] in UPPER or s[j] in DIGITS:
+        return True
+    first = s[j:j + 4].decode("utf-8", "ignore")[:1]
+    return bool(first and first.isupper())
 
 
 def sentence_lengths(s):
@@ -488,7 +495,7 @@ M_SUBSTRING = "substring"    # anywhere, no boundaries; contractions
 C_FOCAL, C_SOFT, C_SIGNPOST, C_CLOSING, C_SYCOPHANCY, C_CONTRACTION = (
     "focal", "soft", "signposting", "closing", "sycophancy", "contraction")
 
-FLAG, INFO = "flag", "info"
+FLAG, ADVISORY, INFO = "flag", "advisory", "info"
 
 # The house avoid list: a *surface* signal, secondary to grounding,
 # dependency, and density. Re-grounding it is a commit here carrying its
@@ -516,7 +523,7 @@ HOUSE_LEXICON = [
     # Lowercase-only: the capitalized form is a proper noun (Amazon Bedrock).
     (b"bedrock", C_FOCAL, M_WORD_LOWER),
     # Words whose slop use cannot be told from a legitimate domain use
-    # without judgment; reported, never flagged.
+    # without judgment; reported as advisory, never flagged.
     (b"leverage", C_SOFT, M_WORD), (b"leverages", C_SOFT, M_WORD),
     (b"leveraging", C_SOFT, M_WORD), (b"robust", C_SOFT, M_WORD),
     (b"comprehensive", C_SOFT, M_WORD), (b"nuanced", C_SOFT, M_WORD),
@@ -569,7 +576,7 @@ HOUSE_LEXICON = [
     (b"certainly!", C_SYCOPHANCY, M_PHRASE),
     # Contractions, counted as a positive signal: their near-absence across a
     # long stretch of prose reads as generated formality. Substrings
-    # deliberately — "n't" is a suffix, not a word.
+    # deliberately: "n't" is a suffix, not a word.
     (b"n't", C_CONTRACTION, M_SUBSTRING), (b"'re", C_CONTRACTION, M_SUBSTRING),
     (b"'ve", C_CONTRACTION, M_SUBSTRING), (b"'ll", C_CONTRACTION, M_SUBSTRING),
     (b"'d", C_CONTRACTION, M_SUBSTRING), (b"it's", C_CONTRACTION, M_SUBSTRING),
@@ -592,10 +599,6 @@ LEXICON_RULES = {
     "contractions": C_CONTRACTION,
 }
 TECHNICAL_RULES = ("optional-plurals", "time-marker", "heading-period")
-# Rules whose fix is a mechanical swap to the standard form, for the closing
-# advice: the three technical notation rules plus the two typography rules.
-NOTATION_RULES = frozenset(TECHNICAL_RULES) | {"curly-quotes", "emoji"}
-
 # Thresholds are the ratified ones. Ten sentences is the floor where a
 # standard deviation carries any information; below it the coefficient of
 # variation swings on a single long sentence. The guard is absolute volume,
@@ -612,14 +615,14 @@ THRESHOLDS = {
 def house_profile():
     return {
         "name": "house",
-        # Report order. Soft focal and contractions are information. Em
-        # dashes, curly quotes, and emoji are absolute flags wherever the
-        # scanner exposes natural language.
+        # Only the two typography conventions affect exit status. Em dashes
+        # are banned outright; a curly quote inside a quoted literal is the
+        # one flag worth a look before changing.
         "rules": [
-            ("burstiness", FLAG), ("mid-band", FLAG), ("focal", FLAG),
-            ("signposting", FLAG), ("closing", FLAG), ("sycophancy", FLAG),
-            ("soft-focal", INFO), ("contractions", INFO),
-            ("em-dashes", FLAG), ("curly-quotes", FLAG), ("emoji", FLAG),
+            ("burstiness", ADVISORY), ("mid-band", ADVISORY), ("focal", ADVISORY),
+            ("signposting", ADVISORY), ("closing", ADVISORY), ("sycophancy", ADVISORY),
+            ("soft-focal", ADVISORY), ("contractions", INFO),
+            ("em-dashes", FLAG), ("curly-quotes", FLAG), ("emoji", ADVISORY),
         ],
         "thresholds": dict(THRESHOLDS),
         "lexicon": list(HOUSE_LEXICON),
@@ -627,11 +630,10 @@ def house_profile():
 
 
 def technical_profile():
-    # The adjudicated superset: every house rule at house policy, plus the
-    # three corpus-kept notation rules as flags.
+    # Notation can be intentional (mathematical expressions, names, quotes).
     p = house_profile()
     p["name"] = "technical"
-    p["rules"] += [(rule, FLAG) for rule in TECHNICAL_RULES]
+    p["rules"] += [(rule, ADVISORY) for rule in TECHNICAL_RULES]
     return p
 
 
@@ -866,11 +868,11 @@ def curly_quote_offsets(surface):
 
 
 def _is_emoji_codepoint(cp):
-    # Decorative ranges: symbols and pictographs, misc symbols and dingbats,
-    # and the star/arrow block. Conservative on purpose: arrows (U+2190
-    # block) and other technical symbols stay legal.
-    return (0x1F000 <= cp <= 0x1FAFF or 0x2600 <= cp <= 0x27BF
-            or 0x2B00 <= cp <= 0x2BFF)
+    # Approximate candidate set. Do not classify entire technical-symbol or
+    # chess blocks as emoji. Text-presentation symbols require VS16 below.
+    return (0x1F300 <= cp <= 0x1FAFF or 0x1F1E6 <= cp <= 0x1F1FF
+            or cp in (0x231A, 0x231B, 0x2614, 0x2615, 0x26A1, 0x2705,
+                      0x2728, 0x274C, 0x274E, 0x2757, 0x2B50, 0x2B55))
 
 
 def emoji_offsets(surface):
@@ -906,7 +908,9 @@ def emoji_offsets(surface):
         if not ok:
             i += 1
             continue
-        if _is_emoji_codepoint(cp):
+        emoji_style = (0x2300 <= cp <= 0x2BFF
+                       and surface[i + need:i + need + 3] == b"\xef\xb8\x8f")
+        if _is_emoji_codepoint(cp) or emoji_style:
             hits.append(i)
         i += need
     return hits
@@ -954,7 +958,8 @@ def find_optional_plurals(surface):
         while j < n and surface[j] in PLURAL_TOKEN:
             j += 1
         # The token must end alnum: underscores and hyphens are internal only.
-        if surface[j - 1] in ALNUM:
+        # Single-letter forms such as H(s) and x(s) are usually notation.
+        if j - i > 1 and surface[j - 1] in ALNUM:
             end = _plural_marker_end(surface, j)
             if end is not None and (end >= n or surface[end] not in PLURAL_TOKEN):
                 spans.append(i)
@@ -1037,7 +1042,8 @@ def find_heading_periods(headings):
             e = h
             while e > 0 and content[e - 1] == ord(" "):
                 e -= 1
-        if e > 0 and content[e - 1] == ord("."):
+        if e > 0 and content[e - 1] == ord(".") \
+                and not _is_abbreviation(content, e - 1):
             spans.append(off + e - 1)
         if rel < 0:
             break
@@ -1174,8 +1180,11 @@ _NO_FINDING = Finding(None, INFO)
 
 
 def _tag(has_rule, f):
-    if has_rule and f.triggered and f.severity == FLAG:
-        return "FLAG"
+    if has_rule and f.triggered and f.reliable:
+        if f.severity == FLAG:
+            return "FLAG"
+        if f.severity == ADVISORY:
+            return "NOTE"
     if not has_rule or f.severity == INFO or not f.reliable:
         return "--  "
     return "ok  "
@@ -1222,26 +1231,9 @@ def render(out, path, r, verbose, where, separate):
     if r.lexicon_ignored:
         out.write("  note: file directive suppressed lexicon rules\n")
 
-    # The tool scores the mechanical half of the standard only, and says so
-    # on every run: a clean score is not a verdict that the writing is good.
-    # When every raised flag is a notation rule, the honest advice is the
-    # opposite — the fix really is the mechanical swap to the standard form.
-    flags = 0
-    notation_only = True
-    for f in r.findings:
-        if f.triggered and f.severity == FLAG:
-            flags += 1
-            if f.rule not in NOTATION_RULES:
-                notation_only = False
-    if flags == 0:
-        out.write("  no surface flags. This says nothing about grounding, argument\n"
-                  "  dependency, or stakes — re-read against the three tests.\n")
-    elif notation_only:
-        out.write(f"  {flags} notation flag(s). These are mechanical: write the"
-                  " standard form.\n")
-    else:
-        out.write(f"  {flags} flag(s). Fix by injecting substance, not by swapping words:\n"
-                  "  a cosmetic swap on a structurally weak draft leaves it weak.\n")
+    flags = r.flag_count()
+    notes = sum(f.triggered and f.severity == ADVISORY for f in r.findings)
+    out.write(f"  {flags} convention flag(s); {notes} advisory rule(s) matched.\n")
 
 
 # ---------------------------------------------------------------------------
@@ -1250,20 +1242,33 @@ def render(out, path, r, verbose, where, separate):
 
 USAGE = """usage: slopcheck [options] <file|->...
 
-Scores markdown or plain text against the mechanical half of the house
-prose standard. Code fences, headings, tables, and list items are
-partitioned out before sentence statistics are computed.
+Locates prose patterns for review and checks house typography.
+[NOTE] findings are advisory; only [FLAG] findings affect exit status.
+Em dashes and curly quotes are flags. Vocabulary, rhythm, emoji, and
+technical notation need contextual review, even when a count is nonzero.
+Code and comments are excluded. Paragraphs supply vocabulary and approximate
+sentence statistics; typography also covers headings, tables, and lists.
 
 options:
-  -p, --profile NAME  select a compiled-in profile (default: house)
+  -p, --profile NAME  house (default), or technical (adds notation advisories)
       --overlay FILE  merge a lexicon overlay (repeatable)
-  -q, --quiet         exit code only, no output
+  -q, --quiet         suppress reports (errors still print)
   -v, --verbose       include informational metrics that are never flags
   -w, --where         list each hit's location under its row, as the source
                       line, or line:col where the rule sees exact columns
   -h, --help          show this help
 
-exit codes: 0 no flags, 1 flags raised, 2 error
+exit codes: 0 no convention flags (advisories may remain), 1 flags, 2 error
+
+Lexicon overlays: one 'drop TEXT' or 'CLASS MATCH TEXT' per line; # comments.
+Classes: focal, soft, signposting, closing, sycophancy, contraction.
+Matches: word, word-lower, phrase, sent-init, discourse, substring.
+Example: 'drop foster' retains the name without a vocabulary advisory.
+Overlays apply in argument order; later entries replace the same text.
+An exact '<!-- slopcheck: ignore lexicon -->' on the first nonblank line
+suppresses vocabulary checks for that input, including overlay entries.
+It does not suppress shape or typography checks. See the skill's README.md
+for coverage, thresholds, limitations, and examples.
 """
 
 EXIT_CLEAN, EXIT_FLAGS, EXIT_ERROR = 0, 1, 2

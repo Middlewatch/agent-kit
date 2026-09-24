@@ -1,6 +1,6 @@
 ---
 name: skill-author
-description: "Author or revise agent skills. Use when asked to write a skill, fix unreliable triggering, restructure a bloated body, split supporting files, or fold new guidance into an existing SKILL.md. Not for playbooks, prompt templates, or passive reference docs."
+description: "Author or revise a SKILL.md. Use when asked to write a skill or fix its triggering or structure. Not for playbooks, prompt templates, or reference docs."
 ---
 
 # Skill Author

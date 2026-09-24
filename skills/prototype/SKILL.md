@@ -1,6 +1,6 @@
 ---
 name: prototype
-description: "This skill is used to build throwaway code that answers one named design question before real effort is committed. Use when a spec or grilling session hits a fork that arguing cannot settle, or when the owner wants to feel an idea before investing in it."
+description: "Throwaway code that answers one named design question by observation. Use when a fork cannot be settled by argument or the owner wants to feel an idea. Not for product code."
 ---
 
 # Prototype

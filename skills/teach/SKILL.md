@@ -1,6 +1,6 @@
 ---
 name: teach
-description: "Teach the owner a topic over multiple sessions from a persistent learning workspace: a mission, curated resources, interactive HTML lessons, markdown reference sheets, and learning records. Use when asked to teach a topic, help learn one, or resume an existing teaching workspace."
+description: "Multi-session teaching workspace for one topic. Owner-invoked."
 disable-model-invocation: true
 ---
 
@@ -8,8 +8,7 @@ disable-model-invocation: true
 
 The user wants to learn a topic, and they intend to learn it over multiple sessions. Run a
 teaching workspace whose files carry the state of their learning between sessions, and
-produce lessons that sit in their zone of proximal development: challenged just enough,
-every time.
+produce lessons that sit in their zone of proximal development: challenged just enough.
 
 ## The workspace
 

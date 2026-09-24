@@ -1,6 +1,6 @@
 ---
 name: tui-live-review
-description: "Use when TUI behavior (rendering, resize handling, streaming feel, input response) needs the owner's eyes on a real terminal during a review round."
+description: "Owner-in-the-loop review of TUI behavior on a real terminal. Owner-invoked."
 disable-model-invocation: true
 ---
 
@@ -69,13 +69,13 @@ says whether it still applies after a herdr upgrade.
 - What the owner sees right now: `herdr pane read <id> --source visible`. Consider this
   the current ground truth.
 - Wait for state deterministically: `herdr pane wait-output <id> --regex <pat> --timeout
-  <ms>`. It searches the existing snapshot immediately, then polls. Always set
-  `--timeout`. `--match <text>` waits on a literal substring instead.
+  <ms>`. It searches the existing snapshot immediately, then polls. Set `--timeout` on
+  every wait. `--match <text>` waits on a literal substring instead.
 - Geometry and attachment: `herdr pane get <id>` (`scroll.viewport_rows`) and `herdr pane
   layout --pane <id>`. Bare `pane layout` reports the focused tab rather than the pane
   under review.
 - History-pollution metric: recent-text line count before vs after an interaction.
-  `record.sh` logs it per snapshot, and unchanged means clean. Always read with an
+  `record.sh` logs it per snapshot, and unchanged means clean. Read with an
   explicit `--lines N` bound, because bare `--source recent` returns a short window (~80
   lines) that saturates and makes any busy pane look clean.
 - Clean-slate protocol between builds: quit the app, relaunch via a fresh `spawn.sh` pane,

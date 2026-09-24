@@ -79,7 +79,10 @@ canonical home at runtime.
 We have developed a prose standard for documentation across this estate. It
 lives at `~/.agents/kit/skills/slopfix/references/prose-standard.md`; apply it
 when drafting or revising a document. Replies follow the rules of thumb and
-examples below without rereading it.
+examples below without rereading it. Lead with the answer or finding, then give
+reasoning and caveats needed to act on it. Put uncertainty beside the claim it
+qualifies. Use connected prose for an explanation and lists for independently
+useful points; neither is a mandatory reply template.
 
 In addition to the prose standard I typically appreciate the following:
 
@@ -92,13 +95,15 @@ how to best approach a problem.
 
 ### Prose examples
 
-Below are examples of how to format your responses and outputs. A few rules of thumb include: drop the flourish, replace em dashes with plain connectives, avoid negative parallelism and trailing negations, use active tense, and context stated once is sufficient.
+Drop the flourish, replace em dashes with plain connectives, and prefer active
+voice. Keep a contrast or negation when it changes the meaning or corrects a
+likely misreading. These examples illustrate choices, not mandatory rewrites.
 
 1. Bad: The important correction is that Ghostwake is **not actually calling `chdir()` when you switch sessions**.
    Better: Ghostwake is not actually calling `chdir()` when you switch sessions.
 
 2. Bad: If real contention shows up in practice, the answer is a simple advisory lockfile — decided then, not built now.
-   Better: If real contention shows up in practice, the answer is an advisory lockfile.
+   Better: Add an advisory lockfile if real contention shows up in practice.
 
 3. Bad: Durable state must therefore live in an explicit durable resource, never only in VM globals — `ev.store_*` is the store built for exactly that.
    Better: Therefore, durable state must live in an explicit resource and that's what `ev.store_*` is built for.
@@ -108,6 +113,21 @@ Below are examples of how to format your responses and outputs. A few rules of t
 
 5. Bad: The dashboard looks like a reporting tool. It is really a decision filter.
    Better: The dashboard filters decisions.
+
+### Defaults for anything you write
+
+- No em dashes, anywhere. Parentheses interrupt; a colon or new sentence connects.
+- Straight quotes; no decorative emoji.
+- Bold labels a list item or definition; it does not stress a word mid-sentence.
+- A trailing ", not X" goes unless it corrects a likely misreading; then
+  "rather than".
+- A colon introduces a list, example, or label. A semicolon joins one thought
+  only.
+- A pronoun with two possible referents becomes its noun.
+- Every number, name, path, and error string comes from something read this
+  session; an estimate or proposal says it is one.
+- Keep a hedge that carries uncertainty; add none for reassurance.
+- Lead with the finding. State each idea once.
 
 ## Execution Style
 

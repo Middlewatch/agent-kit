@@ -1,6 +1,6 @@
 ---
 name: diagnose
-description: "Disciplined diagnosis loop for hard bugs and performance regressions: build a feedback loop that goes red on this exact bug, minimise, rank falsifiable hypotheses, probe one variable at a time, fix behind a regression test. Use when something is broken, throwing, failing intermittently, or slow, and the cause is not already obvious. An obvious cause skips this and gets fixed directly."
+description: "Diagnosis loop for a bug or regression whose cause is not obvious: reproduce, minimise, rank hypotheses, fix behind a regression test. Not for an obvious cause, which gets fixed directly."
 ---
 
 # Diagnose
@@ -40,8 +40,8 @@ specific symptom), more deterministic (seed RNG, pin time, isolate the filesyste
 
 **Completion criterion:** you can name one command, you have already run it at least once
 and shown the output, and it is red-capable (catches this specific bug), deterministic (or
-high-rate for flakes), fast, and runnable unattended. Without this command don't proceed
-to Phase 2. If you genuinely cannot build one, stop, list what you tried, and ask the
+high-rate for flakes), fast, and runnable unattended. Phase 2 starts once this command
+exists. If you genuinely cannot build one, stop, list what you tried, and ask the
 owner for a captured artifact, an environment, or permission to seek/install a different
 instrument.
 
@@ -62,8 +62,8 @@ re-rank it instantly), but proceed with your ranking if they are away.
 ## Phase 4: probe
 
 Each probe maps to one prediction; change one variable at a time. Prefer a debugger or
-REPL breakpoint, then targeted logs at the boundaries that distinguish hypotheses. Never
-log-everything-and-grep. Tag every debug line with one prefix (`[DBG-4f2a]`) so cleanup is
+REPL breakpoint, then targeted logs at the boundaries that distinguish hypotheses, rather
+than blanket logging. Tag every debug line with one prefix (`[DBG-4f2a]`) so cleanup is
 a single grep. For performance regressions, skip logs: measure a baseline, then bisect;
 measure first, fix second.
 

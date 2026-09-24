@@ -1,6 +1,6 @@
 ---
 name: spec
-description: "Grill the owner until the design tree is settled. Use for a new project, a feature, or a pivot that will take multiple sessions to settle. Also useful when working through vague brainstorming sessions or when the user wants to think through a problem."
+description: "Grill the owner until a multi-session design is settled. Owner-invoked. Not for a small change."
 disable-model-invocation: true
 ---
 
@@ -26,7 +26,8 @@ session and spec document should live in.
 
 1. **Read what exists.** README, `docs/adr/`, `CONTEXT.md` if present, the area's rows in
 `docs/FEATURE_MAP.md` and their entries in `docs/DATA_MODEL.md` if present (intended rows
-included; a row whose data is `?` routes to `data-model` before the spec), and the code in
+included; a row whose data is `?` gets a `data-model` session before the spec, the skill at
+`~/.agents/kit/skills/data-model/SKILL.md`), and the code in
 the area. Look up facts yourself (delegate an explore child for breadth).
 
 2. **Grill in rounds.** Map the decisions as a tree. The frontier is every question whose
@@ -35,7 +36,7 @@ round is one `ask_user_question` call. A genuinely open-ended question (naming, 
 the actual claim?") goes in chat prose instead. Two to four rounds is typical but use as
 many rounds as required. Keep asking until the claim fits in one falsifiable sentence with
 an acceptance test a build could fail. The grilling is done when nothing material is
-silently assumed. Do not act until the owner confirms the shared understanding.
+silently assumed. Writing the spec starts once the owner confirms the shared understanding.
 
 3. **Write the spec.** One pass, synthesized from the conversation, using the template
 below.
@@ -99,6 +100,6 @@ If the user disagree's with your framing assume they will interject and redirect
 - The owner rules on the outcome, the non-goals, the seams, and any ADR. Everything else
   is the agent's call, stated in the spec.
 - A thesis that will not converge after honest grilling is a valid stop: report the open
-  forks and do not write a spec over them.
+  forks in place of a spec.
 - Conflicting authorities (an ADR against what the owner just said) are named, not
   resolved silently.

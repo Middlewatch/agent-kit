@@ -1,6 +1,6 @@
 ---
 name: inbox-triage
-description: " Use when the owner asks to triage, sweep, sort, or clear the inbox, and when bin/check reports notes past 30 days untriaged."
+description: "Triage, sort, or clear the capture inbox with the owner. Owner-invoked."
 disable-model-invocation: true
 ---
 
@@ -16,8 +16,8 @@ that were deleted stay in git history, so a wrong delete costs one `git show`.
 
 ## Defer to owner ruling
 
-Every disposition goes through `ask_user_question`. Agents do not file into the wiki from
-the inbox on their own, and do not delete a note on their own.
+Every disposition goes through `ask_user_question`; filing into the wiki and deleting a
+note both follow the owner's answer.
 
 ## Procedure
 
@@ -33,8 +33,8 @@ in the wiki is worse than an empty wiki. Expect most of the stream to fail this;
 capture rate runs about ten percent durable.
 
 **3. Propose a home.** Match the surviving notes against the destination map, and name a
-specific file path. If the note does not fit in one of the below directories, then propose
-creating a new one, don't try to force something to fit where it logically does not.
+specific file path. If the note does not fit in one of the below directories, propose
+creating a new one.
 
 | the note holds | home |
 |----------------|------|

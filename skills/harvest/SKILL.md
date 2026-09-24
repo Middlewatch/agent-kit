@@ -1,6 +1,6 @@
 ---
 name: harvest
-description: "Capture a genuinely surprising coding result the moment you hit it, with the minimal artifact that proves it, so it can be referenced or built on later. Use automatically mid-session or at a close-out sweep. The trigger is a finding that contradicted a reasonable expectation, cost real debugging time, or required a non-trivial solution."
+description: "Capture a surprising coding result with the minimal artifact that proves it, the moment it happens. Not for routine findings."
 ---
 
 # Harvest
@@ -75,7 +75,7 @@ for the next reader to reconcile.
 
 **A coding language**: a pack under `~/.agents/reference/coding-languages/`. If no
 pack exists for the language, `init` a candidate pack and capture into it.
-A coding-language finding always lands in a pack rather than the inbox.
+A coding-language finding lands in a pack rather than the inbox.
 
 - The finding goes in the matching `references/` file: the version map for an API shape, a
   topic reference for a pattern.
@@ -99,8 +99,8 @@ build-tooling trap) goes to the capture inbox per the existing convention:
 
 with the standard frontmatter (`source: <host>`, `type: observation`, `title:`,
 `timestamp:`), the same code-plus-claim body, and a line naming the surface it applies to.
-Never copy credentials, private payloads, or full session transcripts into a pack or an
-inbox file. Cite the durable local path and summarise the lesson. Sorting is deferred and
+Cite the durable local path and summarise the lesson; credentials, private payloads, and
+full session transcripts stay out of packs and inbox files. Sorting is deferred and
 not the concern of the harvester.
 
 ## Trust levels in a pack

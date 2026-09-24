@@ -1,6 +1,6 @@
 ---
 name: vet-dependency
-description: "Run the evidence-based vetting checklist before adopting any new third-party dependency, tool, service, CI action, or MCP server, and at the commit that introduces one."
+description: "Evidence-based vetting before adopting a third-party dependency, tool, service, CI action, or MCP server. Not for dependencies the project already uses."
 ---
 
 # Vet a dependency
@@ -53,7 +53,7 @@ executes at install time.
 8. **Supply-chain posture at install.** Pin by hash where the ecosystem supports it
    (`build.zig.zon` does this natively, lockfiles elsewhere). MCP servers and AI-adjacent
    tools get the stricter tier: read the tool descriptions you're installing (poisoning vector),
-   never bind 0.0.0.0, pin the version, and treat any remote server as an RCE vector against this
+   bind 127.0.0.1 only, pin the version, and treat any remote server as an RCE vector against this
    machine.
 
 The named patterns above are risk indicators to weigh together against blast
