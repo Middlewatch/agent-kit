@@ -34,9 +34,8 @@ other's work:
 Resource types are the four pi discovers (`RESOURCE_TYPES` in `lib.ts`).
 Adding one when pi adds one is a table row.
 
-Disabling this extension, the kit package, or `pi-interlock` is possible
-here, exactly as it is from `pi config`. The reload that follows unloads
-them.
+Disabling this extension or the kit package is possible here, exactly as
+it is from `pi config`. The reload that follows unloads them.
 
 ## Layout
 

@@ -28,7 +28,6 @@
   ],
   "pi": {
     "extensions": [
-      "./extensions/pi-interlock/index.ts",
       "./extensions/pi-scratchpad/src/index.ts",
       "./extensions/agent-delegate/index.ts",
         "./extensions/pageview/src/index.ts",

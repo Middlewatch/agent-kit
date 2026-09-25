@@ -6,10 +6,6 @@ registering the kit as a pi package loads all of them. Anything with its own
 release cadence (`autojournal`, `claude-go`, `context-fold`) lives in its own
 repo and is installed separately.
 
-- `pi-interlock`: pre-execution seatbelt with an audit trail. Denies direct
-  credential access and machine-level catastrophes, asks before
-  boundary-crossing deletes and consequential pushes, allows everything else.
-  It is security-sensitive, and `AGENTS.md` holds its review rules.
 - `pageview`: serves browser artifacts (HTML, SVG, PDF) from the session cwd
   to a remote browser over the tailnet; spec at
   `docs/specs/2026-08-21-pageview.md`.
@@ -36,7 +32,6 @@ Each extension keeps its README in its directory, with tests and a design
 doc where the extension is large enough to need them. Tests run in the
 extension's directory:
 
-- `npm run test:unit` for pi-interlock
 - `npm test` for pi-scratchpad, pageview, agent-delegate, and pi-tui
 - `node --test lib.test.ts` for prompt-picker, skill-inline, and pi-config
 - `npm test` and `npm run typecheck` for prompt-sections

@@ -83,7 +83,7 @@ The path reaches the agent through two channels and no tool:
 - **`$PI_SCRATCHPAD`** in every bash command. Pi's bash tool builds its child
   environment by spreading `process.env` at spawn time, so setting the variable
   at `session_start` reaches every command without overriding the bash tool or
-  colliding with `pi-interlock`.
+  colliding with another extension's `tool_call` hook.
 - **A `<scratchpad>` system prompt section**, set on every
   `before_agent_start` through `systemPromptOptions.sections`. Pi 0.86 builds
   the prompt from named sections and places a new name after `<cwd>`, so

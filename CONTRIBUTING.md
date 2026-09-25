@@ -30,7 +30,6 @@ Component suites run in their own directories:
 
 | component | command |
 |---|---|
-| `extensions/pi-interlock` | `npm run test:unit` (`scripts/verify.sh` for the full interlock gate) |
 | `extensions/agent-delegate`, `pageview`, `pi-scratchpad`, `pi-tui` | `npm test` |
 | `extensions/prompt-picker`, `extensions/pi-config` | `node --test lib.test.ts` |
 | `extensions/prompt-sections` | `npm test`, `npm run typecheck` |
@@ -46,8 +45,7 @@ skills. Prose follows `skills/slopfix/references/prose-standard.md`; run
 `skills/slopfix/slopcheck.py <file>` on any document you touch.
 
 Keep machine names, absolute home paths, and personal identifiers out of
-tracked files; `bin/check --lint` is the gate. Pull requests that touch
-`pi-interlock` follow the review rules in `extensions/AGENTS.md`.
+tracked files; `bin/check --lint` is the gate.
 
 ## Releases
 

@@ -108,9 +108,8 @@ is asserted with `visibleWidth`. The `Style` type is a structural
 The tool overrides delegate to freshly created default tool instances,
 so an extension that overrides a built-in tool's *operations* (SSH,
 sandbox, micro-VM) would be silently bypassed if it loads before this
-one. No such extension runs in this estate today (pi-interlock gates
-via `tool_call` events, which still fire). Revisit the delegation if
-one arrives.
+one. No such extension runs in this estate today; `tool_call` hooks
+still fire. Revisit the delegation if one arrives.
 
 ## Boundaries
 
