@@ -156,11 +156,12 @@ pattern class and source, content delivered unmodified below it.
 
 ## Web boundary (research children)
 
-`web_search` walks the pinned provider chain Serper → Brave → Tavily,
-skipping entries without keys, and reports the provider actually used per
-call. Credentials are read from `~/.config/rpiv-web-tools/config.json`
-(`apiKeys.serper` / `apiKeys.brave` / `apiKeys.tavily`), with no second
-credential store. Queries are capped at 400 characters and results at 10.
+`web_search` walks a provider chain: the `provider` named in the web-tools
+config first, then Brave → Tavily → Serper, skipping entries without keys.
+It reports the provider actually used per call. Credentials are read from
+`~/.config/rpiv-web-tools/config.json` (`apiKeys.brave` / `apiKeys.tavily` /
+`apiKeys.serper`), the file the kit's `web-tools` extension uses, with no
+second credential store. Queries are capped at 400 characters and results at 10.
 
 `web_fetch` is bounded on five axes:
 

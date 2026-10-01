@@ -42,9 +42,22 @@ test("provider config parsed from fixture file", () => {
   ]);
 });
 
-test("chain order is serper brave tavily", () => {
+test("chain starts with the configured provider, then brave tavily serper", (t) => {
   const config = loadWebProviderConfig(join(FIXTURES, "config.json"));
   assert.deepEqual(config.chain.map((entry) => entry.provider), ["serper", "brave", "tavily"]);
+
+  const dir = mkdtempSync(join(tmpdir(), "agent-delegate-webcfg-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const path = join(dir, "config.json");
+  const apiKeys = { serper: "sk", brave: "bk", tavily: "tk" };
+  for (const [provider, expected] of [
+    ["tavily", ["tavily", "brave", "serper"]],
+    ["exa", ["brave", "tavily", "serper"]],
+    [undefined, ["brave", "tavily", "serper"]],
+  ] as const) {
+    writeFileSync(path, JSON.stringify({ provider, apiKeys }));
+    assert.deepEqual(loadWebProviderConfig(path).chain.map((entry) => entry.provider), expected);
+  }
 });
 
 test("chain skips providers without keys", (t) => {

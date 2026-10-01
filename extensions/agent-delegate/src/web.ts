@@ -1,8 +1,9 @@
 /**
- * Child-side web search over the pinned provider chain
- * serper → brave → tavily, with credentials read from the rpiv-web-tools
- * config (no second credential store). The chain walks forward on request
- * failure or non-2xx; the provider actually used is reported per call.
+ * Child-side web search over a provider chain of brave, tavily, and serper,
+ * with credentials and the preferred provider read from the web-tools config
+ * (no second credential store). The configured provider goes first. The
+ * chain walks forward on request failure or non-2xx; the provider actually
+ * used is reported per call.
  */
 
 import { readFileSync } from "node:fs";
@@ -31,15 +32,17 @@ export interface SearchOutcome {
 export const QUERY_MAX_CHARS = 400;
 export const SEARCH_LIMIT_MAX = 10;
 
-const PROVIDER_ORDER: SearchProviderName[] = ["serper", "brave", "tavily"];
+/** Order after the configured provider, which is tried first. */
+const PROVIDER_ORDER: SearchProviderName[] = ["brave", "tavily", "serper"];
 
 const DEFAULT_CONFIG_PATH = join(homedir(), ".config", "rpiv-web-tools", "config.json");
 
 /**
- * Read `{provider, apiKeys}` from the rpiv-web-tools config and build the
- * ordered chain from `apiKeys.serper/brave/tavily`, dropping entries without
- * keys. Fails with a clear message on unreadable files, schema drift, or an
- * empty chain (this is a third-party package's file).
+ * Read `{provider, apiKeys}` from the web-tools config and build the chain
+ * from `apiKeys.brave/tavily/serper`: `provider` first when it is one of the
+ * three, then the rest in PROVIDER_ORDER, dropping entries without keys.
+ * Fails with a clear message on unreadable files, schema drift, or an empty
+ * chain (the file belongs to another extension).
  */
 export function loadWebProviderConfig(path = DEFAULT_CONFIG_PATH): WebProviderConfig {
   let raw: string;
@@ -61,8 +64,10 @@ export function loadWebProviderConfig(path = DEFAULT_CONFIG_PATH): WebProviderCo
   if (typeof apiKeys !== "object" || apiKeys === null || Array.isArray(apiKeys)) {
     throw new Error(`web search is unavailable: provider config at ${path} has no "apiKeys" object (schema drift?)`);
   }
+  const preferred = (parsed as { provider?: unknown }).provider;
+  const order = [...PROVIDER_ORDER.filter((name) => name === preferred), ...PROVIDER_ORDER.filter((name) => name !== preferred)];
   const chain: WebProviderConfig["chain"] = [];
-  for (const provider of PROVIDER_ORDER) {
+  for (const provider of order) {
     const apiKey = (apiKeys as Record<string, unknown>)[provider];
     if (typeof apiKey === "string" && apiKey.length > 0) chain.push({ provider, apiKey });
   }
