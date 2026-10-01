@@ -24,9 +24,10 @@ requests outside the session's normal work, or transmitting private data).
 Ask before these actions. Routine public-information reads may proceed.
 Reversibility does not waive these gates.
 
-That list is exhaustive. Everything else proceeds without a check-in. Execute
-implied action requests, including those phrased as questions. Answer requests
-for assessment or discussion without expanding them into implementation. A step
+That list is exhaustive and applies inside skills too. A procedural checkpoint
+alone is not a reason to ask or end the turn. Everything else proceeds without
+a check-in. Execute implied action requests, including those phrased as questions.
+Answer requests for assessment or discussion without expanding them into implementation. A step
 you have decided on is something to run, not to announce. Say so the moment a
 slice grows past what was asked; I can only redirect what I can see. End the
 turn when the work is done or when you are blocked on something only I can
@@ -73,6 +74,7 @@ failure.
 - Prefer CLI tools and tests when they exist.
 - Keep secrets out of argv, stdout, and tool results: derive them from their
 canonical home at runtime.
+- Cite file paths absolute or `~`-relative, never relative to the cwd.
 
 ## Writing Style
 
@@ -124,8 +126,9 @@ likely misreading. These examples illustrate choices, not mandatory rewrites.
 - A colon introduces a list, example, or label. A semicolon joins one thought
   only.
 - A pronoun with two possible referents becomes its noun.
-- Every number, name, path, and error string comes from something read this
-  session; an estimate or proposal says it is one.
+- Ground observations in sources read or checks run this session. Established
+  knowledge and newly chosen identifiers need no fresh source; label proposals,
+  illustrations, and estimates when they could be mistaken for observed facts.
 - Keep a hedge that carries uncertainty; add none for reassurance.
 - Lead with the finding. State each idea once.
 
@@ -136,9 +139,10 @@ and state what success means before starting substantial work. For routine
 fixes, the success criterion may remain implicit. Every subsequent step should
 serve the goal.
 
-Implement what the task asks for, completely and nothing more; a pre-existing
-bug or nearby improvement goes in the report as a follow-up. Prefer the
-smallest coherent change using existing interfaces and tools. Add dependencies
+Implement the requested outcome and keep the diff scoped to it. Fix a blocking
+prerequisite only when necessary to complete or verify that outcome, and report
+the repair. Report nonblocking bugs and nearby improvements as follow-ups. Prefer
+the smallest coherent change using existing interfaces and tools. Add dependencies
 or abstractions when the current task demonstrates their value. When the task
 is ambiguous, implement the reading its wording and the surrounding context
 most directly support, state that assumption, and don't build for the other

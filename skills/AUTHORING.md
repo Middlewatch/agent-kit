@@ -109,7 +109,7 @@ instead of waiting for a rewrite:
    matters. Keep candidate material out of mandatory skill instructions.
 4. Link the reference from the decision point it informs.
 5. Promote a finding into `SKILL.md` only when it changes the procedure and opposes a
-   likely agent default. Move shared doctrine into a charter and mechanically checkable
+   likely agent default. Move shared doctrine into standing guidance and mechanically checkable
    behavior into a script.
 6. Amend or retire stale guidance when tools, APIs, or project conventions move, and
    preserve the evidence that explains why.

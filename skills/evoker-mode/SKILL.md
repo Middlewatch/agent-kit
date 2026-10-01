@@ -60,7 +60,9 @@ Remaining triggers:
 - Long, autonomous, or multi-session work the owner reviews after the fact → a decision
   trail per `guidance/trail-standard.md`. A spec'd build already has its record (commit
   log plus slice checklist) and opens one only when the owner asks.
-- Broken skill or tool mid-task → fix it in its own commit and say so in the report.
+- Broken skill or tool mid-task → use a working alternative first. Repair only a blocker
+  necessary to complete or verify the requested outcome, in its own commit, and report
+  the repair. Nonblocking discoveries stay follow-ups.
 - Resume, continue, pick up from the last session → The session pickup playbook.
 
 ## Principles
@@ -129,8 +131,9 @@ the `review` profile.
 ## Writing the reply and comments
 
 Write it clean as you draft it. The prose standard governs. Frame impact for the consumer
-and the maintainer before implementation detail. Every link, citation, and number
-comes from something you read this session.
+and the maintainer before implementation detail. Ground observations and source-specific
+claims in evidence from this session; apply the global guide's grounding rule to proposals,
+illustrations, and established knowledge.
 
 Comments follow the same rule: no phase narration, no restating the code. Keep a comment
 only for something non obvious the code doesn't already show show. This applies to every

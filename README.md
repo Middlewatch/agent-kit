@@ -110,7 +110,7 @@ holds and the write contract for it.
 ## Layout
 
 ```
-AGENTS.md            repo charter
+AGENTS.md            repo guide
 CHANGELOG.md         release notes
 deployments.json     bindings, client links, tool table; bin/install reads it
 package.json         pi package manifest: extensions, prompts

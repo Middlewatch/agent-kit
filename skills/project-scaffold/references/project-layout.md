@@ -47,8 +47,8 @@ one ignored directory, so it travels with the project as a unit:
 └── spikes/
 ```
 
-`.gitignore` carries the single line `.local/`. Charter and skill
-references to the project's artifacts directory mean `.local/artifacts/`.
+`.gitignore` carries the single line `.local/`. References to the project's
+artifacts directory mean `.local/artifacts/`.
 Because `.local/` is ignored rather than outside the repo, `git clean -x`
 removes it; the plain `-fd` form leaves it alone.
 

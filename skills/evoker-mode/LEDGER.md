@@ -28,3 +28,12 @@ are backfilled from git.
   was linked only from the playbook.
 - Change: playbook deleted; the router row says run `skill-author` and, for a
   playbook, follow `guidance/playbook-standard.md` (which links TEMPLATE.md).
+
+## 2026-09-29: bound repairs and regression artifacts
+- Motivation: the instruction audit found unconditional tool repairs and
+  fix-all-pattern directions expanding task scope, mandatory reproduction
+  commits overriding test retention, and grounding wording excluding general
+  knowledge and proposed identifiers.
+- Change: repair only necessary blockers, report other instances as follow-ups,
+  retain regression checks according to task and repository policy, and defer
+  grounding to the revised global rule. Explicit-only activation is unchanged.

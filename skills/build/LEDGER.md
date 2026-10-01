@@ -12,3 +12,11 @@ Revision record per AUTHORING.md's ledger section.
 - Outcome (2026-09-04 sweep): followed in both build-driven sessions since
   (09-04 introspect-scan and autojournal Files-section builds: new fixture
   gates broken once before trusting green). One day of evidence.
+
+## 2026-09-29: align build stops and check retention
+- Motivation: the instruction audit found failed gate runs ending work despite
+  the global continuation rule, remote reads caught by a broad stop, and test
+  artifacts retained without regard to repository policy.
+- Change: use the global owner gates and reassessment rule, follow data-model
+  maintenance without an automatic stop, and separate regression checks from
+  the decision to retain them.

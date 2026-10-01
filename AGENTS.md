@@ -1,8 +1,7 @@
 # Agent kit repository
 
 One portable repo behind the `~/.agents` convention. Components:
-`guidance/` (the global guide, Claude adapter, charters under `workflows/`,
-workspace overlays), `skills/`, `extensions/` (pi), `tools/`, and `bin/`
+`guidance/` (the global guide, Claude adapter, workspace overlays), `skills/`, `extensions/` (pi), `tools/`, and `bin/`
 (`install`, `check`). `deployments.json` is the link table `bin/install`
 reads; `README.md` explains the convention and the install.
 

@@ -130,7 +130,9 @@ it against the record rather than confirming it.
 ## Step 5. Close the loop
 
 When the investigation reconstructs a rationale that exists nowhere durable,
-capture it: an ADR via the `adr` skill if it is a decision, a wiki note otherwise.
+capture it: an ADR via the `adr` skill for a qualifying decision, an inbox note at
+`~/.agents/inbox` as a wiki candidate otherwise. The owner and inbox triage decide whether
+the candidate becomes a wiki note.
 
 ## Failure modes to avoid
 

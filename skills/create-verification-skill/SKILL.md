@@ -1,6 +1,6 @@
 ---
 name: create-verification-skill
-description: "Create a project's verification or control skill. Use when asked, or when a project has no scripted way to prove its behavior."
+description: "Create a project's reusable verification or control skill. Use when asked, or when the task requires reusable behavioral verification that existing harnesses cannot provide. Not for one-off checks of a bounded change."
 ---
 
 # Create a verification skill
@@ -32,8 +32,9 @@ Answer these from the codebase and then ask the user about the things you cannot
   say so in the generated skill: refusing to double-drive a shared instance beats
   corrupting the user's session.
 
-If the checkout doesn't build or start as-is, fix that first (or report it precisely)
-before generating, because a skill written against a broken base teaches wrong steps. When
+If the checkout doesn't build or start as-is, report the blocker before generating.
+Repair only the smallest prerequisite necessary for the requested verification skill,
+because a skill written against a broken base teaches wrong steps. When
 an irrelevant missing asset blocks startup (a static dir the API never serves, a sample
 config), the generated skill may create it, clearly marked as verification scaffolding,
 and remove it in cleanup.

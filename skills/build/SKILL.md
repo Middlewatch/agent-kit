@@ -34,8 +34,8 @@ Read (or if not present then skip): the spec, `docs/adr/`,
 
 When the spec exists and the build is sufficiently complex: Build to the
 structure's record (indexed in `docs/DATA_MODEL.md`, written on the type); a
-slice that would change a record's Owner, Lifetime, or Boundary is a stop per
-`~/.agents/kit/skills/data-model/SKILL.md`. Check the principle index
+slice that would change a record's Owner, Lifetime, or Boundary follows the
+maintenance rules in `~/.agents/kit/skills/data-model/SKILL.md`. Check the principle index
 (`../evoker-mode/SKILL.md`) and read the principle file whose rule a slice's
 data shape or boundary triggers, under the index's stakes clause. Note the base
 commit for the review diff.
@@ -53,18 +53,20 @@ Per slice, in dependency order:
    decision the spec does not cover, make the call if it is reversible and note
 it in the commit message; if it is not reversible or contradicts the spec, stop
 and ask.
-2. **Red, then green, at the agreed seam.** Write the failing test at the seam
+2. **Red, then green, at the agreed seam.** Write a failing check at the seam
    the spec named, watch it fail, write the least code that passes. Expected
 values come from an independent source (spec, worked example, known-good
-literal) rather than from the code under test. One test, one implementation,
-repeat. Where no seam reaches the behavior, say so in chat; that is a design
-finding rather than a reason to test internals.
+literal) rather than from the code under test. One check, one implementation,
+repeat. Retain tests according to the task and repository policy; otherwise
+keep the check in the scratchpad. Where no seam reaches the behavior, say so
+in chat; that is a design finding rather than a reason to test internals.
 3. **Check fast while working.** Typecheck or compile, and the single test
    file, as often as useful.
 4. **Gate once.** When the slice is done, run the project's gate script one
-   time. Green: commit. Red: fix and run once more. A third red run is a
-stop-and-think rather than a loop. When the slice adds a gate invariant, break
-the thing once and watch the gate go red before trusting its green.
+   time. Green: commit. Red: diagnose, fix, and retry, using the global guide's
+reassessment rule rather than treating failed runs as a stopping gate. When
+the slice adds a gate invariant, break the thing once and watch the gate go
+red before trusting its green.
 5. **Docs in the same commit.** If the slice changed behavior a living doc
    describes (README, a contract, a CLI reference), edit that doc now.
 6. **Commit and tick.** Message names the slice (`S3: ...`). Check the box in
@@ -83,10 +85,10 @@ was large.
 
 ## Stops
 
-- Destructive or outward-facing operations (force-push, publish, delete data,
-touch a remote).
-- A slice that cannot land green after two honest gate runs: stop, report what
-is failing and the hypotheses.
+- An operation covered by the global guide's owner gates (force-push, publish,
+delete data). Routine public-information reads may proceed.
+- Progress requires an owner decision or missing input. Failed corrections
+call for reassessment per the global guide, then continued work if unblocked.
 - A spec conflict discovered mid-build: stop, name it, offer a potential
 solution up to the owner or consider revising the plan entirely if the conflict
 has cascading consequences

@@ -212,9 +212,11 @@ Add a row when an interview meets the same fork twice.
 - A commit that changes a core declaration updates its record in the same commit, and the
   session report quotes that diff. `git log -p` on the model files is the architecture's
   history.
-- A change to Owner, Lifetime, or Boundary is a stop: redesign the structure as if the new
-  requirement had been there from the first day, put the new sketch to the owner, then
-  continue.
+- A change to Owner, Lifetime, or Boundary reopens the design: sketch the structure as if
+  the new requirement had been there from the first day. Apply the global guide's owner
+  gates. For a reversible change within the agreed scope, choose, update the record,
+  mark the new choice `provisional`, and report the trade-off; a sketch alone adds no
+  approval gate.
 - Strain reopens a `settled` row: a second boolean that must track the first, a new field
   valid only sometimes, a branch on a kind field spreading across files, a second writer.
 - After rebasing a fork, rerun `check-model`, reread each entry whose pointer failed, and

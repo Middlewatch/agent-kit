@@ -139,7 +139,8 @@ carries **[unverified]** inline. State inference as inference. Then the shared f
    it names and re-run until exit 0.
 2. **File to the wiki** per `references/report-spec.md` §Wiki filing. The existing-note check
    comes first. A note already covering the topic gets updated in place, and a new note is for
-   a new topic. Filing into existing lanes is automatic. Propose new lanes to the user.
+   a new topic. Lane selection and creation follow the report spec; report any new
+   lane's name and rationale in the run summary.
 3. **Sources ledger:** append the run's section to `~/.agents/wiki/<lane>/link-maps/<domain>.md`
    per report-spec §Sources ledger.
 4. **Report the run stats** to the user: mode and breadth, children launched, output tokens

@@ -12,3 +12,9 @@ Revision record per AUTHORING.md's ledger section.
 - Outcome (2026-09-04 sweep): `references/project-layout.md` was read by two
   non-sweep sessions since (09-02 teach, 09-03 lemonade extension); whether
   the invariant landed in a new project's layout is unobserved.
+
+## 2026-09-29: retire charter prerequisites
+- Motivation: the instruction audit found scaffolding blocked on unnamed,
+  retired charter files; an existing directory also added a procedural stop.
+- Change: remove charter prerequisites and references, inspect and preserve
+  existing work when adopting in place, and apply the global owner gates.

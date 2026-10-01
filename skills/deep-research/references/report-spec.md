@@ -74,8 +74,9 @@ Steps, in order:
    readable months later with no other document open.
 4. Run `bin/gen-indexes` in the wiki. Lane indexes are generated from note frontmatter, so
    edit the note and regenerate rather than hand-editing an index. Git is the change log.
-5. File into existing lanes automatically. Ask the user only when proposing a NEW lane
-   (name + one-line rationale).
+5. Filing is automatic. Use the best-fitting existing lane; create a new lane only when
+   none fits, and report its name and one-line rationale. Apply the global guide's owner
+   gates to any gated action involved in filing; lane creation alone adds no gate.
 
 ## Sources ledger
 

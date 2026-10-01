@@ -1,6 +1,6 @@
 ---
 name: vet-dependency
-description: "Evidence-based vetting before adopting a third-party dependency, tool, service, CI action, or MCP server. Not for dependencies the project already uses."
+description: "Evidence-based vetting before adopting a third-party dependency, tool, service, CI action, or MCP server, and after risk-relevant changes to existing dependencies. Not for unchanged existing dependencies or routine version bumps."
 ---
 
 # Vet a dependency
@@ -75,6 +75,8 @@ that carried the decision. A fuller body is fine, since one line is a floor.
 When the evidence is insufficient to decide, that is itself the outcome.
 Record `watch` naming the missing evidence rather than a guessed verdict.
 
-Two calls are the owner's: adopting despite adverse indicators, and anything
-paid or account-creating. A skip that would surprise the requester goes back
-to the owner with the evidence rather than being silently swallowed.
+Approval follows the global guide's owner gates, including paid or
+account-creating actions. An adverse indicator alone adds no approval gate:
+adopt when the evidence supports it, with the risks recorded; otherwise
+recommend watch or skip. Report a skip that changes the requested outcome
+with its evidence rather than silently dropping the dependency.

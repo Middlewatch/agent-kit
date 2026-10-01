@@ -64,8 +64,8 @@ be trusted to sanitize.
 7. **CI safety.** Review every exported workflow: no self-hosted runner labels, no
 `pull_request_target` checking out fork code, and no secret references the public repo
 cannot satisfy. The gate script must run on a clean hosted runner.
-8. **Dependencies.** The export carries the lockfile/checksums the charter requires, plus
-a notices file for vendored third-party code. An unpinned or unattributed dependency
+8. **Dependencies.** The export carries the lockfile/checksums the repository's dependency
+policy requires, plus a notices file for vendored third-party code. An unpinned or unattributed dependency
 blocks the release.
 9. **Size scan.** Enumerate every blob over ~1 MB (a starting-point threshold) and every
 binary in the export. Each is justified as a needed fixture or removed before the first

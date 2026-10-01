@@ -14,16 +14,16 @@ defect).
 3. Confirm the surviving mechanism with runtime evidence before designing the
    fix. A plausible-but-unconfirmed cause can be unanimously wrong while the
    real cause sits one subsystem over.
-4. Fix behind a regression test at the seam (`build` step 2 cadence): failing
-   test first, least code that passes, expected values from an independent
-   source.
+4. Fix behind a regression check at the seam (`build` step 2 cadence): failing
+   check first, least code that passes, expected values from an independent
+   source. Retention follows the task and repository's test policy.
 5. Verify on the same surface that reproduced it; the original repro now
    passes. "Inconclusive" or wrong-surface is not a pass. Unit tests show
    branch behavior, not bug absence.
-6. Commit so the failing repro lands before the fix and the diff tells the
-   story. The repro commit is allowed red; `build`'s green-gate rule applies
-   at the fix commit. Living docs touched by the change update in the same
-   commit.
+6. Commit the fix with any retained regression test. When retention is called
+   for, land the failing repro before the fix so the diff tells the story;
+   the repro commit is allowed red, and `build`'s green-gate rule applies at
+   the fix commit. Living docs touched by the change update in the same commit.
 
 **Reply:** root cause with its evidence chain, the repro command, the
-regression test path, and anything observed out of scope.
+regression check path and whether it was retained, and anything observed out of scope.

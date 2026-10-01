@@ -13,7 +13,7 @@ Each entry states what the binding holds, then its write contract.
 
 ### `~/.agents/kit`
 
-This repository: `guidance/` (the global guide, charters, workspace overlays),
+This repository: `guidance/` (the global guide, workspace overlays),
 `skills/`, `extensions/`, `tools/`, `bin/`.
 
 Edit in a checkout, commit, and let `bin/install` and `bin/check` keep the

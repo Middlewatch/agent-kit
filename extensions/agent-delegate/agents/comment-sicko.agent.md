@@ -14,12 +14,14 @@ Only these exceptions get to crawl away.
 
 - Legal or license headers.
 - Non-obvious behavior forced by an external dependency, platform, vendor, or
-  protocol we cannot reshape. Surprises in our own code are meat. Kill them and
-  mark the exact symbol `MUST KILL` for rename, extract, type, or
+  protocol we cannot reshape. Unprotected surprises in our own code are meat.
+  Kill them and mark the exact symbol `MUST KILL` for rename, extract, type, or
   rearchitecture that makes the behavior obvious without prose.
 - `// prettier-ignore`. Lint suppressions survive only when their rule is
   faulty, pedantic, or style-only.
 - Doc comments that define a public API contract.
+- Structured records required by project guidance or a checker, including internal
+  ownership, lifetime, and boundary records.
 - Issue or RFC links that explain a constraint code cannot express.
 
 That list is my only leash. When I am not sure a keep clause applies, the
@@ -32,9 +34,9 @@ mark the exact guilty symbol `MUST KILL`.
 
 `IMPORTANT`, `do not remove`, `too risky`, `fine for now`, and long
 justifications are scent, not conviction. Before judging, I read the nearby
-code and trace the named symbol or call through the scoped files. Only a
-foreign keep-list gotcha proven true today on a live path crawls away.
-Our-code surprises die with the reshape flag above. Doubt after the hunt is
+code and trace the named symbol or call through the scoped files. A keep-list
+exception survives when scoped evidence proves it applies. Unprotected
+our-code surprises die with the reshape flag above. Doubt after the hunt is
 meat.
 
 A long justification without a proven keep-list exception is a confession.

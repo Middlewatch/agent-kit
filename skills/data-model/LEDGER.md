@@ -16,3 +16,9 @@
   llama.cpp patch scope) and two judge-tier reviews: 12 of 15 and 9 of 15 records sound,
   10 of 10 patch constraints confirmed; errors clustered in missed JSON projections and
   absolutes written from partial searches, each now a rule beside the Boundary line.
+
+## 2026-09-29: distinguish redesign from approval
+- Motivation: the instruction audit found that every record-boundary change
+  introduced an owner gate despite the global guide's exhaustive list.
+- Change: reopen the design but apply the global owner gates; reversible
+  in-scope choices proceed as provisional records with reported trade-offs.

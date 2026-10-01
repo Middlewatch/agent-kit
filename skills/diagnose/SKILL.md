@@ -1,6 +1,6 @@
 ---
 name: diagnose
-description: "Diagnosis loop for a bug or regression whose cause is not obvious: reproduce, minimise, rank hypotheses, fix behind a regression test. Not for an obvious cause, which gets fixed directly."
+description: "Diagnosis loop for a bug or regression whose cause is not obvious: reproduce, minimise, rank hypotheses, fix behind a regression check. Not for an obvious cause, which gets fixed directly."
 ---
 
 # Diagnose
@@ -50,7 +50,7 @@ instrument.
 Run the loop, watch it go red on the symptom the user described (a nearby different
 failure is the wrong bug). Then shrink: cut inputs, callers, config, and steps one at a
 time, re-running after each cut, until every remaining element is load-bearing. The
-minimal repro shrinks the hypothesis space and becomes the regression test.
+minimal repro shrinks the hypothesis space and becomes the regression check.
 
 ## Phase 3: hypothesise
 
@@ -67,18 +67,21 @@ than blanket logging. Tag every debug line with one prefix (`[DBG-4f2a]`) so cle
 a single grep. For performance regressions, skip logs: measure a baseline, then bisect;
 measure first, fix second.
 
-## Phase 5: fix behind a regression test
+## Phase 5: fix behind a regression check
 
-Write the regression test before the fix, at a seam that exercises the real bug pattern as
-it occurred. If the only reachable seam is too shallow to replicate the triggering chain,
-that absence is itself a finding; note it rather than writing a false-confidence test.
-Then: watch it fail, apply the fix, watch it pass, and re-run the Phase 1 loop against the
-original un-minimised scenario.
+Build the regression check before the fix, at a seam that exercises the real bug pattern
+as it occurred. Retain it according to the task and repository's test policy (for the
+projects workspace, `~/.agents/kit/guidance/workspaces/projects/AGENTS.md`); a scratch
+reproduction is sufficient when permanent tests are neither requested nor established.
+If the only reachable seam is too shallow to replicate the triggering chain, that absence
+is itself a finding; note it rather than writing a false-confidence check. Then: watch it
+fail, apply the fix, watch it pass, and re-run the Phase 1 loop against the original
+un-minimised scenario.
 
 ## Phase 6: cleanup
 
-Done means: original repro is green, regression test is in the suite (or the missing-seam
-finding is recorded), every `[DBG-` line is gone by grep, throwaway harnesses are deleted
-or parked in the scratchpad, and the commit message states the hypothesis that turned out
-true so the next debugger learns something. If the finding was genuinely surprising, it is
-a `harvest` candidate.
+Done means: original repro is green, regression verification passed (or the missing-seam
+finding is recorded), retention follows Phase 5, every `[DBG-` line is gone by grep,
+throwaway harnesses are deleted or parked in the scratchpad, and the commit message states
+the hypothesis that turned out true so the next debugger learns something. If the finding
+was genuinely surprising, it is a `harvest` candidate.

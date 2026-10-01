@@ -12,10 +12,10 @@ In addition read `~/.agents/verification-toolbox.md` (machine-local, seeded from
 kit's `guidance/verification-toolbox.md.example`) before starting, when it exists. The
 toolbox names potential tools for each capability below.
 
-There are two stop conditions before any work. If the project directory or repo already
-exists, stop and ask whether to scaffold fresh or adopt in place. If the charter files are
-missing, stop and look for them, they include necessary intstructions for this process. If
-missing flag back to the owner that you cannot proceed.
+If the project directory or repo already exists, inspect it before scaffolding. Adopt
+in place when the requested outcome is clear and existing work can be preserved. Ask only
+when an owner decision or missing input blocks progress, and apply the global guide's
+owner gates before replacing or deleting anything.
 
 ## Questions to settle
 
@@ -67,7 +67,7 @@ missing flag back to the owner that you cannot proceed.
 ## Verify
 
 - One baseline commit containing the whole skeleton, named for what it
-  establishes ("scaffold <slug>: repo, gate, harness shape, charters").
+  establishes ("scaffold <slug>: repo, gate, harness shape, docs").
   The gate is green at that commit.
 - Prove the gate can fail: break one check, watch it go red, revert.
 - Report back in product terms: what exists, what was deferred, and which

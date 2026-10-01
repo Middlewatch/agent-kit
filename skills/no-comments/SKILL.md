@@ -20,10 +20,10 @@ Use the caller's files or diff. Otherwise use the current diff against the base 
    its agent definition already carries its rules.
 2. Judge its report. Reject scope escapes, kills a keep exception protects, misstated
    `MUST KILL` reasons, and flags that treat kept intentional code as guilty. Reshape
-   flags on our-code surprises stay actionable, and their comments still die. A keep
-   survives only with proof it is about something we cannot change, and overruling a kill
-   takes the exact exception plus scoped proof. Audit for scoped lint and TypeScript
-   suppressions the report missed; correctness or safety suppressions stay actionable
+   flags on unprotected our-code surprises stay actionable, and their comments still die. A keep
+   survives only with scoped proof that a keep-list exception applies, including required
+   structured records; overruling a kill takes the exact exception plus that proof. Audit
+   for scoped lint and TypeScript suppressions the report missed; correctness or safety suppressions stay actionable
    `MUST KILL`s. Before accepting a thin `IMPORTANT` or `do not remove` kill or keep, run
    `/how` or `/why` on its symbol. An ambiguous kill stands. Delete a refuted or
    still-ambiguous keep. Rerun one rejected report with the failure named. If the rerun
@@ -38,7 +38,7 @@ Use the caller's files or diff. Otherwise use the current diff against the base 
    existed from the start, rather than adding a symptom guard. That intent stops at the
    fence: instances outside it stay untouched.
 5. Constraint comments say `do not remove`, `do not change wording`, or `talk to X before
-   changing`. Leave keeps about things we cannot change. For the rest, offer the cheapest
+   changing`. Leave comments protected by the keep list. For the rest, offer the cheapest
    in-scope type, runtime check, test, or CI lint, and wait for interactive approval
    (unattended and eval runs take caller pre-approval). If approved, encode then delete.
    Otherwise delete, report the constraint open, and sketch the out-of-scope work.
