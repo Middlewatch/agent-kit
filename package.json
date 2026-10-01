@@ -35,7 +35,9 @@
       "./extensions/prompt-picker/index.ts",
       "./extensions/skill-inline/index.ts",
       "./extensions/pi-config/index.ts",
-      "./extensions/prompt-sections/index.ts"
+      "./extensions/prompt-sections/index.ts",
+      "./extensions/ask-user-question/index.ts",
+      "./extensions/web-tools/index.ts"
     ],
     "prompts": [
       "./prompts/*.md",

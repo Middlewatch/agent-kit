@@ -8,6 +8,15 @@ semver.
 
 ### Added
 
+- `extensions/ask-user-question`: the `ask_user_question` tool, rewritten
+  from the `rpiv-ask-user-question` fork as three files. No cap on questions
+  per call, a result line for every question including skipped ones, and a
+  tool declaration of 1.2 KB as sent where the fork's was 5.5 KB.
+- `extensions/web-tools`: `web_search` and `web_fetch`, rewritten from the
+  `rpiv-web-tools` fork. Search falls back down the keyed provider chain when
+  a provider is out of quota and retries an empty constrained query once,
+  relaxed; fetch re-indents JSON and can keep link targets (`links: true`).
+
 - `extensions/pi-tui`: an `ef-dark` theme alongside modus-vivendi-tinted,
   linked into `~/.pi/agent/themes/` by `deployments.json`.
 - `extensions/sysprompt-editor`: a `{{LOCAL_TOOLS}}` slot renders the

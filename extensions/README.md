@@ -27,11 +27,16 @@ repo and is installed separately.
   section and drops the stock `<rules>` listed in `guidance/rules-drop.txt`,
   in place.
   `/sysprompt` shows the prompt as sent, or a preview before the first turn.
+- `ask-user-question`: the `ask_user_question` tool, a tabbed questionnaire
+  with typed answers, multi-select, notes, and option previews.
+- `web-tools`: `web_search` over a keyed provider chain with fallback, and
+  `web_fetch` over plain HTTP; `/web-tools` shows the chain.
 
 Each extension keeps its README in its directory, with tests and a design
 doc where the extension is large enough to need them. Tests run in the
 extension's directory:
 
 - `npm test` for pi-scratchpad, pageview, agent-delegate, and pi-tui
-- `node --test lib.test.ts` for prompt-picker, skill-inline, and pi-config
+- `node --test lib.test.ts` for prompt-picker, skill-inline, pi-config,
+  ask-user-question, and web-tools
 - `npm test` and `npm run typecheck` for prompt-sections
