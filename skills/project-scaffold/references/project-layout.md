@@ -57,8 +57,9 @@ is the unversioned dated record. Keep them distinct.
 
 ## Oracles
 
-Pinned prior implementations kept as behavioral oracles live out-of-tree
-at `~/.agents/reference/oracles/<name>/`, shared across projects. A
-project that uses one points at it with a symlink or a one-line note in
-`.local/` (the note travels across machines; the symlink is
-machine-local).
+Pinned prior implementations kept as behavioral oracles live out-of-tree at
+`~/vendor/<name>/`, the third-party checkout root described in
+`~/.agents/MACHINE.md`. They are shared across projects and read-only. Clone
+the upstream, check out the release being matched, and record the name, tag,
+and commit in the project's `AGENTS.md`, so the pin travels with the repo and
+another machine can recreate the checkout.
