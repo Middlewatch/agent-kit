@@ -52,8 +52,9 @@ creating a new one.
 When a note restates or contradicts a note that already exists, the disposition is
 amending that note, not adding a sibling for a later reader to reconcile.
 
-**4. Rule.** Ask in batches of up to four notes per `ask_user_question` call, each note
-one question: the claim in one line, then the options `Promote to <path>`, `Route to
+**4. Rule.** Ask every note in one `ask_user_question` call (35 questions in one call
+has worked; option labels must stay under 60 characters, so the full path goes in the
+description), each note one question: the claim in one line, then the options `Promote to <path>`, `Route to
 <file>`, and `Delete`. Lead with your recommendation and say why in its description. The
 owner's custom answer overrides any option you drafted.
 

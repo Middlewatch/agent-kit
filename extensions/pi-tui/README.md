@@ -59,9 +59,9 @@ real paths. Spec:
 
 `themes/modus-vivendi-tinted.json` and `themes/ef-dark.json` map all pi
 color tokens from Protesilaos Stavrou's published modus-vivendi-tinted
-and ef-dark palettes; `deployments.json` links them into
-`~/.pi/agent/themes/` so `/settings` can select them and edits hot
-reload.
+and ef-dark palettes; `deployments.json` links modus-vivendi-tinted into
+`~/.pi/agent/themes/` so `/settings` can select it and edits hot
+reload. ef-dark is not deployed; link it by hand if wanted.
 
 ## Probes
 
