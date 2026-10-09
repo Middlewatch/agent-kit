@@ -120,11 +120,18 @@ def check_harnesses(manifest: dict, kit: Path, warnings: list[str]) -> list[str]
             errors.append(f"harness {name}: {env}={value}, expected {directory}")
         legacy = harness.get("legacy")
         if legacy and (path := expand(legacy, kit)).exists():
-            errors.append(f"harness {name}: {path} still exists; run bin/install to migrate it")
+            errors.append(f"harness {name}: {path} still exists; {legacy_advice(path)}")
     legacy = manifest.get("legacy_bindings")
     if legacy and (path := expand(legacy, kit)).exists():
-        errors.append(f"legacy bindings {path} still exist; run bin/install to migrate them")
+        errors.append(f"legacy bindings {path} still exist; {legacy_advice(path)}")
     return errors
+
+
+def legacy_advice(path: Path) -> str:
+    """A symlink left for a harness still running on the old path is removed by hand after restart."""
+    if path.is_symlink():
+        return "a compatibility symlink: remove it once the harness has restarted"
+    return "run bin/install to migrate it"
 
 
 def check_links(manifest: dict, kit: Path) -> list[str]:
