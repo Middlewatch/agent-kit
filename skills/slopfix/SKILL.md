@@ -7,7 +7,7 @@ description: "Rewrite a document to the house prose standard without changing a 
 
 Read `references/prose-standard.md` before editing. It owns the document-style
 preferences; this skill owns the editing procedure. Ordinary replies follow the
-writing guidance in `~/.agents/AGENTS.md`. An explicit request to edit a previous
+writing guidance in `~/agent-kit/AGENTS.md`. An explicit request to edit a previous
 answer can use this procedure on that answer alone.
 
 ## Outcome and boundaries

@@ -4,7 +4,7 @@ This document defines the directory shape of a project
 
 ## Shape
 
-`~/.agents/projects/<slug>/` is the git repo. There is no wrapper
+`~/agent-kit/projects/<slug>/` is the git repo. There is no wrapper
 directory: the folder root and the repo root are the same place.
 
 ```
@@ -31,7 +31,7 @@ unit tests die with the tree and do not count toward that answer.
 
 The scaffold creates only this root. The inside of `src/` belongs to the language: follow
 the standard language conventions as you know them or the language pack's `CONVENTIONS.md`
-under `~/.agents/reference/coding-languages/` when one exists, and let the tree grow as
+under `~/agent-kit/reference/coding-languages/` when one exists, and let the tree grow as
 the project develops.
 
 ## The working surround: `.local/`
@@ -59,7 +59,7 @@ is the unversioned dated record. Keep them distinct.
 
 Pinned prior implementations kept as behavioral oracles live out-of-tree at
 `~/vendor/<name>/`, the third-party checkout root described in
-`~/.agents/MACHINE.md`. They are shared across projects and read-only. Clone
+`~/agent-kit/MACHINE.md`. They are shared across projects and read-only. Clone
 the upstream, check out the release being matched, and record the name, tag,
 and commit in the project's `AGENTS.md`, so the pin travels with the repo and
 another machine can recreate the checkout.

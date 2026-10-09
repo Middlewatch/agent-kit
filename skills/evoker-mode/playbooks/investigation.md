@@ -5,7 +5,7 @@ built this way", "are we sure about Z", "should we do X or Y". Read-only: a
 fix discovered en route is reported, not made. Distinct from Prototype, which
 builds a throwaway artifact when observation answers faster than reading.
 
-1. Route the question: mechanism or placement → the `how` walkthrough (`~/.agents/kit/prompts/how.md`); history,
+1. Route the question: mechanism or placement → the `how` walkthrough (`~/agent-kit/prompts/how.md`); history,
    rationale, or "where did this come from" → the `why` skill; a contested
    "are we sure" gets both.
 2. Mark the read-only boundary: no product edits, scratch and probe scripts go

@@ -1,7 +1,7 @@
 # Research Workspace
 
-This root (the research root named in `~/.agents/MACHINE.md`) is for evidence-backed research, synthesis, and writing. Research
-happens here, and durable curated knowledge lives in `~/.agents/wiki`.
+This root (the research root named in `~/agent-kit/MACHINE.md`) is for evidence-backed research, synthesis, and writing. Research
+happens here, and durable curated knowledge lives in `~/agent-kit/wiki`.
 
 ## Contract
 

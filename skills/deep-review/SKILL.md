@@ -40,7 +40,7 @@ and error paths whole and open bodies as a trace needs them.
 A file that looks like glue, config, or boilerplate gets the same read. It is
 the file everyone else skipped.
 
-When `~/.agents/reference/coding-languages/<lang>/CONVENTIONS.md` exists for
+When `~/agent-kit/reference/coding-languages/<lang>/CONVENTIONS.md` exists for
 the region's language, read it first. Each rule there is a bug class the estate
 has already reviewed and resolved.
 
@@ -123,7 +123,7 @@ chain rests on a single inference), delegate one `agent: "refuter"` child:
 task is the claim and its chain, scope is the reviewed region, `resultSchema`
 is the verbatim content of `references/verdict.schema.json`. Its verdict is
 evidence for this pass, and you stay accountable for the finding (root
-obligations: `~/.agents/kit/extensions/agent-delegate/README.md`). Findings
+obligations: `~/agent-kit/extensions/agent-delegate/README.md`). Findings
 outside that set get the written frame-flip only.
 
 When a finding proves wrong after it entered the report (on a re-check, at
@@ -171,7 +171,7 @@ then report.
 
 Write `.local/artifacts/review-<YYYY-MM-DD>-<slug>/REPORT.md` in the reviewed
 project (layout per
-`~/.agents/kit/skills/project-scaffold/references/project-layout.md`):
+`~/agent-kit/skills/project-scaffold/references/project-layout.md`):
 
 ```markdown
 # Deep review: <project> / <region>

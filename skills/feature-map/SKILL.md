@@ -117,7 +117,7 @@ Rules that make it a map and not a document:
    the rules above; bring the findings to the owner as rows to rule on, fix, and commit.
 
 7. **Hand off.** Rows with `?` data or new structures: the `data-model` skill
-   (`~/.agents/kit/skills/data-model/SKILL.md`; the owner invokes it). A settled
+   (`~/agent-kit/skills/data-model/SKILL.md`; the owner invokes it). A settled
    region big enough to build: the `spec` skill. Open rows: one resolved per session,
    research to delegate children or `deep-research`, prototypes to the Prototype
    playbook, grilling to the owner, tasks directly or via `wizard`.

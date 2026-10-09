@@ -34,7 +34,7 @@ LANES = ["core", "platform", "infra", "personal", "knowledge", "reference", "wor
 GENERIC = {"index.md", "log.md", "README.md", "AGENTS.md", "CLAUDE.md"}
 RECENT_DAYS = 30
 EPISODE_CAP = 20
-AGENTS = pathlib.Path.home() / ".agents"
+AGENTS = pathlib.Path.home() / "agent-kit"
 # Injected skill text stripped before matching mentions and note touches, so
 # neither the marker nor the body's own citations count as the session's: pi's
 # <skill ...>...</skill> block, and Claude Code's marker line (its body has no

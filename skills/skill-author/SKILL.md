@@ -5,7 +5,7 @@ description: "Author or revise a SKILL.md. Use when asked to write a skill or fi
 
 # Skill Author
 
-`~/.agents/skills/AUTHORING.md` owns skill doctrine for this estate. Read it before
+`~/agent-kit/skills/AUTHORING.md` owns skill doctrine for this estate. Read it before
 drafting and defer to it where this procedure is silent.
 
 ## Workflow

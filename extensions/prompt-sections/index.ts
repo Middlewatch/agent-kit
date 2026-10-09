@@ -4,7 +4,7 @@
  *
  * On `before_agent_start` the handler takes the two section bodies from pi's
  * own rendering (`event.systemPrompt`), appends the local CLI roster to
- * `<tools>`, removes the rules listed in `~/.agents/rules-drop.txt` from
+ * `<tools>`, removes the rules listed in `~/agent-kit/guidance/rules-drop.txt` from
  * `<rules>`, then sets both through `options.sections`, where a stock name
  * replaces the section in place. Pi still builds, diffs, and
  * persists every section.
@@ -36,8 +36,8 @@ import {
 import { DEFAULT_INDEX_PATH, readLocalTools } from "./local-tools.ts";
 import { type PromptView, PromptViewer } from "./viewer-ui.ts";
 
-/** The drop list sits beside the global guide, linked from the kit's `guidance/` by `bin/install`. */
-const AGENTS_DIR = join(homedir(), ".agents");
+/** The drop list sits beside the global guide in the kit's `guidance/`. */
+const DROP_LIST = join(homedir(), "agent-kit", "guidance", "rules-drop.txt");
 
 function readOptional(path: string): string {
 	try {
@@ -50,7 +50,7 @@ function readOptional(path: string): string {
 function readInputs(): SectionInputs {
 	return {
 		roster: readLocalTools(),
-		drop: parseDropList(readOptional(join(AGENTS_DIR, "rules-drop.txt"))),
+		drop: parseDropList(readOptional(DROP_LIST)),
 	};
 }
 
@@ -70,7 +70,7 @@ function buildView(ctx: ExtensionCommandContext): PromptView {
 		`Context files\n${(options.contextFiles ?? []).map((file) => `${file.path}  ${file.content.length} chars`).join("\n") || "(none)"}`,
 		[
 			"prompt-sections inputs",
-			`${join(AGENTS_DIR, "rules-drop.txt")}  ${inputs.drop.length} rule(s)`,
+			`${DROP_LIST}  ${inputs.drop.length} rule(s)`,
 			`${DEFAULT_INDEX_PATH}  ${inputs.roster ? inputs.roster.split("\n").length : 0} tool(s) on PATH`,
 		].join("\n"),
 	].join("\n\n");

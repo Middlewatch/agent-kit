@@ -3,13 +3,13 @@
 **Status: active; ratified by owner 2026-08-06.** This standard governs the
 documents the estate produces: wiki notes, READMEs, design bases, plans,
 review reports, and commit messages. The sentence-level defaults in
-`~/.agents/AGENTS.md` apply to replies and documents alike; this standard adds
+`~/agent-kit/AGENTS.md` apply to replies and documents alike; this standard adds
 the document-level rules.
 
 This document owns document-style preferences. The `slopfix` skill owns the
 editing procedure. Its `slopcheck.py` CLI locates patterns for contextual review
 and flags explicit house typography conventions; it does not score writing
-quality. See `~/.agents/kit/skills/slopfix/README.md` for its coverage and limits.
+quality. See `~/agent-kit/skills/slopfix/README.md` for its coverage and limits.
 A prose pass preserves substantive information. Content corrections and
 relocations require a task that includes them, rather than following from a
 style finding.
@@ -36,7 +36,7 @@ detector, but the structural and corpus-level clustering has survived every
 scrubbing attack tested so far. Additionally, cosmetic rewriting spends effort
 hiding the signature instead of fixing the writing. (Full evidence audit with
 counter-cases:
-`~/.agents/wiki/knowledge/local-ai/llm-text-homogeneity-detectability.md`.)
+`~/agent-kit/wiki/knowledge/local-ai/llm-text-homogeneity-detectability.md`.)
 
 The problem is most acute in creative writing. For technical writing, this
 estate optimizes for five properties, enforced in review no matter who wrote
@@ -145,7 +145,7 @@ wiki note is usually explanation and should say so by being one.
 
 ## Drafting judgment rules
 
-The always-on defaults in `~/.agents/AGENTS.md` (em dashes, quotes, bold,
+The always-on defaults in `~/agent-kit/AGENTS.md` (em dashes, quotes, bold,
 trailing contrasts, colons and semicolons, pronoun referents, grounding,
 hedges, leading with the finding) apply to every document and are not
 repeated here. The rules below are document-level judgment calls: apply

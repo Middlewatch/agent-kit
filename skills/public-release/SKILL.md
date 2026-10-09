@@ -54,7 +54,7 @@ designates. Verify on the exported branch that no estate email, machine name, or
 6. **Impersonal prose.** Public-bound guidance and docs name roles rather than people: the
 owner for authority and ratification, the user for interaction. A personal name written
 into guidance gets reproduced into every document an agent later writes from it. Run
-`~/.agents/kit/bin/check --scan <repo>` over the export; it reads the untracked
+`~/agent-kit/bin/check --scan <repo>` over the export; it reads the untracked
 `bin/forbidden.local.txt` (untracked because a gate distributed with the identifiers it
 guards would publish them) and fails on any hit across the tracked and
 untracked-but-not-ignored files. Any hit blocks the release. Captured session transcripts,

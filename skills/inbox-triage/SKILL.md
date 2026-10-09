@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Inbox triage
 
-Self explanatory: read `~/.agents/inbox` and triage every note. They either get promoted
+Self explanatory: read `~/agent-kit/inbox` and triage every note. They either get promoted
 to a home that gets read or deleted. The owner rules on each one.
 
 ## Outcome
@@ -21,12 +21,12 @@ note both follow the owner's answer.
 
 ## Procedure
 
-**1. Inventory.** List `~/.agents/inbox/*.md` (the README is not a note; `friction-`
+**1. Inventory.** List `~/agent-kit/inbox/*.md` (the README is not a note; `friction-`
 prefixed notes are the introspect sweep's input — leave them for it) and read each
 one in full. Past a dozen notes, summarize them into the scratchpad with a script and
 read the summary.
 
-**2. Screen for durability.** The test from `~/.agents/wiki/OKF_PROFILE.md`: (is this still true in six months
+**2. Screen for durability.** The test from `~/agent-kit/wiki/OKF_PROFILE.md`: (is this still true in six months
 with nobody maintaining it?). Verified behavior, a research finding, or a decision with its
 rationale passes. Current layout, deployment state, status, and task lists rot, and rot
 in the wiki is worse than an empty wiki. Expect most of the stream to fail this; the raw
@@ -39,9 +39,9 @@ creating a new one.
 | the note holds | home |
 |----------------|------|
 | tool caveat, kernel behavior, library quirk | wiki `reference/` |
-| a coding-language finding | `~/.agents/reference/coding-languages/<lang>/`, per the `harvest` skill |
-| when to reach for an installed tool, or a trap it hides | `~/.agents/system-tools-index.md` |
-| this machine's hardware, layout, or local services | `~/.agents/MACHINE.md` |
+| a coding-language finding | `~/agent-kit/reference/coding-languages/<lang>/`, per the `harvest` skill |
+| when to reach for an installed tool, or a trap it hides | `~/agent-kit/system-tools-index.md` |
+| this machine's hardware, layout, or local services | `~/agent-kit/MACHINE.md` |
 | research finding or topical knowledge | wiki `knowledge/` |
 | harness, extension, or pi runtime behavior | wiki `platform/` |
 | inference hardware, serving, model eval | wiki `infra/` |
@@ -67,8 +67,8 @@ one move rather than a delete and an unexplained addition.
 ## Verification
 
 ```bash
-cd ~/.agents/wiki && python3 bin/lint-wiki && python3 bin/gen-indexes
-~/.agents/kit/bin/check
+cd ~/agent-kit/wiki && python3 bin/lint-wiki && python3 bin/gen-indexes
+~/agent-kit/bin/check
 ```
 
 `gen-indexes` rewrites the lane indexes from note frontmatter; commit its output with the

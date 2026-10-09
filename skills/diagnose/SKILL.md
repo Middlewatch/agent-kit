@@ -71,7 +71,7 @@ measure first, fix second.
 
 Build the regression check before the fix, at a seam that exercises the real bug pattern
 as it occurred. Retain it according to the task and repository's test policy (for the
-projects workspace, `~/.agents/kit/guidance/workspaces/projects/AGENTS.md`); a scratch
+projects workspace, `~/agent-kit/guidance/workspaces/projects/AGENTS.md`); a scratch
 reproduction is sufficient when permanent tests are neither requested nor established.
 If the only reachable seam is too shallow to replicate the triggering chain, that absence
 is itself a finding; note it rather than writing a false-confidence check. Then: watch it

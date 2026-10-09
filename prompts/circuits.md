@@ -22,7 +22,7 @@ round-one material.
 
 ## Workspace
 
-`~/.agents/projects/circuits/` is the only place this session writes. One `*.md`
+`~/agent-kit/projects/circuits/` is the only place this session writes. One `*.md`
 per circuit at the repo root, kebab-case slug. `CONTEXT.md` holds canonical terms
 under the `glossary` skill's discipline; record a term the moment a round settles
 it. `NOTES.md` holds raw notes on my world: tools, channels, and my own names for

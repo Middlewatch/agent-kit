@@ -79,7 +79,7 @@ canonical home at runtime.
 ## Writing Style
 
 We have developed a prose standard for documentation across this estate. It
-lives at `~/.agents/kit/skills/slopfix/references/prose-standard.md`; apply it
+lives at `~/agent-kit/skills/slopfix/references/prose-standard.md`; apply it
 when drafting or revising a document. Replies follow the rules of thumb and
 examples below without rereading it. Lead with the answer or finding, then give
 reasoning and caveats needed to act on it. Put uncertainty beside the claim it
@@ -161,22 +161,24 @@ failures, or unresolved concerns justify it.
 
 ## Estate layout
 
-`~/.agents/` holds the named locations where agent guidance and documentation
-live (`kit`, `wiki`, `inbox`, `journals`, `reference`, `projects`, plus any
-added locally), each a symlink to wherever that lives on this machine.
-`~/.agents/kit/guidance/LOCATIONS.md` defines them; read it before writing
+`~/agent-kit/` is the kit checkout and the one install target: beside its own
+`guidance/`, `skills/`, `extensions/`, and `tools/` it holds the named
+locations where documentation lives (`wiki`, `inbox`, `journals`, `reference`,
+`projects`, plus any added locally), each a symlink to wherever that lives on
+this machine, and one state directory per harness (`pi/`, `claude/`, `codex/`).
+`~/agent-kit/guidance/LOCATIONS.md` defines them; read it before writing
 outside the current repo. Machine facts (hostname, hardware, local services,
-other roots) live in the untracked `~/.agents/MACHINE.md`; read it when a task
+other roots) live in the untracked `~/agent-kit/MACHINE.md`; read it when a task
 depends on this machine's layout. A workspace root with standing instructions
 of its own carries an `AGENTS.md` overlay from
-`~/.agents/kit/guidance/workspaces/`.
+`~/agent-kit/guidance/workspaces/`.
 
 ## Journals, wiki, and inbox
 
 Session capture and curated knowledge are separate systems. `memory_search` is
-ranked recall over the per-turn journals in `~/.agents/journals`. The wiki at
-`~/.agents/wiki` is the knowledge base we curate together. Anything durable you
-meet mid-session goes to the capture inbox (`~/.agents/inbox`), one observation
+ranked recall over the per-turn journals in `~/agent-kit/journals`. The wiki at
+`~/agent-kit/wiki` is the knowledge base we curate together. Anything durable you
+meet mid-session goes to the capture inbox (`~/agent-kit/inbox`), one observation
 per file; outside research-report filing, route wiki candidates through the inbox
 rather than filing directly. Wiki notes are durable reference, so they carry no
 phase labels, packet codes, or temporary status language.

@@ -1,0 +1,4 @@
+# Pi state lives here (PI_CODING_AGENT_DIR); only the kit links are tracked.
+*
+!.gitignore
+!AGENTS.md

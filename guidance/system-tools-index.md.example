@@ -1,6 +1,6 @@
 # System tools index
 
-<!-- Copy to ~/.agents/system-tools-index.md and fill in. This file is
+<!-- Copy to ~/agent-kit/system-tools-index.md and fill in. This file is
 untracked on purpose: it names the tools installed on this machine, how each
 got here, and when to reach for it. Agents both use and maintain it; a new
 install or a trial-verified caveat earns an entry the day it lands. -->

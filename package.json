@@ -2,7 +2,7 @@
   "name": "@middlewatch/pi-agent-kit",
   "version": "0.1.0",
   "type": "module",
-  "description": "Agent kit: global guidance, skills, pi extensions, prompt templates, and tools behind the ~/.agents convention",
+  "description": "Agent kit: global guidance, skills, pi extensions, prompt templates, and tools; the clone at ~/agent-kit is its own install target",
   "keywords": [
     "pi-package",
     "pi",
@@ -16,16 +16,6 @@
     "url": "git+https://github.com/Middlewatch/agent-kit.git"
   },
   "bugs": "https://github.com/Middlewatch/agent-kit/issues",
-  "files": [
-    "extensions",
-    "prompts",
-    "CHANGELOG.md",
-    "!**/node_modules",
-    "!**/artifacts",
-    "!**/test-artifacts",
-    "!**/__pycache__",
-    "!**/*.log"
-  ],
   "pi": {
     "extensions": [
       "./extensions/pi-scratchpad/src/index.ts",
@@ -43,6 +33,9 @@
     "prompts": [
       "./prompts/*.md",
       "!prompts/README.md"
+    ],
+    "skills": [
+      "./skills"
     ]
   },
   "peerDependencies": {

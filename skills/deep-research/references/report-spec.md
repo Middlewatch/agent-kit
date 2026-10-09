@@ -38,7 +38,7 @@ Markdown, in this order:
 ## Citation lint
 
 ```bash
-python3 ~/.agents/kit/skills/deep-research/bin/citation-lint.py <report.md>
+python3 ~/agent-kit/skills/deep-research/bin/citation-lint.py <report.md>
 ```
 
 It checks that every inline `[n]` resolves to a numbered source, every source entry carries a
@@ -46,9 +46,9 @@ URL, and numbering is contiguous. Exit 0 ships. On exit 1, fix the named citatio
 until clean, and run it before filing. This code gate is what lets the report claim its
 citations are real.
 
-## Wiki filing (~/.agents/wiki/)
+## Wiki filing (~/agent-kit/wiki/)
 
-Format per `~/.agents/wiki/OKF_PROFILE.md`. Frontmatter:
+Format per `~/agent-kit/wiki/OKF_PROFILE.md`. Frontmatter:
 
 ```yaml
 ---
@@ -83,7 +83,7 @@ Steps, in order:
 Sources outlive the report that found them. After filing, append a run section to the lane's
 link-map so future agents can find every source by grep alone:
 
-- File: `~/.agents/wiki/<lane>/link-maps/<domain>.md`, one file per broad domain (e.g.
+- File: `~/agent-kit/wiki/<lane>/link-maps/<domain>.md`, one file per broad domain (e.g.
   `ai-agent-engineering.md`, `homelab-hardware.md`). Create the file (and `link-maps/` dir)
   when the domain is new, and append when it exists.
 - Section per run:

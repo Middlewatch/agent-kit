@@ -35,9 +35,9 @@ introspect-scan [options]
                          <wiki>/metrics/introspect/<date>.txt; refuses to
                          overwrite an existing snapshot (it may hold sweep
                          rulings) and is mutually exclusive with --episodes
-  --journals <dir>       journal root      (default ~/.agents/journals)
-  --skills <dir>         skills root       (default ~/.agents/skills)
-  --wiki <dir>           wiki root         (default ~/.agents/wiki)
+  --journals <dir>       journal root      (default ~/agent-kit/journals)
+  --skills <dir>         skills root       (default ~/agent-kit/skills)
+  --wiki <dir>           wiki root         (default ~/agent-kit/wiki)
   --today <YYYY-MM-DD>   pin the date and the recency window (for tests
                          and reproducing snapshots)
 ```

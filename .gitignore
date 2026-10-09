@@ -1,3 +1,15 @@
+# The kit is the install target: bindings that bin/install links at the root
+# and the machine files the owner keeps beside them (guidance/*.example).
+/wiki
+/inbox
+/journals
+/reference
+/projects
+/MACHINE.md
+/system-tools-index.md
+/verification-toolbox.md
+/.skill-lock.json
+
 # Caches and bytecode.
 __pycache__/
 *.py[cod]

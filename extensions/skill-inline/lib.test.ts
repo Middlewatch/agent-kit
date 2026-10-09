@@ -50,12 +50,12 @@ test("a skill token that is not at line start is plain text", () => {
 	assert.deepEqual(r.unknown, []);
 });
 
-test("skillRoots lists ~/.agents/skills and .agents/skills up to the git root, existing ones only", () => {
-	const present = new Set(["/h/.agents/skills", "/h/p/repo/.agents/skills", "/h/p/repo/.git", "/h/.agents/skills"]);
+test("skillRoots lists ~/agent-kit/skills and .agents/skills up to the git root, existing ones only", () => {
+	const present = new Set(["/h/agent-kit/skills", "/h/p/repo/.agents/skills", "/h/p/repo/.git"]);
 	const exists = (p: string) => present.has(p);
-	assert.deepEqual(skillRoots("/h/p/repo/src/deep", "/h", exists), ["/h/.agents/skills", "/h/p/repo/.agents/skills"]);
+	assert.deepEqual(skillRoots("/h/p/repo/src/deep", "/h", exists), ["/h/agent-kit/skills", "/h/p/repo/.agents/skills"]);
 	// Without a git root the walk stops at /, and nothing beyond the home root exists here.
-	assert.deepEqual(skillRoots("/tmp/x", "/h", exists), ["/h/.agents/skills"]);
+	assert.deepEqual(skillRoots("/tmp/x", "/h", exists), ["/h/agent-kit/skills"]);
 });
 
 test("unchanged input returns the same string instance", () => {

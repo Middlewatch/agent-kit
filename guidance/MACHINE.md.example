@@ -1,6 +1,6 @@
 # Machine: <hostname>
 
-<!-- Copy to ~/.agents/MACHINE.md and fill in. This file is untracked on
+<!-- Copy to ~/agent-kit/MACHINE.md and fill in. This file is untracked on
 purpose: it carries the facts that differ per machine and the identifiers the
 kit keeps out of its tracked tree. Agents read it when present. -->
 
@@ -15,7 +15,7 @@ kit keeps out of its tracked tree. Agents read it when present. -->
 Beyond the required bindings (`kit`, `wiki`, `inbox`, `journals`, `reference`, `projects`), this
 machine binds:
 
-- `~/.agents/<name>` -> <path>: <what it holds>
+- `~/agent-kit/<name>` -> <path>: <what it holds>
 
 ## Local roots
 

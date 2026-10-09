@@ -27,7 +27,7 @@ A run has two passes.
 
 ## Preconditions
 
-- **Language packs.** If `~/.agents/reference/coding-languages/<lang>/` exists, read its
+- **Language packs.** If `~/agent-kit/reference/coding-languages/<lang>/` exists, read its
   `CONVENTIONS.md`.
 - **Project conventions.** Read the project's `AGENTS.md` and, if present, `DESIGN.md`,
   `ADR's` `SPEC.md` or other reference/design related documentation.
@@ -149,7 +149,7 @@ Discovering a false positive at apply time is a good catch.
 ## Output
 
 Write to `.local/artifacts/structure-<YYYY-MM-DD>-<slug>/REPORT.md` in the project, per
-`~/.agents/kit/skills/project-scaffold/references/project-layout.md`. Keep the map script and its raw output beside the report.
+`~/agent-kit/skills/project-scaffold/references/project-layout.md`. Keep the map script and its raw output beside the report.
 
 ```markdown
 # Structural review: <project> / <region>

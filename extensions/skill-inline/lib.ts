@@ -26,12 +26,12 @@ export interface Expansion {
 /**
  * Skill roots pi's own loader adds beyond `~/.pi/agent/skills` and
  * `<cwd>/.pi/skills` (which `loadSkills({ includeDefaults: true })` covers):
- * `~/.agents/skills`, then `.agents/skills` in cwd and each ancestor up to and
- * including the git root. Package-declared skills have no directory root and
- * are only reachable from the cached list.
+ * the kit's `~/agent-kit/skills` (pi loads it as a package, which the
+ * loader's path list does not cover), then `.agents/skills` in cwd and each
+ * ancestor up to and including the git root.
  */
 export function skillRoots(cwd: string, home: string, exists: (p: string) => boolean): string[] {
-	const roots = [`${home}/.agents/skills`];
+	const roots = [`${home}/agent-kit/skills`];
 	let dir = cwd;
 	for (;;) {
 		roots.push(`${dir}/.agents/skills`);

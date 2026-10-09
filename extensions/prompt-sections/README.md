@@ -5,8 +5,8 @@ of pi's construction alone. Needs pi 0.86 or later, where the
 prompt is built from named sections.
 
 - `<tools>` gains the local CLI roster: the `## Advertised` bullets of
-  `~/.agents/system-tools-index.md`, keeping only names found on PATH.
-- `<rules>` loses the rules listed in `~/.agents/rules-drop.txt`, which may
+  `~/agent-kit/system-tools-index.md`, keeping only names found on PATH.
+- `<rules>` loses the rules listed in `~/agent-kit/guidance/rules-drop.txt`, which may
   be absent or empty.
 
 `bin/install` links the drop list from the kit's `guidance/`, beside

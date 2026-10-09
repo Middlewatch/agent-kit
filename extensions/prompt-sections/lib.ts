@@ -20,7 +20,7 @@ export function liftSection(prompt: string, name: string): string | undefined {
 }
 
 export const LOCAL_TOOLS_LEAD =
-	"CLI tools installed on this machine beyond the standard set; details and caveats in ~/.agents/system-tools-index.md.";
+	"CLI tools installed on this machine beyond the standard set; details and caveats in ~/agent-kit/system-tools-index.md.";
 
 /** The stock tools body with the local CLI roster after it; unchanged when the roster is empty. */
 export function withLocalTools(toolsBody: string, roster: string): string {

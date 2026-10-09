@@ -1,4 +1,4 @@
-# Stock pi rules removed from <rules> by the prompt-sections extension (read as ~/.agents/rules-drop.txt).
+# Stock pi rules removed from <rules> by the prompt-sections extension (read at ~/agent-kit/guidance/rules-drop.txt).
 # One rule per line, exactly as pi renders it; a rule pi is not emitting is ignored.
 Be concise in your responses
 Show file paths clearly when working with files

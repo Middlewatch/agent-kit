@@ -10,7 +10,7 @@ review rather than patched now.
 ## Two search implementations
 
 Research children search through `src/web.ts`. The root agent searches
-through the kit's `web-tools` extension (`~/.agents/kit/extensions/web-tools`).
+through the kit's `web-tools` extension (`~/agent-kit/extensions/web-tools`).
 The two share only the config file, `~/.config/rpiv-web-tools/config.json`.
 The kit's change contract forbids imports across extensions, which is why the
 code was not shared.

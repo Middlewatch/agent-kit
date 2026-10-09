@@ -1,7 +1,7 @@
 # sess
 
 Session-trace autopsy for agent transcript JSONL files. Reads Pi session logs
-(`~/.pi/agent/sessions/**`) and Claude Code project transcripts
+(`~/agent-kit/pi/sessions/**`) and Claude Code project transcripts
 (`~/.claude/projects/**`), with the format auto-detected per file, and answers
 the questions a raw multi-megabyte transcript makes expensive: what happened,
 how long, how many tokens, which tools, what failed.
@@ -27,7 +27,7 @@ with the question, which is the thing this tool exists to avoid.
 Directories are walked recursively for `*.jsonl`. Times are UTC.
 
 ```
-$ sess stat ~/.pi/agent/sessions/<cwd-slug>/
+$ sess stat ~/agent-kit/pi/sessions/<cwd-slug>/
 START            DUR FMT TURNS   API TOOLS  ERR      IN     OUT  CACHE_R  CACHE_W     COST  MODEL        FILE
 07-13 04:35   55m26s pi      1    75    93    1    352k   33.8k     5.8M        0    $5.68  gpt-5.6-sol  2026-07-13T04-35….jsonl
 ```

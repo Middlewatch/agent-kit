@@ -1,8 +1,8 @@
 # deep-research: source repo
 
 Research that persists. One skill, two modes, one contract: every run ends with a
-citation-linted report filed into `~/.agents/wiki`, its sources appended to the lane's
-link-map (`~/.agents/wiki/<lane>/link-maps/<domain>.md`, the grep-able sources ledger for
+citation-linted report filed into `~/agent-kit/wiki`, its sources appended to the lane's
+link-map (`~/agent-kit/wiki/<lane>/link-maps/<domain>.md`, the grep-able sources ledger for
 future agents).
 
 - **research mode (default)**: orchestrator-led. The primary agent scopes, searches, reads,
@@ -17,7 +17,7 @@ future agents).
 
 - `SKILL.md`: both modes on the agent-delegate extension (`delegate` tool, named
   `researcher`/`refuter` agents, per-child `resultSchema`), source
-  `~/.agents/kit/extensions/agent-delegate`.
+  `~/agent-kit/extensions/agent-delegate`.
 - `references/report-spec.md`: the shared contract: report format, source standards,
   citation lint, wiki filing (existing-note check first), sources ledger.
 - `references/findings.schema.json`, `references/verdict.schema.json`: child output schemas.
@@ -28,7 +28,7 @@ The extension owns the child model route; the orchestrator does not route models
 
 ## Install
 
-The skill reaches every client through the `~/.agents/skills` link that `bin/install`
+The skill reaches every client through the `~/agent-kit/skills` link that `bin/install`
 makes.
 
 ## Breadth vs token spend vs quality

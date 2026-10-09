@@ -16,7 +16,7 @@ The guide has two groups of rules:
 
 The guide leaves out a rule about searches that exit 1 on no match. Those
 make up the largest share of flagged bash errors, but
-`~/.agents/wiki/platform/pi-bash-nonzero-exit-is-an-error.md` records the
+`~/agent-kit/wiki/platform/pi-bash-nonzero-exit-is-an-error.md` records the
 decision to leave them alone: agents rarely retry them.
 
 ## Behaviour

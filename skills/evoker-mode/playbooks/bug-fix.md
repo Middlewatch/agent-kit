@@ -10,7 +10,7 @@ defect).
    fires. A bug you can't reproduce you can't prove fixed.
 2. Run the `diagnose` skill: a feedback loop that goes red on this exact bug,
    minimised, ranked falsifiable hypotheses, one variable per probe. Seed
-   hypotheses with the `how` walkthrough (`~/.agents/kit/prompts/how.md`) over the subsystem and `why` for regression history.
+   hypotheses with the `how` walkthrough (`~/agent-kit/prompts/how.md`) over the subsystem and `why` for regression history.
 3. Confirm the surviving mechanism with runtime evidence before designing the
    fix. A plausible-but-unconfirmed cause can be unanimously wrong while the
    real cause sits one subsystem over.

@@ -137,7 +137,7 @@ harmful.
 Each skill carries a `LEDGER.md` from its first revision on: dated entries pairing each
 revision's motivation with its later observed outcome. When a session changes what a
 skill makes an agent do, it appends an entry at edit time, creating the file if absent; the introspect sweep
-(`~/.agents/kit/docs/specs/2026-09-01-introspect.md`) adds outcome lines once there is
+(`~/agent-kit/docs/specs/2026-09-01-introspect.md`) adds outcome lines once there is
 evidence and reads the ledger before proposing the next revision. Typo fixes,
 formatting, and bulk migrations do not get entries.
 

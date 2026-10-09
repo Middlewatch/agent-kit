@@ -8,7 +8,7 @@ the `diagnose` skill; this is the loop.
 Core discipline: one change, one measurement, keep or revert. Never stack untested
 changes, never claim a win from code inspection. The data decides (prove-it-works).
 
-1. Ground the workload before choosing the ruler. Run the `how` walkthrough (`~/.agents/kit/prompts/how.md`) over the target, name the
+1. Ground the workload before choosing the ruler. Run the `how` walkthrough (`~/agent-kit/prompts/how.md`) over the target, name the
    workload dimensions that can move the result, and pick a case that reproduces the
    complaint. No reproducing case → fix the repro instead of hillclimbing. Fix one metric,
    the better-direction, and a stop predicate pairing a target with a floor on attempts

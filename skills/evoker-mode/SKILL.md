@@ -22,7 +22,7 @@ by the specific rule from its file, and say what it changed.
 Remaining triggers:
 
 - An architecture decision in a subsystem you have not yet traced → the walkthrough at
-  `~/.agents/kit/prompts/how.md`. A change inside code you have already read proceeds
+  `~/agent-kit/prompts/how.md`. A change inside code you have already read proceeds
   without it. A standalone question ("how does X work", "are we sure?") routes to the
   Investigation playbook instead.
 - About to `ask_user_question` on a "which approach" or "what should this do" fork →
@@ -51,7 +51,7 @@ Remaining triggers:
   independent audit with a findings artifact → the `deep-review` skill.
 - Research whose answer should persist → the `deep-research` skill.
 - A document you draft or revise → the prose standard
-  (`~/.agents/kit/skills/slopfix/references/prose-standard.md`). Replies follow the global
+  (`~/agent-kit/skills/slopfix/references/prose-standard.md`). Replies follow the global
   guide's writing rules without rereading the standard. Skills and playbooks also follow
   `AUTHORING.md` and the playbook standard.
 - A decision that is hard to reverse, would surprise a later reader, and had real
@@ -122,7 +122,7 @@ earn its place" when true. A recommendation is a judgment, not a validation.
 The surface is the `agent-delegate` tool: depth-one, read-only children on the `explore`,
 `review`, and `research` profiles, three concurrent prose children and twelve research
 children, extension-owned model routes. The doctrine is in the extension's README
-(`~/.agents/kit/extensions/agent-delegate/README.md`, "When delegation repays"): children
+(`~/agent-kit/extensions/agent-delegate/README.md`, "When delegation repays"): children
 gather, the root judges. A complete bounded brief names the scope, the question, and what done means. You
 own every child's work: verify material claims against the source before repeating them,
 and record dispositions with `assess_delegation`. A second opinion is the same brief on

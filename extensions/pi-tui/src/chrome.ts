@@ -1,7 +1,7 @@
 /** Wiring for the persistent TUI chrome: header and footer. */
 import { homedir } from "node:os";
 import { basename, join } from "node:path";
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { type ExtensionAPI, type ExtensionContext, getAgentDir } from "@earendil-works/pi-coding-agent";
 import { installTranscriptCopy } from "./copy.ts";
 import { countEstate, type EstateCounts, type EstateSources } from "./estate.ts";
 import { buildFooterLines, type FooterFacts } from "./footer.ts";
@@ -79,8 +79,8 @@ export function registerChrome(pi: ExtensionAPI): void {
 		};
 		if (startup !== generation) return;
 		const sources: EstateSources = {
-			agentsDir: join(homedir(), ".agents"),
-			piAgentDir: join(homedir(), ".pi", "agent"),
+			agentsDir: join(homedir(), "agent-kit"),
+			piAgentDir: getAgentDir(),
 			cwd: ctx.cwd,
 			projectTrusted: ctx.isProjectTrusted(),
 		};

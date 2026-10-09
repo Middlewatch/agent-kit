@@ -1,56 +1,38 @@
 {
+  "root": "~/agent-kit",
   "bindings": {
-    "kit": ".",
     "wiki": "~/wiki",
     "inbox": "~/wiki/inbox",
     "journals": "~/journals",
     "reference": "~/reference",
     "projects": "~/projects"
   },
+  "harnesses": [
+    {
+      "name": "pi",
+      "env": "PI_CODING_AGENT_DIR",
+      "legacy": "~/.pi/agent"
+    },
+    {
+      "name": "claude",
+      "env": "CLAUDE_CONFIG_DIR",
+      "legacy": "~/.claude"
+    },
+    {
+      "name": "codex",
+      "env": "CODEX_HOME",
+      "legacy": "~/.codex"
+    }
+  ],
+  "legacy_bindings": "~/.agents",
   "links": [
     {
-      "source": "kit/guidance/AGENTS.md",
-      "target": "~/.agents/AGENTS.md"
-    },
-    {
-      "source": "kit/guidance/CLAUDE.md",
-      "target": "~/.agents/CLAUDE.md"
-    },
-    {
-      "source": "kit/guidance/rules-drop.txt",
-      "target": "~/.agents/rules-drop.txt"
-    },
-    {
-      "source": "kit/skills",
-      "target": "~/.agents/skills"
-    },
-    {
-      "source": "~/.agents/kit/guidance/workspaces/projects/AGENTS.md",
-      "target": "~/.agents/projects/AGENTS.md"
+      "source": "~/agent-kit/guidance/workspaces/projects/AGENTS.md",
+      "target": "~/agent-kit/projects/AGENTS.md"
     },
     {
       "source": "AGENTS.md",
-      "target": "~/.agents/projects/CLAUDE.md"
-    },
-    {
-      "source": "~/.agents/AGENTS.md",
-      "target": "~/.pi/agent/AGENTS.md"
-    },
-    {
-      "source": "~/.agents/CLAUDE.md",
-      "target": "~/.claude/CLAUDE.md"
-    },
-    {
-      "source": "~/.agents/skills",
-      "target": "~/.claude/skills"
-    },
-    {
-      "source": "~/.agents/AGENTS.md",
-      "target": "~/.codex/AGENTS.md"
-    },
-    {
-      "source": "~/.agents/skills",
-      "target": "~/.codex/skills"
+      "target": "~/agent-kit/projects/CLAUDE.md"
     }
   ],
   "tools": [
@@ -81,37 +63,8 @@
       "bin": "tools/introspect-scan/introspect-scan"
     }
   ],
-  "pi_package": [
-    "~/.agents/kit",
-    "npm:@middlewatch/pi-agent-kit",
-    "git:github.com/Middlewatch/agent-kit"
-  ],
+  "pi_package": "~/agent-kit",
   "pi_retire": [
-    "~/projects/skills",
-    "~/projects/extensions",
-    "git:github.com/Middlewatch/agent-skills",
-    "git:github.com/Middlewatch/pi-extensions",
-    "~/projects/sysprompt-editor",
-    "git:github.com/Middlewatch/pi-sysprompt-editor"
-  ],
-  "pi_legacy_paths": [
-    "~/.pi/agent/extensions/lemonade-current",
-    "~/.pi/agent/extensions/pi-interlock",
-    "~/.pi/agent/extensions/pi-scratchpad",
-    "~/.pi/agent/extensions/agent-delegate",
-    "~/.pi/agent/skills/as-built",
-    "~/.pi/agent/skills/deep-research",
-    "~/.pi/agent/skills/deep-review",
-    "~/.pi/agent/skills/design-basis",
-    "~/.pi/agent/skills/design-conformance",
-    "~/.pi/agent/skills/execute",
-    "~/.pi/agent/skills/harvest",
-    "~/.pi/agent/skills/plan",
-    "~/.pi/agent/skills/project-scaffold",
-    "~/.pi/agent/skills/public-release",
-    "~/.pi/agent/skills/slopfix",
-    "~/.pi/agent/skills/structural-review",
-    "~/.pi/agent/skills/tui-live-review",
-    "~/.pi/agent/skills/vet-dependency"
+    "~/.agents/kit"
   ]
 }

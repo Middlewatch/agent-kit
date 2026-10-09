@@ -1,0 +1,5 @@
+# Codex state lives here (CODEX_HOME); only the kit links are tracked.
+*
+!.gitignore
+!AGENTS.md
+!skills

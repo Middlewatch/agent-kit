@@ -14,7 +14,7 @@ failure class.
   NLOC) flagged 76 distinct dead functions at high confidence, and 71 of
   them (93%) were live, 46 as function values assigned into vtable structs,
   the idiomatic Zig dispatch pattern a syntactic `calls` query cannot see.
-- **Provenance:** `~/.agents/wiki/reference/structural-code-maps-for-agents.md`
+- **Provenance:** `~/agent-kit/wiki/reference/structural-code-maps-for-agents.md`
 - **Consequence:** ungated, that is 71 false findings entering the report and
   discrediting the real ones. Run the calibration gate on a file already read
   before admitting any tool's output as evidence.

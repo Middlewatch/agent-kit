@@ -45,9 +45,9 @@ real paths. Spec:
   - the skills
   - global and project prompt templates
   - the system prompt files: pi's four `SYSTEM.md` / `APPEND_SYSTEM.md`
-    slots, plus `~/.agents/AGENTS.md` and `~/.agents/rules-drop.txt`
-  - any folders mapped in the untracked `~/.pi/agent/pi-tui-edit.json`,
-    for example `{"roots": [{"label": "wiki", "path": "~/.agents/wiki"}]}`
+    slots, plus `~/agent-kit/guidance/AGENTS.md` and `~/agent-kit/guidance/rules-drop.txt`
+  - any folders mapped in the untracked `~/agent-kit/pi/pi-tui-edit.json`,
+    for example `{"roots": [{"label": "wiki", "path": "~/agent-kit/wiki"}]}`
 
   Mapped folders are scanned recursively for markdown (dotdirs and
   `node_modules` skipped, depth and count capped), and the config file
@@ -60,7 +60,7 @@ real paths. Spec:
 The extension ships no theme. Pi themes come from the dotfiles palette
 engine: `.chezmoitemplates/pi-theme` in the chezmoi source maps every pi
 color token to a palette role, and `dot_pi/agent/themes/<palette>.json.tmpl`
-renders one theme per palette into `~/.pi/agent/themes/`, selectable in
+renders one theme per palette into `~/agent-kit/pi/themes/`, selectable in
 `/settings`. The chrome here relies on three text tiers from that mapping:
 `text` (the terminal foreground, `fg-main`), `muted` (`fg-dim`, 7:1 on the
 background), and `dim` (`fg-faded`, the de-emphasis tier at a 4.5:1 floor),

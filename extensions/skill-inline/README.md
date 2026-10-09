@@ -37,7 +37,7 @@ The loaded skill set (including skills a pi package declares) is only
 exposed to extensions on `before_agent_start`, which fires after input
 expansion. The extension caches that list for the following prompts. For the
 first prompt of a session it runs pi's `loadSkills` over the documented
-roots itself: `~/.pi/agent/skills`, `.pi/skills`, `~/.agents/skills`, and
+roots itself: `$PI_CODING_AGENT_DIR/skills`, `.pi/skills`, `~/agent-kit/skills`, and
 `.agents/skills` in the cwd and its ancestors up to the git root. A
 package-declared skill has no directory root, so it is reachable inline from
 the second prompt on; on the first, invoke it on the first line as before.

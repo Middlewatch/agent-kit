@@ -9,7 +9,7 @@
 import { mkdirSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
-import { DynamicBorder, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { DynamicBorder, type ExtensionAPI, getAgentDir } from "@earendil-works/pi-coding-agent";
 import type { ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { decodeKittyPrintable, matchesKey, type SelectItem, SelectList, Text } from "@earendil-works/pi-tui";
 import { discoverEditRoots, type EditRootSpec, type EditTarget, filterTargets } from "./edit-targets.ts";
@@ -148,8 +148,8 @@ export function registerEditCommand(pi: ExtensionAPI): void {
 			}
 
 			const specs = discoverEditRoots({
-				agentsDir: join(homedir(), ".agents"),
-				piAgentDir: join(homedir(), ".pi", "agent"),
+				agentsDir: join(homedir(), "agent-kit"),
+				piAgentDir: getAgentDir(),
 				cwd: ctx.cwd,
 			});
 			if (specs.length === 0) {

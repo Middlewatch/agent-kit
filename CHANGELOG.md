@@ -32,6 +32,16 @@ semver.
 
 ### Changed
 
+- The clone at `~/agent-kit` is the install target (ADR 0009). `~/.agents`
+  and the harness dot-directories are retired: bindings are gitignored
+  symlinks at the kit root, and `pi/`, `claude/`, `codex/` hold each
+  harness's state behind `PI_CODING_AGENT_DIR`, `CLAUDE_CONFIG_DIR`, and
+  `CODEX_HOME`, with only the links into the kit tracked. `bin/install`
+  migrates the old layout once, runs `npm ci` for extensions with a
+  lockfile, and backs up to `$XDG_STATE_HOME/agent-kit/backup`. Every
+  `~/.agents/...` reference became `~/agent-kit/...`.
+- `skills/walkthrough`: tutorial records live in the wiki
+  (`~/agent-kit/wiki/personal/tutorials/`) instead of the skill's tree.
 - `extensions/pi-tui`: the progress widget derives from task-list lines in
   assistant replies (`- [ ]`, `- [x]`, `- [-] … (skip: reason)`) instead of
   a todo tool; `guidance/AGENTS.md` and the evoker-mode playbook standard
@@ -58,6 +68,8 @@ semver.
 
 ### Removed
 
+- The npm publication path (`files` in `package.json`, the `pi install npm:`
+  and `git:` install forms, `pi_legacy_paths`): every machine clones.
 - `extensions/todo`: session logs showed it write-only (85% `status` calls,
   `list` called once); the pi-tui progress widget replaces it.
 - `tools/lemonade-hub-sync`: tied to one inference server's internals and

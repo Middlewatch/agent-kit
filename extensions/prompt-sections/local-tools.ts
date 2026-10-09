@@ -2,7 +2,7 @@
  * The local CLI roster appended to `<tools>`: the `## Advertised` bullets of
  * the machine's system tools index, keeping only names found on PATH so an
  * uninstalled tool leaves the prompt without an edit. The index is untracked
- * and per-machine (`~/.agents/system-tools-index.md`).
+ * and per-machine (`~/agent-kit/system-tools-index.md`).
  */
 import * as fs from "node:fs";
 import * as os from "node:os";
@@ -19,7 +19,7 @@ const BULLET = /^- `([^`/\s]+)`: \S/;
 
 export const DEFAULT_INDEX_PATH = path.join(
   os.homedir(),
-  ".agents",
+  "agent-kit",
   "system-tools-index.md",
 );
 

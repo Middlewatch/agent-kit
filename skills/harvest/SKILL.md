@@ -73,7 +73,7 @@ for the next reader to reconcile.
 
 ## Where it goes
 
-**A coding language**: a pack under `~/.agents/reference/coding-languages/`. If no
+**A coding language**: a pack under `~/agent-kit/reference/coding-languages/`. If no
 pack exists for the language, `init` a candidate pack and capture into it.
 A coding-language finding lands in a pack rather than the inbox.
 
@@ -94,7 +94,7 @@ A coding-language finding lands in a pack rather than the inbox.
 build-tooling trap) goes to the capture inbox per the existing convention:
 
 ```
-~/.agents/inbox/YYYY-MM-DD_HHMMSS_<host>_<slug>.md
+~/agent-kit/inbox/YYYY-MM-DD_HHMMSS_<host>_<slug>.md
 ```
 
 with the standard frontmatter (`source: <host>`, `type: observation`, `title:`,
@@ -146,7 +146,7 @@ Only after a real build or review in that language produces evidence. Research a
 identifies questions and does not activate conventions.
 
 ```bash
-S=~/.agents/kit/skills/harvest/scripts/language_corpus.py
+S=~/agent-kit/skills/harvest/scripts/language_corpus.py
 python3 $S resolve zig                                     # find an active pack
 python3 $S resolve go --include-candidate                  # candidate packs too
 python3 $S init --language Odin --slug odin --toolchain dev-2026-07

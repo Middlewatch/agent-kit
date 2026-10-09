@@ -5,7 +5,7 @@
 missing feature or a real bug splits it out and ships the structural change first against
 the pinned contract.
 
-1. Pin the behavior first. Run the `how` walkthrough (`~/.agents/kit/prompts/how.md`) over the subsystem, then write a characterization
+1. Pin the behavior first. Run the `how` walkthrough (`~/agent-kit/prompts/how.md`) over the subsystem, then write a characterization
    test, snapshot, or equivalence harness capturing current behavior before any structure
    moves (prove-it-works). Type check and lint are not a pin.
 2. Name the structure the code is missing (model-the-domain): a state machine over

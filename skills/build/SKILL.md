@@ -35,7 +35,7 @@ Read (or if not present then skip): the spec, `docs/adr/`,
 When the spec exists and the build is sufficiently complex: Build to the
 structure's record (indexed in `docs/DATA_MODEL.md`, written on the type); a
 slice that would change a record's Owner, Lifetime, or Boundary follows the
-maintenance rules in `~/.agents/kit/skills/data-model/SKILL.md`. Check the principle index
+maintenance rules in `~/agent-kit/skills/data-model/SKILL.md`. Check the principle index
 (`../evoker-mode/SKILL.md`) and read the principle file whose rule a slice's
 data shape or boundary triggers, under the index's stakes clause. Note the base
 commit for the review diff.

@@ -8,7 +8,7 @@ of leaving pi, running `pi config`, and reloading by hand.
 
 ## Usage
 
-- `/config`: opens the picker in global scope (`~/.pi/agent/settings.json`).
+- `/config`: opens the picker in global scope (`~/agent-kit/pi/settings.json`).
 - Arrows and page keys move. Space or enter toggles. Typing filters by name,
   type, or path, and backspace edits the filter. Esc closes.
 - Tab switches to project scope (`.pi/settings.json`), available once the

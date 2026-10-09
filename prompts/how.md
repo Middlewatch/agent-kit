@@ -35,14 +35,14 @@ explorers don't duplicate work (e.g. for a rate limiter: data model and state; r
 enforcement; configuration and metrics). Launch all explorers with the
 `delegate` tool in a single message, `explore` profile, scoped to the relevant
 tree. Each brief carries the base prompt from
-`~/.agents/kit/prompts/how/explorer-prompt.md` plus its specific angle. Each
+`~/agent-kit/prompts/how/explorer-prompt.md` plus its specific angle. Each
 explorer starts broad, follows the thread from an entry point through the call
 chain, reads the actual code, and stops when it can describe the full path from
 input to output without hand-waving.
 
 **3. Synthesize.** Write the explanation yourself from the explorer findings
 (or your own direct read), following
-`~/.agents/kit/prompts/how/explainer-prompt.md` for the communication style and
+`~/agent-kit/prompts/how/explainer-prompt.md` for the communication style and
 output format. Reconcile overlapping findings, verify any load-bearing or
 contested claim against the source before repeating it, and record each
 explorer's disposition with `assess_delegation`.
@@ -57,9 +57,9 @@ architecture before critiquing it.
 
 **2. Launch critics.** One to three `review` profile children in one message; escalate
 `tier` or `thinking` when the architecture warrants it. Build each brief from
-`~/.agents/kit/prompts/how/critic-prompt.md`, giving each critic the
+`~/agent-kit/prompts/how/critic-prompt.md`, giving each critic the
 explanation, the relevant file paths, and the rubric at
-`~/.agents/kit/prompts/how/critique-rubric.md`.
+`~/agent-kit/prompts/how/critique-rubric.md`.
 
 **3. Lead judgment.** You're a pragmatic lead, not an aggregator. Verify each
 finding's evidence against the source, then categorize: **Act on** / **Consider**

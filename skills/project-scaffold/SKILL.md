@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 This skill implements the shape defined in `references/project-layout.md`
 
-In addition read `~/.agents/verification-toolbox.md` (machine-local, seeded from the
+In addition read `~/agent-kit/verification-toolbox.md` (machine-local, seeded from the
 kit's `guidance/verification-toolbox.md.example`) before starting, when it exists. The
 toolbox names potential tools for each capability below.
 
@@ -24,13 +24,13 @@ owner gates before replacing or deleting anything.
   fast compile, sane data structures, comprehensible). When the five qualities don't
   settle it, the choice is the owner's.
 - Binary or library. If an active language pack exists under
-  `~/.agents/reference/coding-languages/` read its `CONVENTIONS.md` before writing.
+  `~/agent-kit/reference/coding-languages/` read its `CONVENTIONS.md` before writing.
 - Remote now or later. Default posture is private with no remote until the owner
   determines otherwise.
 
 ## Steps
 
-1. **Shape**: `~/.agents/projects/<slug>/` is the git repo, laid out per
+1. **Shape**: `~/agent-kit/projects/<slug>/` is the git repo, laid out per
    `references/project-layout.md`.
 2. **Repo**: `git init` in `<slug>/`, then a `.gitignore` with sane defaults grouped by
    comment: the surround (`.local/`), build output (`zig-out/`, `.zig-cache/`, `dist/`,

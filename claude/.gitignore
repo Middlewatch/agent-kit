@@ -1,0 +1,5 @@
+# Claude Code state lives here (CLAUDE_CONFIG_DIR); only the kit links are tracked.
+*
+!.gitignore
+!CLAUDE.md
+!skills

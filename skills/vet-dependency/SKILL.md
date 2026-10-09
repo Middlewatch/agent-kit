@@ -19,8 +19,8 @@ channel or ownership or license, new install-time execution, a privilege
 increase, or a security incident in the dependency.
 
 Each check maps to a documented failure class from the verified research record
-(`~/.agents/wiki/knowledge/software-architecture/foss-developer-tooling-2026.md`, with Zig
-specifics in `~/.agents/reference/coding-languages/zig/references/toolchain-and-ecosystem.md`). The
+(`~/agent-kit/wiki/knowledge/software-architecture/foss-developer-tooling-2026.md`, with Zig
+specifics in `~/agent-kit/reference/coding-languages/zig/references/toolchain-and-ecosystem.md`). The
 incidents and figures behind each check live in that record rather than here. Every
 item is a fast lookup. Depth of investigation scales with blast radius, so a
 dev-only formatter earns a lighter pass than a network daemon or anything that

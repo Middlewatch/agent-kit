@@ -1,6 +1,6 @@
 # Experiments Workspace
 
-This root (the experiments root named in `~/.agents/MACHINE.md`) is my isolated staging area for package trials, harness
+This root (the experiments root named in `~/agent-kit/MACHINE.md`) is my isolated staging area for package trials, harness
 comparisons, and workflow experiments.
 
 ## Contract
@@ -14,7 +14,7 @@ comparisons, and workflow experiments.
   inside the trial and the global harness configuration stays untouched.
 - Preserve completed fixtures and results as historical evidence, including
   legacy paths and harness names needed to reproduce what was tested.
-- Promote only the smallest proven capability into a `~/.agents/projects` repository
+- Promote only the smallest proven capability into a `~/agent-kit/projects` repository
   or the global configuration.
 
 Package-evaluation skills belong in this root's `.pi/skills/` when

@@ -58,9 +58,9 @@ callers cannot supply a model slug. A malformed tier table fails at load.
 | `child-contract.md` and `child-scope.ts` | Child instructions and enforced tool boundaries |
 
 Workflow skills select work for this surface. The
-[build skill](~/.agents/kit/skills/build/SKILL.md) requests a fresh review,
-[deep review](~/.agents/kit/skills/deep-review/SKILL.md) uses judge-tier refuters,
-and [Pi deep research](~/.agents/kit/skills/deep-research/SKILL.md) controls
+[build skill](~/agent-kit/skills/build/SKILL.md) requests a fresh review,
+[deep review](~/agent-kit/skills/deep-review/SKILL.md) uses judge-tier refuters,
+and [Pi deep research](~/agent-kit/skills/deep-research/SKILL.md) controls
 research fan-out. These callers inherit the central routes rather than owning
 model slugs. Claude Code's separate subagent routing is outside this tool.
 
@@ -264,7 +264,7 @@ a scope is delegated). An allowlist mechanically enforces the registered set.
 
 `scope` must identify an existing directory beneath the home directory (or
 beneath Pi's current working directory when Pi runs outside home), so
-cross-lane scopes such as `~/.agents/journals` from a project cwd are legal.
+cross-lane scopes such as `~/agent-kit/journals` from a project cwd are legal.
 Delegating the whole home directory or filesystem root is refused, and the
 hidden top-level home trees and known credential-bearing paths are not eligible
 child scopes.
@@ -304,8 +304,8 @@ worktree in place with a record that may lack the branch summary;
 
 There is no `verify` profile. General shell is write/process/network
 authority, and no tested child sandbox exists to contain it. Wiki and journal
-reads need no dedicated profile, because `~/.agents/wiki` and
-`~/.agents/journals` are ordinary read-only scopes.
+reads need no dedicated profile, because `~/agent-kit/wiki` and
+`~/agent-kit/journals` are ordinary read-only scopes.
 
 ## UI and lifecycle
 

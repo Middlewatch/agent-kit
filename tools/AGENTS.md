@@ -19,7 +19,7 @@ the `slopfix` skill, which owns it; its PATH link still comes from
   a previous writer already put in the file. It bit all four original tools at
   once, and plain `prog > out` hides it because the shell truncates first.
   Sources follow the Zig pack under the `reference` binding
-  (`~/.agents/reference/coding-languages/zig/`) when that binding exists, so
+  (`~/agent-kit/reference/coding-languages/zig/`) when that binding exists, so
   read its `CONVENTIONS.md` before writing.
 - **Script tools** (`portaudit` bash/awk; `introspect-scan` python): no
   build step, so the symlink points at the
@@ -27,5 +27,5 @@ the `slopfix` skill, which owns it; its PATH link still comes from
   Run the tool's own test script before committing. In `portaudit`, mind that
   the awk program is single-quoted. An apostrophe anywhere inside it, even in
   a comment, terminates the quote and produces a baffling parse error.
-- Tool choices per verification capability: `~/.agents/verification-toolbox.md`
+- Tool choices per verification capability: `~/agent-kit/verification-toolbox.md`
   (machine-local, untracked, seeded from `guidance/verification-toolbox.md.example`).

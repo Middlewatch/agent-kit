@@ -9,8 +9,8 @@ disable-model-invocation: true
 One sweep session turns a month of usage evidence and owner friction into ruled-on
 changes to skills and wiki notes, and records each change's motivation so the next sweep
 can check its outcome. The design is
-`~/.agents/kit/docs/specs/2026-09-01-introspect.md`; ledger doctrine is the ledger
-section of `~/.agents/skills/AUTHORING.md`.
+`~/agent-kit/docs/specs/2026-09-01-introspect.md`; ledger doctrine is the ledger
+section of `~/agent-kit/skills/AUTHORING.md`.
 
 ## Outcome and boundaries
 
@@ -23,20 +23,20 @@ scanner's README govern how far a single artifact's count can be trusted.
 
 ## Preconditions
 
-`introspect-scan` on PATH (kit tool) and the wiki checkout at `~/.agents/wiki`. A sweep
+`introspect-scan` on PATH (kit tool) and the wiki checkout at `~/agent-kit/wiki`. A sweep
 with no friction notes and no prior ledger entries to close still runs; it just leans
 entirely on the scan.
 
 ## Procedure
 
 **1. Evidence packet.** Run `introspect-scan --write` and
-`~/.agents/wiki/bin/usage-report --write`, and diff against the previous month's
-snapshots in `~/.agents/wiki/metrics/`. Read every `friction-*.md` in
-`~/.agents/inbox`. Bulk analysis goes through scratchpad scripts; the session reads
+`~/agent-kit/wiki/bin/usage-report --write`, and diff against the previous month's
+snapshots in `~/agent-kit/wiki/metrics/`. Read every `friction-*.md` in
+`~/agent-kit/inbox`. Bulk analysis goes through scratchpad scripts; the session reads
 summaries.
 
 **2. Close the last loop.** Find ledger entries missing an outcome
-(`grep -rL 'Outcome' ~/.agents/skills/*/LEDGER.md` is a start; entry-level gaps need a
+(`grep -rL 'Outcome' ~/agent-kit/skills/*/LEDGER.md` is a start; entry-level gaps need a
 read). For each, check what this month's evidence says and append the
 `- Outcome (YYYY-MM-DD sweep): ...` line; "no evidence either way" is a valid
 outcome when true. This happens before new proposals so the sweep learns from its last round.
@@ -58,8 +58,8 @@ the pairing. Append a `## rulings` section to this month's
 `metrics/introspect/<date>.txt` recording every proposal, its ruling, and rejected
 proposals' reasons, then commit the wiki.
 
-**6. Verify and report.** `cd ~/.agents/wiki && python3 bin/lint-wiki && python3
-bin/gen-indexes`; `~/.agents/kit/bin/check --lint` if kit files changed. Report in
+**6. Verify and report.** `cd ~/agent-kit/wiki && python3 bin/lint-wiki && python3
+bin/gen-indexes`; `~/agent-kit/bin/check --lint` if kit files changed. Report in
 chat: proposals ruled, edits landed, outcomes closed, and what was deferred.
 
 ## Blockers

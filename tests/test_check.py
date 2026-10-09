@@ -20,6 +20,7 @@ INSTALL = ROOT / "bin/install"
 CHECK = ROOT / "bin/check"
 FIXTURE_KIT = ROOT / "tests/fixtures/kit"
 FAKE_BIN = ROOT / "tests/fixtures/bin"
+HARNESS_ENV = {"pi": "PI_CODING_AGENT_DIR", "claude": "CLAUDE_CONFIG_DIR", "codex": "CODEX_HOME"}
 
 
 def lint_repo(repo: Path) -> None:
@@ -29,16 +30,17 @@ def lint_repo(repo: Path) -> None:
 
 
 class Home:
-    """A temp HOME with a private copy of the fixture kit and source dirs."""
+    """A temp HOME with a private copy of the fixture kit at ~/agent-kit and source dirs."""
 
-    def __init__(self, *, make_sources=("wiki", "reference", "projects"), zig=True):
+    def __init__(self, *, make_sources=("wiki", "reference", "projects"), zig=True, kit_name="agent-kit"):
         self.dir = Path(tempfile.mkdtemp(prefix="agent-kit-test-"))
-        self.kit = self.dir / "kit"
+        self.kit = self.dir / kit_name
         shutil.copytree(FIXTURE_KIT, self.kit, symlinks=True)
         for name in make_sources:
             (self.dir / name).mkdir()
         self.path = str(FAKE_BIN) + os.pathsep + os.environ["PATH"] if zig else self._path_without("zig")
         self.path = str(self.dir / ".local/bin") + os.pathsep + self.path
+        self.state = self.dir / ".local/state"
 
     def _path_without(self, prog: str) -> str:
         """A one-directory PATH mirroring every executable on the real PATH except `prog`."""
@@ -54,29 +56,36 @@ class Home:
                     link.symlink_to(entry)
         return str(shadow)
 
-    def env(self) -> dict:
-        return {"HOME": str(self.dir), "PATH": self.path, "TMPDIR": str(self.dir)}
+    def env(self, harness_env=True) -> dict:
+        env = {"HOME": str(self.dir), "PATH": self.path, "TMPDIR": str(self.dir), "XDG_STATE_HOME": str(self.state)}
+        if harness_env:
+            for name, var in HARNESS_ENV.items():
+                env[var] = str(self.kit / name)
+        return env
 
-    def run(self, *args: str, path: str | None = None) -> subprocess.CompletedProcess:
-        env = self.env()
+    def run(self, *args: str, path: str | None = None, env: dict | None = None) -> subprocess.CompletedProcess:
+        env = dict(env if env is not None else self.env())
         if path is not None:
             env["PATH"] = path
         return subprocess.run([str(a) for a in args], capture_output=True, text=True, env=env)
 
-    def install(self, *extra: str, binds=("wiki", "reference", "projects"), path=None):
+    def install(self, *extra: str, binds=("wiki", "reference", "projects"), path=None, env=None):
         args = [INSTALL, "--kit", self.kit, *extra]
         for b in binds:
             args += ["--bind", f"{b}={self.dir / b}"]
-        return self.run(*args, path=path)
+        return self.run(*args, path=path, env=env)
 
-    def check(self, *extra: str, path=None):
-        return self.run(CHECK, *extra, path=path)
+    def check(self, *extra: str, path=None, env=None):
+        return self.run(CHECK, "--kit", self.kit, *extra, path=path, env=env)
 
     def tree(self) -> str:
         return subprocess.run(
-            ["find", str(self.dir / ".agents"), "-printf", "%P %y %l\n"],
+            ["find", str(self.kit), "-printf", "%P %y %l\n"],
             capture_output=True, text=True,
         ).stdout
+
+    def backups(self, pattern: str) -> list[Path]:
+        return list((self.state / "agent-kit/backup").glob(pattern))
 
     def cleanup(self):
         shutil.rmtree(self.dir, ignore_errors=True)
@@ -101,20 +110,120 @@ class InstallAndCheck(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         r = h.check()
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        agents = h.dir / ".agents"
-        self.assertEqual(os.path.realpath(agents / "kit"), os.path.realpath(h.kit))
-        self.assertEqual(os.readlink(agents / "AGENTS.md"), "kit/guidance/AGENTS.md")
-        self.assertTrue((h.dir / ".claude/skills/demo/SKILL.md").is_file())
-        self.assertTrue((h.dir / ".codex/AGENTS.md").is_file())
-        self.assertTrue((h.dir / ".pi/agent/AGENTS.md").is_file())
+        self.assertNotIn("WARN", r.stdout)
+        for name in ("wiki", "reference", "projects"):
+            self.assertEqual(os.path.realpath(h.kit / name), os.path.realpath(h.dir / name))
+        self.assertTrue((h.kit / "claude/skills/demo/SKILL.md").is_file())
+        self.assertTrue((h.kit / "codex/AGENTS.md").is_file())
+        self.assertTrue((h.kit / "pi/AGENTS.md").is_file())
+        self.assertEqual(os.readlink(h.dir / "projects/AGENTS.md"), str(h.kit / "guidance/AGENTS.md"))
+        self.assertEqual(os.readlink(h.dir / "projects/CLAUDE.md"), "AGENTS.md")
         self.assertTrue((h.dir / ".local/bin/demo-built").is_file())
-        settings = json.loads((h.dir / ".pi/agent/settings.json").read_text())
-        self.assertIn("~/.agents/kit", settings["packages"])
+        settings = json.loads((h.kit / "pi/settings.json").read_text())
+        self.assertEqual(settings["packages"], ["~/agent-kit"])
+        for dot in (".agents", ".pi", ".claude", ".codex"):
+            self.assertFalse((h.dir / dot).exists(), dot)
+
+    def test_root_mismatch(self):
+        h = self.home(kit_name="elsewhere")
+        r = h.install()
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn(f"FAIL kit is at {h.kit}; the manifest root is {h.dir / 'agent-kit'}", r.stdout)
+        self.assertFalse((h.kit / "wiki").exists(), "nothing linked before the root check passes")
+        r = h.check()
+        self.assertEqual(r.returncode, 1)
+        self.assertIn(f"root: kit is at {h.kit}", r.stdout)
+
+    def test_harness_env(self):
+        h = self.home()
+        self.assertEqual(h.install().returncode, 0)
+        r = h.check(env=h.env(harness_env=False))
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("WARN: harness pi: PI_CODING_AGENT_DIR is unset", r.stdout)
+        env = h.env()
+        env["PI_CODING_AGENT_DIR"] = str(h.dir / ".pi/agent")
+        r = h.check(env=env)
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn(f"harness pi: PI_CODING_AGENT_DIR={h.dir / '.pi/agent'}, expected {h.kit / 'pi'}", r.stdout)
+
+    def test_migration(self):
+        # The old layout: ~/.agents of installer links plus owner files, and a
+        # dot-directory per harness holding links into ~/.agents beside state.
+        h = self.home()
+        agents = h.dir / ".agents"
+        agents.mkdir()
+        (agents / "kit").symlink_to(h.kit)
+        (agents / "wiki").symlink_to(h.dir / "wiki")
+        (agents / "AGENTS.md").symlink_to("kit/guidance/AGENTS.md")
+        (agents / "MACHINE.md").write_text("machine\n")
+        (agents / "backup/2026/x").mkdir(parents=True)
+        pi = h.dir / ".pi/agent"
+        pi.mkdir(parents=True)
+        (pi / "AGENTS.md").symlink_to(agents / "AGENTS.md")
+        (pi / "auth.json").write_text("{}\n")
+        (pi / "sessions/a").mkdir(parents=True)
+        (pi / "settings.json").write_text(json.dumps({"theme": "dark", "packages": ["~/.agents/kit", "npm:other"]}))
+        claude = h.dir / ".claude"
+        claude.mkdir()
+        (claude / "CLAUDE.md").symlink_to(agents / "CLAUDE.md")
+        (claude / "skills").symlink_to(agents / "skills")
+        (claude / ".credentials.json").write_text("secret\n")
+        (claude / "hooks").mkdir()
+        (claude / "elsewhere").symlink_to(h.dir / "wiki")
+        codex = h.dir / ".codex"
+        codex.mkdir()
+        (codex / "AGENTS.md").symlink_to(agents / "AGENTS.md")
+        (codex / "auth.json").write_text("{}\n")
+
+        dry = h.install("--dry-run")
+        self.assertEqual(dry.returncode, 0, dry.stdout + dry.stderr)
+        self.assertIn(f"migrate {pi / 'auth.json'} -> {h.kit / 'pi/auth.json'}", dry.stdout)
+        self.assertIn(f"drop    {claude / 'skills'} ->", dry.stdout)
+        self.assertTrue((pi / "auth.json").is_file())
+        self.assertTrue(agents.is_dir())
+
+        r = h.install()
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        for dot in (agents, h.dir / ".pi", claude, codex):
+            self.assertFalse(dot.exists(), f"{dot} remains")
+        self.assertTrue((h.kit / "pi/auth.json").is_file())
+        self.assertTrue((h.kit / "pi/sessions/a").is_dir())
+        self.assertTrue((h.kit / "claude/.credentials.json").is_file())
+        self.assertTrue((h.kit / "claude/hooks").is_dir())
+        self.assertEqual(os.readlink(h.kit / "claude/elsewhere"), str(h.dir / "wiki"), "foreign symlinks move")
+        self.assertEqual(os.readlink(h.kit / "claude/skills"), "../skills", "tracked link untouched")
+        self.assertTrue((h.kit / "codex/auth.json").is_file())
+        self.assertEqual((h.kit / "MACHINE.md").read_text(), "machine\n")
+        self.assertTrue((h.state / "agent-kit/backup/2026/x").is_dir())
+        settings = json.loads((h.kit / "pi/settings.json").read_text())
+        self.assertEqual(settings["theme"], "dark")
+        self.assertEqual(settings["packages"], ["npm:other", "~/agent-kit"])
+        self.assertEqual(h.check().returncode, 0)
+
+    def test_migration_collision(self):
+        h = self.home()
+        claude = h.dir / ".claude"
+        claude.mkdir()
+        (claude / "settings.json").write_text("old\n")
+        (h.kit / "claude/settings.json").write_text("new\n")
+        r = h.install()
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual((h.kit / "claude/settings.json").read_text(), "new\n")
+        self.assertEqual(len(h.backups("*/.claude/settings.json")), 1, r.stdout)
+        self.assertFalse(claude.exists())
+
+    def test_legacy_dir_fails_check(self):
+        h = self.home()
+        self.assertEqual(h.install().returncode, 0)
+        (h.dir / ".agents").mkdir()
+        r = h.check()
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn(f"legacy bindings {h.dir / '.agents'} still exist", r.stdout)
 
     def test_advertised_tool_off_path_warns(self):
         h = self.home()
         h.install()
-        (h.dir / ".agents/system-tools-index.md").write_text(
+        (h.kit / "system-tools-index.md").write_text(
             "# Index\n\n## Advertised\n\n- `demo-built`: on PATH\n- `no-such-tool-xyz`: not installed\n\n## Other\n\n- `also-missing`: outside the section\n"
         )
         r = h.check()
@@ -125,7 +234,7 @@ class InstallAndCheck(unittest.TestCase):
     def test_broken_binding(self):
         h = self.home()
         self.assertEqual(h.install().returncode, 0)
-        mem = h.dir / ".agents/wiki"
+        mem = h.kit / "wiki"
         mem.unlink()
         mem.symlink_to(h.dir / "nowhere")
         r = h.check()
@@ -174,22 +283,17 @@ class InstallAndCheck(unittest.TestCase):
 
     def test_dry_run_creates_nothing(self):
         h = self.home(make_sources=())
-        empty = h.dir / "empty"
-        empty.mkdir()
-        env = h.env()
-        env["HOME"] = str(empty)
-        r = subprocess.run([str(INSTALL), "--kit", str(h.kit), "--dry-run"], capture_output=True, text=True, env=env)
+        before = h.tree()
+        r = h.install("--dry-run", binds=())
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         out = r.stdout
-        self.assertIn(f"link    {empty}/.agents/kit -> {h.kit}", out)
         for name in ("wiki", "reference", "projects"):
-            self.assertIn(f"missing {name}: {empty}/{name}", out)
-        for target in (".pi/agent/AGENTS.md", ".claude/CLAUDE.md", ".claude/skills", ".codex/AGENTS.md", ".codex/skills"):
-            self.assertIn(f"{empty}/{target} ->", out)
+            self.assertIn(f"missing {name}: {h.dir / name}", out)
         self.assertIn("demo-script", out)
         self.assertIn("demo-built", out)
-        found = subprocess.run(["find", str(empty)], capture_output=True, text=True).stdout.split()
-        self.assertEqual(found, [str(empty)])
+        self.assertIn(f"pi      add ~/agent-kit in {h.kit / 'pi/settings.json'}", out)
+        self.assertEqual(before, h.tree())
+        self.assertFalse((h.dir / ".local").exists())
 
     def test_install_idempotent(self):
         h = self.home()
@@ -198,93 +302,29 @@ class InstallAndCheck(unittest.TestCase):
         r = h.install()
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertEqual(first, h.tree())
-        self.assertFalse((h.dir / ".agents/backup").exists())
+        self.assertFalse((h.state / "agent-kit/backup").exists())
         self.assertNotIn("replace", r.stdout)
-
-    def test_install_retires_only_declared_legacy_pi_resources(self):
-        h = self.home()
-        legacy_extension = h.dir / ".pi/agent/extensions/old-kit"
-        legacy_skill = h.dir / ".pi/agent/skills/old-plan"
-        standalone = h.dir / ".pi/agent/extensions/standalone"
-        legacy_extension.mkdir(parents=True)
-        legacy_skill.mkdir(parents=True)
-        standalone.mkdir(parents=True)
-        (legacy_extension / "marker.txt").write_text("extension\n")
-        (legacy_skill / "SKILL.md").write_text("skill\n")
-        (standalone / "index.ts").write_text("standalone\n")
-
-        dry = h.install("--dry-run")
-        self.assertEqual(dry.returncode, 0, dry.stdout + dry.stderr)
-        self.assertIn(f"retire  {legacy_extension}", dry.stdout)
-        self.assertIn(f"retire  {legacy_skill}", dry.stdout)
-        self.assertTrue(legacy_extension.is_dir())
-        self.assertTrue(legacy_skill.is_dir())
-
-        r = h.install()
-        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        self.assertFalse(legacy_extension.exists())
-        self.assertFalse(legacy_skill.exists())
-        self.assertTrue(standalone.is_dir())
-        backup = h.dir / ".agents/backup"
-        self.assertEqual(len(list(backup.glob("*/.pi/agent/extensions/old-kit/marker.txt"))), 1)
-        self.assertEqual(len(list(backup.glob("*/.pi/agent/skills/old-plan/SKILL.md"))), 1)
-        self.assertEqual(h.check().returncode, 0)
-
-        legacy_skill.mkdir()
-        check = h.check()
-        self.assertEqual(check.returncode, 1, check.stdout)
-        self.assertIn(f"legacy Pi resource {legacy_skill}", check.stdout)
 
     def test_install_collisions(self):
         h = self.home(make_sources=("reference", "projects"))
-        real = h.dir / ".claude/skills"
-        real.mkdir(parents=True)
-        (real / "old.txt").write_text("keep me\n")
-        (h.dir / ".claude/CLAUDE.md").write_text("real file\n")
-        (h.dir / ".codex").mkdir()
-        (h.dir / ".codex/AGENTS.md").symlink_to(h.dir / "wrong.md")
-        settings = h.dir / ".pi/agent/settings.json"
-        settings.parent.mkdir(parents=True)
+        (h.dir / "projects/AGENTS.md").write_text("real file\n")
+        (h.dir / "projects/CLAUDE.md").symlink_to(h.dir / "wrong.md")
+        settings = h.kit / "pi/settings.json"
         settings.write_text(json.dumps({"theme": "dark", "packages": [str(h.dir / "old-kit"), "npm:other", {"source": "npm:obj", "skills": []}]}))
         r = h.install()
         self.assertEqual(r.returncode, 1, r.stdout)
         self.assertIn(f"missing wiki: {h.dir / 'wiki'}", r.stdout)
-        backup = h.dir / ".agents/backup"
-        self.assertEqual(len(list(backup.iterdir())), 1, "one backup dir per run")
-        self.assertEqual(len(list(backup.glob("*/.claude/skills/old.txt"))), 1, r.stdout)
-        self.assertEqual(len(list(backup.glob("*/.claude/CLAUDE.md"))), 1, r.stdout)
-        self.assertEqual(len(list(backup.glob("*/.pi/agent/settings.json"))), 1, r.stdout)
-        self.assertTrue((h.dir / ".claude/skills").is_symlink())
-        self.assertTrue((h.dir / ".claude/CLAUDE.md").is_symlink())
+        self.assertEqual(len(h.backups("*")), 1, "one backup dir per run")
+        self.assertEqual(len(h.backups("*/agent-kit/projects/AGENTS.md")), 1, r.stdout)
+        self.assertEqual(len(h.backups("*/agent-kit/pi/settings.json")), 1, r.stdout)
+        self.assertTrue((h.dir / "projects/AGENTS.md").is_symlink())
+        self.assertEqual(os.readlink(h.dir / "projects/CLAUDE.md"), "AGENTS.md")
         after = json.loads(settings.read_text())
         self.assertEqual(after["theme"], "dark")
-        self.assertEqual(after["packages"], ["npm:other", {"source": "npm:obj", "skills": []}, "~/.agents/kit"])
-        self.assertEqual(os.path.realpath(h.dir / ".codex/AGENTS.md"), os.path.realpath(h.kit / "guidance/AGENTS.md"))
+        self.assertEqual(after["packages"], ["npm:other", {"source": "npm:obj", "skills": []}, "~/agent-kit"])
         r = h.check()
         self.assertEqual(r.returncode, 1)
         self.assertIn("binding wiki", r.stdout)
-
-    def test_git_package_form_counts(self):
-        h = self.home()
-        settings = h.dir / ".pi/agent/settings.json"
-        settings.parent.mkdir(parents=True)
-        settings.write_text(json.dumps({"packages": ["git:example.com/fixture-kit"]}))
-        r = h.install()
-        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        self.assertEqual(json.loads(settings.read_text())["packages"], ["git:example.com/fixture-kit"])
-        self.assertEqual(h.check().returncode, 0)
-
-    def test_git_package_pinned_ref(self):
-        # Pi identifies git packages by URL without the ref; a pinned install
-        # still counts as the kit package (no duplicate ~/.agents/kit entry).
-        h = self.home()
-        settings = h.dir / ".pi/agent/settings.json"
-        settings.parent.mkdir(parents=True)
-        settings.write_text(json.dumps({"packages": ["git:example.com/fixture-kit@v1.2"]}))
-        r = h.install()
-        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        self.assertEqual(json.loads(settings.read_text())["packages"], ["git:example.com/fixture-kit@v1.2"])
-        self.assertEqual(h.check().returncode, 0)
 
     def test_skipped_tool(self):
         h = self.home(zig=False)

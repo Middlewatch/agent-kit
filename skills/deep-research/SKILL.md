@@ -7,7 +7,7 @@ description: "Web research whose answer persists as a cited wiki report, with de
 # Deep research (two modes)
 
 Every run ends identically: a cited report per `references/report-spec.md`, filed into
-`~/.agents/wiki`, its sources appended to the lane's link-map so future agents can find them by
+`~/agent-kit/wiki`, its sources appended to the lane's link-map so future agents can find them by
 grep. The mode only decides how evidence gets collected. You are the
 orchestrator in both modes and the sole writer of the final report.
 
@@ -135,13 +135,13 @@ carries **[unverified]** inline. State inference as inference. Then the shared f
 ## Shared finish
 
 1. **Citation lint (code gate):**
-   `python3 ~/.agents/kit/skills/deep-research/bin/citation-lint.py <report.md>`. Fix anything
+   `python3 ~/agent-kit/skills/deep-research/bin/citation-lint.py <report.md>`. Fix anything
    it names and re-run until exit 0.
 2. **File to the wiki** per `references/report-spec.md` §Wiki filing. The existing-note check
    comes first. A note already covering the topic gets updated in place, and a new note is for
    a new topic. Lane selection and creation follow the report spec; report any new
    lane's name and rationale in the run summary.
-3. **Sources ledger:** append the run's section to `~/.agents/wiki/<lane>/link-maps/<domain>.md`
+3. **Sources ledger:** append the run's section to `~/agent-kit/wiki/<lane>/link-maps/<domain>.md`
    per report-spec §Sources ledger.
 4. **Report the run stats** to the user: mode and breadth, children launched, output tokens
    if known, and the filed path.

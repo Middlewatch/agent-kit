@@ -1,7 +1,7 @@
 //! sess — session-trace autopsy for agent transcript JSONL files.
 //!
-//! Reads Pi session logs (~/.pi/agent/sessions/**) and Claude Code project
-//! transcripts (~/.claude/projects/**) and answers the questions the raw
+//! Reads Pi session logs (~/agent-kit/pi/sessions/**) and Claude Code project
+//! transcripts (~/agent-kit/claude/projects/**) and answers the questions the raw
 //! JSON walls make expensive: what happened, how long, how many tokens,
 //! which tools, what failed. Format is auto-detected per file.
 //!

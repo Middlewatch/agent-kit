@@ -27,7 +27,7 @@ session and spec document should live in.
 1. **Read what exists.** README, `docs/adr/`, `CONTEXT.md` if present, the area's rows in
 `docs/FEATURE_MAP.md` and their entries in `docs/DATA_MODEL.md` if present (intended rows
 included; a row whose data is `?` gets a `data-model` session before the spec, the skill at
-`~/.agents/kit/skills/data-model/SKILL.md`), and the code in
+`~/agent-kit/skills/data-model/SKILL.md`), and the code in
 the area. Look up facts yourself (delegate an explore child for breadth).
 
 2. **Grill in rounds.** Map the decisions as a tree. The frontier is every question whose

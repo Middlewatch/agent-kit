@@ -15,9 +15,9 @@ export interface EstateCounts {
 }
 
 export interface EstateSources {
-	/** ~/.agents bindings root (inbox). */
+	/** The kit root, ~/agent-kit (inbox binding). */
 	agentsDir: string;
-	/** ~/.pi/agent — settings, npm/git package caches, global extensions. */
+	/** Pi's agent dir, ~/agent-kit/pi: settings, npm/git package caches, global extensions. */
 	piAgentDir: string;
 	/** Session cwd, the root for project-local .pi resources. */
 	cwd: string;

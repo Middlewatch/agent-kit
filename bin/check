@@ -3,9 +3,11 @@
 
 usage: bin/check [--lint] [--scan REPO...]
 
-No flag: the bindings in ~/.agents resolve to directories, every link in the
-manifest points where it should, every non-skipped tool resolves on PATH into
-the kit, and pi's settings list the kit package.
+No flag: the kit sits at the manifest root, the bindings inside it resolve to
+directories, each harness directory's tracked links resolve and its environment
+variable (when set) points at it, the old dot-directories are gone, every link
+in the manifest points where it should, every non-skipped tool resolves on PATH
+into the kit, and pi's settings list the kit package.
 --lint: tracked files (minus bin/lint-exempt.txt globs) are free of /home/,
 machine hostnames, and old sibling-repo paths; always-loaded files stay at or
 under the line budget.
@@ -26,8 +28,6 @@ import subprocess
 import sys
 
 HOME = Path(os.environ.get("HOME", str(Path.home())))
-AGENTS = HOME / ".agents"
-PI_SETTINGS = HOME / ".pi/agent/settings.json"
 
 # --lint: the one portable rule is the absolute home path. Machine names,
 # sibling checkouts, and other local identifiers come from the untracked
@@ -74,21 +74,56 @@ def same(a: Path, b: Path) -> bool:
 
 
 def kit_root() -> Path:
-    return AGENTS / "kit"
+    """The checkout this script lives in; check_root compares it with the manifest root."""
+    return Path(__file__).resolve().parents[1]
 
 
 def load_manifest(kit: Path) -> dict:
     return json.loads((kit / "deployments.json").read_text())
 
 
+def check_root(manifest: dict, kit: Path) -> list[str]:
+    root = expand(manifest.get("root", "~/agent-kit"), kit)
+    if not same(root, kit):
+        return [f"root: kit is at {kit}, the manifest root is {root}"]
+    return []
+
+
 def check_bindings(manifest: dict, kit: Path) -> list[str]:
     errors = []
     for name in manifest.get("bindings", {}):
-        link = AGENTS / name
+        link = kit / name
         if not link.is_symlink():
             errors.append(f"binding {name}: {link} is not a symlink")
         elif not link.is_dir():
             errors.append(f"binding {name}: {link} -> {os.readlink(link)} does not resolve to a directory")
+    return errors
+
+
+def check_harnesses(manifest: dict, kit: Path, warnings: list[str]) -> list[str]:
+    """Each harness directory is tracked with its kit links; its state arrives by migration and
+    its environment variable is the owner's to set, so an unset one only warns."""
+    errors = []
+    for harness in manifest.get("harnesses", []):
+        name, env = harness["name"], harness["env"]
+        directory = kit / name
+        if not directory.is_dir():
+            errors.append(f"harness {name}: {directory} is not a directory")
+            continue
+        for entry in directory.iterdir():
+            if entry.is_symlink() and not entry.exists():
+                errors.append(f"harness {name}: {entry} -> {os.readlink(entry)}: dangling")
+        value = os.environ.get(env)
+        if not value:
+            warnings.append(f"harness {name}: {env} is unset in this shell; expected {directory}")
+        elif not same(Path(os.path.expanduser(value)), directory):
+            errors.append(f"harness {name}: {env}={value}, expected {directory}")
+        legacy = harness.get("legacy")
+        if legacy and (path := expand(legacy, kit)).exists():
+            errors.append(f"harness {name}: {path} still exists; run bin/install to migrate it")
+    legacy = manifest.get("legacy_bindings")
+    if legacy and (path := expand(legacy, kit)).exists():
+        errors.append(f"legacy bindings {path} still exist; run bin/install to migrate them")
     return errors
 
 
@@ -106,22 +141,11 @@ def check_links(manifest: dict, kit: Path) -> list[str]:
     return errors
 
 
-def check_legacy_pi_resources(manifest: dict, kit: Path) -> list[str]:
-    errors = []
-    for spec in manifest.get("pi_legacy_paths", []):
-        path = expand(spec, kit)
-        if path.exists() or path.is_symlink():
-            errors.append(f"legacy Pi resource {path}: run bin/install to retire it")
-    return errors
-
-
 def package_key(spec: str, kit: Path) -> str:
-    """Pi identifies git packages by URL without the pinned ref (docs/packages.md),
-    so strip a trailing @ref; an @ before the last / is a user part (git@host)."""
-    if spec.startswith(("~", "/", ".")):
+    """Pi identifies local packages by resolved absolute path (docs/packages.md)."""
+    if spec.startswith(("~", "/")):
         return os.path.normpath(str(expand(spec, kit)))
-    slash, at = spec.rfind("/"), spec.rfind("@")
-    return spec[:at] if at > slash else spec
+    return spec
 
 
 def tool_skipped(tool: dict) -> bool:
@@ -153,24 +177,24 @@ def check_tools(manifest: dict, kit: Path, warnings: list[str]) -> list[str]:
 
 
 def check_pi_package(manifest: dict, kit: Path) -> list[str]:
-    accepted = manifest.get("pi_package", ["~/.agents/kit"])
+    entry = manifest.get("pi_package", "~/agent-kit")
+    settings = kit / "pi/settings.json"
     try:
-        data = json.loads(PI_SETTINGS.read_text())
+        data = json.loads(settings.read_text())
     except FileNotFoundError:
-        return [f"pi package: {PI_SETTINGS} missing"]
+        return [f"pi package: {settings} missing"]
     except json.JSONDecodeError as exc:
-        return [f"pi package: {PI_SETTINGS} unreadable: {exc}"]
+        return [f"pi package: {settings} unreadable: {exc}"]
     pkgs = [p["source"] if isinstance(p, dict) else p for p in data.get("packages", [])]
-    forms = {package_key(p, kit) for p in accepted}
-    if any(package_key(p, kit) in forms for p in pkgs):
+    if any(package_key(p, kit) == package_key(entry, kit) for p in pkgs):
         return []
-    return [f"pi package: none of {accepted} in {PI_SETTINGS} packages"]
+    return [f"pi package: {entry} not in {settings} packages"]
 
 
-def check_inbox_age(warnings: list[str]) -> None:
+def check_inbox_age(kit: Path, warnings: list[str]) -> None:
     """The capture inbox is a drop-box whose consumer is an owner-in-the-loop triage; rot is silent
     without this advisory."""
-    inbox = AGENTS / "inbox"
+    inbox = kit / "inbox"
     if not inbox.is_dir():
         return
     import time
@@ -203,9 +227,9 @@ def advertised_tools(index_text: str) -> list[str]:
     return names
 
 
-def check_advertised_tools(warnings: list[str]) -> None:
+def check_advertised_tools(kit: Path, warnings: list[str]) -> None:
     """The prompt slot drops a name that is not on PATH silently; this names it so the index gets fixed."""
-    index = AGENTS / "system-tools-index.md"
+    index = kit / "system-tools-index.md"
     if not index.is_file():
         return
     missing = [name for name in advertised_tools(index.read_text()) if shutil.which(name) is None]
@@ -213,19 +237,17 @@ def check_advertised_tools(warnings: list[str]) -> None:
         warnings.append(f"system-tools-index: advertised but not on PATH: {', '.join(missing)}")
 
 
-def check_install() -> list[str]:
-    kit = kit_root()
-    if not kit.is_dir():
-        return [f"binding kit: {kit} does not resolve to a directory"]
+def check_install(kit: Path) -> list[str]:
     manifest = load_manifest(kit)
     warnings: list[str] = []
-    errors = check_bindings(manifest, kit)
+    errors = check_root(manifest, kit)
+    errors += check_bindings(manifest, kit)
+    errors += check_harnesses(manifest, kit, warnings)
     errors += check_links(manifest, kit)
-    errors += check_legacy_pi_resources(manifest, kit)
     errors += check_tools(manifest, kit, warnings)
     errors += check_pi_package(manifest, kit)
-    check_inbox_age(warnings)
-    check_advertised_tools(warnings)
+    check_inbox_age(kit, warnings)
+    check_advertised_tools(kit, warnings)
     for warning in warnings:
         print(f"WARN: {warning}")
     return errors
@@ -266,7 +288,8 @@ def lint_tree(repo: Path) -> list[str]:
     )
     for rel in tracked_files(repo):
         path = repo / rel
-        if not path.is_file():
+        # A tracked symlink (harness links) is linted through its target.
+        if path.is_symlink() or not path.is_file():
             continue
         try:
             text = path.read_text(encoding="utf-8")
@@ -343,6 +366,7 @@ def main() -> int:
     parser.add_argument("--lint", action="store_true", help="lint the kit's tracked tree")
     parser.add_argument("--scan", type=Path, nargs="*", default=None, metavar="REPO",
                         help="public-bound repositories to scan for owner-identifying strings")
+    parser.add_argument("--kit", type=Path, default=None, help="check this kit checkout instead of the one holding bin/check")
     args = parser.parse_args()
 
     errors: list[str] = []
@@ -356,7 +380,7 @@ def main() -> int:
         if not errors and not _load_local()[0]:
             print(f"NOTE: no {LOCAL_PATTERNS.name}; identity scan skipped")
     else:
-        errors += check_install()
+        errors += check_install(args.kit.resolve() if args.kit else kit_root())
 
     for error in errors:
         print(f"FAIL: {error}")

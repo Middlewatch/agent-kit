@@ -8,13 +8,13 @@ description: "Design rationale and history: why X works this way, why we picked 
 Reconstruct the motivation behind code or a decision from the estate's recorded evidence,
 with confidence calibrated to what the record actually supports.
 
-Companion to the `how` walkthrough prompt (`~/.agents/kit/prompts/how.md`): `how`
+Companion to the `how` walkthrough prompt (`~/agent-kit/prompts/how.md`): `how`
 answers what the code does, `why` answers what forces gave it
 that shape. It reads from the estate's capture skills: `adr` records decisions in
-`docs/adr/`, `harvest` records surprises in language packs and `~/.agents/inbox/`,
+`docs/adr/`, `harvest` records surprises in language packs and `~/agent-kit/inbox/`,
 `vet-dependency` records adoption verdicts in the introducing commit's message, and
 the separately installed `autojournal` extension records session deliberation in
-`~/.agents/journals`.
+`~/agent-kit/journals`.
 
 ## Outcome and boundaries
 
@@ -51,7 +51,7 @@ evidence about how the decision was made; record it rather than skipping the sea
    searches on names surfaced by the other categories. The journal is this estate's
    conversational record: the deliberation other teams keep in chat lives here.
 4. **Harvested findings.** The relevant language pack under
-   `~/.agents/reference/coding-languages/` and the references of any skill involved in
+   `~/agent-kit/reference/coding-languages/` and the references of any skill involved in
    the original work. When the target looks defensive (retry, timeout, guard, null
    check), the motivating bug's debugging saga is usually a journal entry or a pack
    finding.
@@ -131,7 +131,7 @@ it against the record rather than confirming it.
 
 When the investigation reconstructs a rationale that exists nowhere durable,
 capture it: an ADR via the `adr` skill for a qualifying decision, an inbox note at
-`~/.agents/inbox` as a wiki candidate otherwise. The owner and inbox triage decide whether
+`~/agent-kit/inbox` as a wiki candidate otherwise. The owner and inbox triage decide whether
 the candidate becomes a wiki note.
 
 ## Failure modes to avoid

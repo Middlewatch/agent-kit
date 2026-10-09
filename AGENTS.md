@@ -1,28 +1,32 @@
 # Agent kit repository
 
-One portable repo behind the `~/.agents` convention. Components:
-`guidance/` (the global guide, Claude adapter, workspace overlays), `skills/`, `extensions/` (pi), `tools/`, and `bin/`
-(`install`, `check`). `deployments.json` is the link table `bin/install`
-reads; `README.md` explains the convention and the install.
+One portable repo that is also its own install target, `~/agent-kit`.
+Components: `guidance/` (the global guide, Claude adapter, workspace
+overlays), `skills/`, `extensions/` (pi), `tools/`, `bin/` (`install`,
+`check`), and one state directory per harness (`pi/`, `claude/`, `codex/`;
+tracked links only, state gitignored). `deployments.json` is the table
+`bin/install` reads; `README.md` explains the layout and the install.
 
 ## Change contract
 
-- Cross-component references are written against `~/.agents/...`
-  (`~/.agents/kit/skills/<name>/SKILL.md`, `~/.agents/wiki/...`).
+- Cross-component references are written against `~/agent-kit/...`
+  (`~/agent-kit/skills/<name>/SKILL.md`, `~/agent-kit/wiki/...`).
   Within a component, plain relative paths to its own files. No `..` crossings.
 - No tracked file names a machine, an absolute home path, or a sibling
   checkout. `bin/check --lint` is the gate; `bin/lint-exempt.txt` lists the
   history directories it skips. Machine facts live in the untracked
-  `~/.agents/MACHINE.md`.
+  `~/agent-kit/MACHINE.md`.
 - Always-loaded files (`guidance/AGENTS.md`, `guidance/CLAUDE.md`,
   `guidance/workspaces/*/AGENTS.md`, this file) stay at or under 240 lines;
   procedures go into skills or linked documentation.
-- Skills are served by the `~/.agents/skills -> kit/skills` link; the pi
-  manifest (`package.json`) declares extensions and prompts. Tools build from their own directory with the
-  command in `deployments.json`; a missing toolchain skips the tool.
+- Pi loads the kit as a local package: the pi manifest (`package.json`)
+  declares extensions, prompts, and skills. Claude Code and Codex reach the
+  skills through the tracked `claude/skills` and `codex/skills` links. Tools
+  build from their own directory with the command in `deployments.json`; a
+  missing toolchain skips the tool.
 - Each tool and extension keeps its own README, tests, and design doc in its
   directory; `tools/README.md` and `extensions/README.md` are the indexes.
-  Read `~/.agents/wiki/platform/index.md` before extension or harness work; it
+  Read `~/agent-kit/wiki/platform/index.md` before extension or harness work; it
   holds the verified pi runtime findings (compaction, hooks, TUI, providers).
 
 ## Gates

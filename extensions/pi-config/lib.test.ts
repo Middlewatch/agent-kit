@@ -23,7 +23,7 @@ const OPTS = { cwd: CWD, agentDir: AGENT_DIR, homeDir: HOME, canonicalize: (p: s
 const NPM_EXT = "/pkgs/pkg/extensions/a.ts";
 const NPM_SKILL = "/pkgs/pkg/skills/foo/SKILL.md";
 const USER_EXT = `${AGENT_DIR}/extensions/foo.ts`;
-const KIT_EXT = `${HOME}/.agents/kit/extensions/todo/index.ts`;
+const KIT_EXT = `${HOME}/agent-kit/extensions/todo/index.ts`;
 const PROJ_EXT = `${CWD}/.pi/extensions/local.ts`;
 
 function empty(): ResolvedPaths {
@@ -32,7 +32,7 @@ function empty(): ResolvedPaths {
 
 function fixture(): Record<WriteScope, ResolvedPaths> {
 	const npm = { source: "npm:pkg", scope: "user" as const, origin: "package" as const, baseDir: "/pkgs/pkg" };
-	const kit = { source: "~/.agents/kit", scope: "user" as const, origin: "package" as const, baseDir: `${HOME}/.agents/kit` };
+	const kit = { source: "~/agent-kit", scope: "user" as const, origin: "package" as const, baseDir: `${HOME}/agent-kit` };
 	const user = { source: "auto", scope: "user" as const, origin: "top-level" as const };
 	const global = empty();
 	global.extensions.push(
@@ -95,7 +95,7 @@ test("buildGroups orders packages before top-level, user before project, and lab
 	assert.deepEqual(
 		groups.map((g) => g.label),
 		// localeCompare orders "~" before letters, as pi's picker does
-		["~/.agents/kit (user)", "npm:pkg (user)", "User (~/.pi/agent/)", "Project (.pi/)"],
+		["~/agent-kit (user)", "npm:pkg (user)", "User (~/.pi/agent/)", "Project (.pi/)"],
 	);
 	assert.deepEqual(
 		groups[1].subgroups.map((s) => s.label),
@@ -155,17 +155,17 @@ test("project scope: inherited npm package cycles unload -> load -> inherit as a
 });
 
 test("project scope: a local package override is written relative to <cwd>/.pi", () => {
-	const settings = new MemorySettings({ packages: ["~/.agents/kit"] });
+	const settings = new MemorySettings({ packages: ["~/agent-kit"] });
 	const model = new ConfigModel(fixture(), settings, OPTS, "project");
 	select(model, KIT_EXT);
 	assert.equal(model.toggleSelected(), false);
 	assert.deepEqual(settings.project.packages, [
-		{ source: "../../../srv/u/.agents/kit", autoload: false, extensions: ["-extensions/todo/index.ts"] },
+		{ source: "../../../srv/u/agent-kit", autoload: false, extensions: ["-extensions/todo/index.ts"] },
 	]);
 	// The relative entry is recognised as the same package on the next toggle.
 	assert.equal(model.toggleSelected(), true);
 	assert.deepEqual(settings.project.packages, [
-		{ source: "../../../srv/u/.agents/kit", autoload: false, extensions: ["+extensions/todo/index.ts"] },
+		{ source: "../../../srv/u/agent-kit", autoload: false, extensions: ["+extensions/todo/index.ts"] },
 	]);
 });
 
@@ -206,7 +206,7 @@ test("filter narrows to matching items with their group and subgroup headers; se
 	model.setFilter("todo");
 	assert.deepEqual(
 		model.entries.map((e) => (e.type === "item" ? e.item.displayName : e.type === "group" ? `G:${e.group.label}` : `S:${e.subgroup.label}`)),
-		["G:~/.agents/kit (user)", "S:Extensions", "todo/index.ts"],
+		["G:~/agent-kit (user)", "S:Extensions", "todo/index.ts"],
 	);
 	assert.equal(model.selected?.type, "item");
 	// pi matches the raw query, so surrounding spaces are literal
