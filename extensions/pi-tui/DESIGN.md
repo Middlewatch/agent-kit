@@ -111,6 +111,18 @@ sandbox, micro-VM) would be silently bypassed if it loads before this
 one. No such extension runs in this estate today; `tool_call` hooks
 still fire. Revisit the delegation if one arrives.
 
+## Color tiers
+
+The chrome paints with pi theme tokens only, never hex, so the palette
+engine owns every color. It uses the tokens as tiers: `text` for primary
+lines (open progress items, footer values), `muted` for secondary text
+that must still read (tool output, branch names, settled items), `dim`
+for structure and hints (gutter bars, labels, key hints), `toolTitle`
+for tool names, and `error`, `warning`, `success`, `accent` for status
+and glyphs with red kept to failures. The rendered palette theme maps
+`muted` to a 7:1 color and `dim` to a 4.5:1 color on the background, so
+nothing the chrome paints as text falls below the de-emphasis floor.
+
 ## Boundaries
 
 Facts collection guards every filesystem and git read (missing

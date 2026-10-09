@@ -49,10 +49,6 @@
       "target": "~/.codex/AGENTS.md"
     },
     {
-      "source": "~/.agents/kit/extensions/pi-tui/themes/modus-vivendi-tinted.json",
-      "target": "~/.pi/agent/themes/modus-vivendi-tinted.json"
-    },
-    {
       "source": "~/.agents/skills",
       "target": "~/.codex/skills"
     }
