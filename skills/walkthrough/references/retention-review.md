@@ -1,6 +1,6 @@
 # Yazi trial: retention review
 
-Status: all four recommendations adopted by the owner on 2026-09-07. Reviewed 2026-09-07 by an independent fresh-context reviewer against the original skill and the user/assistant transcript from session `01a07d4c-4907-75be-b3c8-d0d1805147e7`. The root checked each quoted observation against the transcript. The [Yazi tutorial](tutorials/yazi/TUTORIAL.md) preserves the exercises and outcomes.
+Status: all four recommendations adopted by the owner on 2026-09-07. Reviewed 2026-09-07 by an independent fresh-context reviewer against the original skill and the user/assistant transcript from session `01a07d4c-4907-75be-b3c8-d0d1805147e7`. The root checked each quoted observation against the transcript. The Yazi tutorial (`~/agent-kit/wiki/personal/tutorials/yazi/TUTORIAL.md`) preserves the exercises and outcomes.
 
 The trial adapted to reported navigation difficulty, reduced hints, and ended with a goal-only challenge. The learner reported no lookup on that challenge, and file checks verified its outcome. This establishes immediate task completion; delayed retention was not measured. The cause of the earlier copy/move mismatch was not observed.
 

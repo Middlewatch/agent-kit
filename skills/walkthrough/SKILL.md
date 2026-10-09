@@ -9,7 +9,7 @@ Help the user perform and understand a task, then gradually supply fewer hints u
 
 ## Establish the starting point
 
-Read the request and available conversation history for the user's goal, existing competence, and what they want to do themselves. Look up the program or named process in [the tutorial index](references/tutorials/README.md) and read its `TUTORIAL.md` when present before choosing an exercise. Ask only for missing information that changes the first exercise. When resuming, reconcile its checkpoint with the user's current practice state and outstanding question. If that evidence is missing, ask where they are rather than restarting the introduction.
+Read the request and available conversation history for the user's goal, existing competence, and what they want to do themselves. Look up the program or named process in the tutorial index at `~/agent-kit/wiki/personal/tutorials/README.md` and read its `TUTORIAL.md` when present before choosing an exercise. Ask only for missing information that changes the first exercise. When resuming, reconcile its checkpoint with the user's current practice state and outstanding question. If that evidence is missing, ask where they are rather than restarting the introduction.
 
 For a lookup request, return the relevant recorded workflow and any version caveat instead of assigning practice. Otherwise, choose a short path toward a useful capability. Keep later exercises provisional and present only the current task. Move past basics the user already knows.
 
@@ -31,7 +31,7 @@ Fit the turn around one coherent task. Use numbered steps for actions, code bloc
 
 The user performs the skill-bearing action even when the agent could do it faster. Agent tools can inspect state, prepare fixtures, and verify or repair the setup. When an agent repair unblocks the exercise, say what changed and return control at the same checkpoint.
 
-Keep one portable record at `references/tutorials/<topic>/TUTORIAL.md`, relative to this skill. Read the [record format](references/tutorials/README.md) when creating or updating it. Record each assigned task as pending, then update its result after the user's reply or an agent check. Preserve reusable actions and meaningful retries, with observed completion separate from recall evidence. The conversation still presents only the current task.
+Keep one portable record at `~/agent-kit/wiki/personal/tutorials/<topic>/TUTORIAL.md`, in the wiki rather than in this skill's tree, so record updates version with the wiki. Read the record format in that directory's `README.md` when creating or updating it. Record each assigned task as pending, then update its result after the user's reply or an agent check. Preserve reusable actions and meaningful retries, with observed completion separate from recall evidence. The conversation still presents only the current task.
 
 ## Let the result determine the next turn
 

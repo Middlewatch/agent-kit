@@ -4,7 +4,7 @@ Use this file when revising the skill or testing whether it transfers to another
 
 ## Observations from the source walkthroughs
 
-Reviewed on 2026-09-07. These are observations from one owner's Dolphin and Neovim conversations, not a measured comparison of teaching methods. Episode IDs refer to the estate's journal recall system. The [tutorial index](tutorials/README.md) links the reusable records and redacted source dialogue.
+Reviewed on 2026-09-07. These are observations from one owner's Dolphin and Neovim conversations, not a measured comparison of teaching methods. Episode IDs refer to the estate's journal recall system. The tutorial index (`~/agent-kit/wiki/personal/tutorials/README.md`) links the reusable records and redacted source dialogue.
 
 | Observation | Evidence | Consequence |
 |---|---|---|
@@ -20,7 +20,7 @@ Reviewed on 2026-09-07. These are observations from one owner's Dolphin and Neov
 
 ## Yazi trial and tutorial records
 
-On 2026-09-07, the owner explicitly invoked the draft in session `01a07d4c-4907-75be-b3c8-d0d1805147e7`. The [Yazi tutorial](tutorials/yazi/TUTORIAL.md) records every assigned exercise and the paused practice state. Its final goal-only challenge succeeded with no lookup reported and agent-verified file outcomes. Earlier destination-only verification missed extra source copies after a requested move; a later two-sided check exposed the mismatch and verified the retry.
+On 2026-09-07, the owner explicitly invoked the draft in session `01a07d4c-4907-75be-b3c8-d0d1805147e7`. The Yazi tutorial (`~/agent-kit/wiki/personal/tutorials/yazi/TUTORIAL.md`) records every assigned exercise and the paused practice state. Its final goal-only challenge succeeded with no lookup reported and agent-verified file outcomes. Earlier destination-only verification missed extra source copies after a requested move; a later two-sided check exposed the mismatch and verified the retry.
 
 The owner requested per-topic tutorial records inside the skill so completed workflows and checkpoints travel with agent-kit. Read the [retention review](retention-review.md) when considering reminder timing or exercise changes; the owner adopted its four recommendations, but their effect on delayed retention remains unmeasured.
 
