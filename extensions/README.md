@@ -27,6 +27,9 @@ repo and is installed separately.
   section and drops the stock `<rules>` listed in `guidance/rules-drop.txt`,
   in place.
   `/sysprompt` shows the prompt as sent, or a preview before the first turn.
+- `bash-guide`: adds a `<bash>` section to the system prompt from its
+  `guide.md`: rules for the bash mistakes found in the session logs, and
+  batching rules for running independent commands in one call.
 - `ask-user-question`: the `ask_user_question` tool, a tabbed questionnaire
   with typed answers, multi-select, notes, and option previews.
 - `web-tools`: `web_search` over a keyed provider chain with fallback, and
@@ -38,5 +41,5 @@ extension's directory:
 
 - `npm test` for pi-scratchpad, pageview, agent-delegate, and pi-tui
 - `node --test lib.test.ts` for prompt-picker, skill-inline, pi-config,
-  ask-user-question, and web-tools
+  ask-user-question, web-tools, and bash-guide
 - `npm test` and `npm run typecheck` for prompt-sections
