@@ -4,7 +4,7 @@ import {
 	createReadToolDefinition,
 	createWriteToolDefinition,
 	type ExtensionAPI,
-	type ExtensionContext,
+	type ExtensionToolContext,
 	type ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
@@ -30,7 +30,7 @@ function registeredTools(): Map<string, ToolDefinition> {
 describe("gutter registration preserves builtin instructions", () => {
 	it("executes write, edit, and read in the session cwd", async () => {
 		const cwd = mkdtempSync(join(tmpdir(), "pi-gutter-tools-"));
-		const ctx = { cwd } as ExtensionContext;
+		const ctx = { cwd } as ExtensionToolContext;
 		const tools = registeredTools();
 		const run = (name: string, args: unknown) => tools.get(name)!.execute("probe", args, undefined, undefined, ctx);
 		try {
