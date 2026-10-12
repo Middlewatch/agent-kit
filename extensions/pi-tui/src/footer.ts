@@ -3,7 +3,7 @@
  *
  *   ~/projects/agent-kit ⎇ main · fix-footer
  *   model claude-4.5 · think high · ctx 12.3% of 200k · in 12k · out 3k · hit 98% · $0.42
- *   interlock armed · scratchpad ready
+ *   delegate idle · scratchpad ready
  *
  * Stock semantics carried over: ↑/↓ were input/output totals, R/W cache
  * read/write totals, CH the latest response's cache-hit rate.
@@ -77,7 +77,7 @@ export function sessionLine(facts: FooterFacts, style: Style): string {
 
 /**
  * The footer already labels each status with its extension key, so a
- * status that names its own extension ("Interlock: armed") sheds the
+ * status that names its own extension ("Delegate: idle") sheds the
  * redundant prefix.
  */
 export function stripSelfName(name: string, text: string): string {

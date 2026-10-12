@@ -103,8 +103,8 @@ describe("sessionLine", () => {
 
 describe("extensionsLine", () => {
 	it("labels each status with its extension name", () => {
-		const line = extensionsLine(facts({ statuses: [["interlock", "armed"], ["scratchpad", "ready"]] }), style);
-		expect(line).toBe("<dim>interlock</> armed<dim> · </><dim>scratchpad</> ready");
+		const line = extensionsLine(facts({ statuses: [["delegate", "idle"], ["scratchpad", "ready"]] }), style);
+		expect(line).toBe("<dim>delegate</> idle<dim> · </><dim>scratchpad</> ready");
 	});
 
 	it("shows a placeholder when empty", () => {
@@ -113,10 +113,10 @@ describe("extensionsLine", () => {
 
 	it("strips a status's redundant self-name prefix", () => {
 		const line = extensionsLine(
-			facts({ statuses: [["interlock", "Interlock: armed"], ["autojournal", "autojournal: syncing… 3s"]] }),
+			facts({ statuses: [["delegate", "Delegate: idle"], ["autojournal", "autojournal: syncing… 3s"]] }),
 			style,
 		);
-		expect(line).toBe("<dim>interlock</> armed<dim> · </><dim>autojournal</> syncing… 3s");
+		expect(line).toBe("<dim>delegate</> idle<dim> · </><dim>autojournal</> syncing… 3s");
 	});
 
 	it("keeps a status that is only the extension name", () => {
