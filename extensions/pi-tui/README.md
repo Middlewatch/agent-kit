@@ -57,11 +57,13 @@ real paths. Spec:
 
 ## Themes
 
-The extension ships no theme. Pi themes come from the dotfiles palette
-engine: `.chezmoitemplates/pi-theme` in the chezmoi source maps every pi
-color token to a palette role, and `dot_pi/agent/themes/<palette>.json.tmpl`
-renders one theme per palette into `~/agent-kit/pi/themes/`, selectable in
-`/settings`. The chrome here relies on three text tiers from that mapping:
+The extension ships no theme. The kit tracks the rendered palette themes
+in `pi/themes/` (command-focus, ef-dark, ef-dark-lifted, modus-vivendi),
+selectable in `/settings`. They are generated, not hand-edited: the dotfiles
+palette engine's `.chezmoitemplates/pi-theme` maps every pi color token to a
+palette role, and a palette change is re-rendered there and copied into
+`pi/themes/` (the command is in the dotfiles `docs/theme-design.md`). The
+chrome here relies on three text tiers from that mapping:
 `text` (the terminal foreground, `fg-main`), `muted` (`fg-dim`, 7:1 on the
 background), and `dim` (`fg-faded`, the de-emphasis tier at a 4.5:1 floor),
 plus `error`, `warning`, `success` and `accent` for status and glyphs. Pi's
