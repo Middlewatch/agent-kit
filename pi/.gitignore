@@ -1,4 +1,6 @@
-# Pi state lives here (PI_CODING_AGENT_DIR); only the kit links are tracked.
+# Pi state lives here (PI_CODING_AGENT_DIR); only the kit links and themes are tracked.
 *
 !.gitignore
 !AGENTS.md
+!themes/
+!themes/*.json
